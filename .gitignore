@@ -18,3 +18,11 @@ output.log
 
 # Config propia de cada maquina (la VM mantiene la suya)
 Server.ini
+
+# --- Datos vivos: NUNCA se versionan (la VM mantiene los suyos) ---
+Charfile/
+Cuentas/
+Dat/
+Maps/
+GUILDS/
+Backups/

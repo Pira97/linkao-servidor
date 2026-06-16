@@ -1,0 +1,17 @@
+# --- Build intermedio (no hace falta subirlo) ---
+bin/
+obj/
+publish/
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+
+# --- Logs ---
+*.log
+_srv.log
+error.log
+output.log
+
+# NOTA: ServidorCS.exe SI se sube (la VM lo corre directo, sin compilar).
+# Los datos vivos de jugadores viven en ..\Servidor y no estan aca.

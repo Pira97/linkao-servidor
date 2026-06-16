@@ -1,0 +1,87 @@
+[Macro1]
+Nombre=MOD EXP DARZ 444444
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro2]
+Nombre=Proyectil Magico
+Grh=609
+Tipo=2
+Slot=0
+SlotSpell=1
+ObjIndex=0
+
+[Macro3]
+Nombre=Curar heridas graves
+Grh=609
+Tipo=2
+Slot=0
+SlotSpell=5
+ObjIndex=0
+
+[Macro4]
+Nombre=REVIVIR DARZ
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro5]
+Nombre=EJECUTAR CREA
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro6]
+Nombre=MEDITAR
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro7]
+Nombre=Poción Azul (Newbies)
+Grh=541
+Tipo=4
+Slot=6
+SlotSpell=0
+ObjIndex=1602
+
+[Macro8]
+Nombre=Barca
+Grh=749
+Tipo=4
+Slot=11
+SlotSpell=0
+ObjIndex=474
+
+[Macro9]
+Nombre=PANELGM
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro10]
+Nombre=Anillo Dorado (Drop +100%) (Donador)
+Grh=50143
+Tipo=3
+Slot=12
+SlotSpell=0
+ObjIndex=1607
+
+[Macro11]
+Nombre=TELEP YO 248 50 50
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0

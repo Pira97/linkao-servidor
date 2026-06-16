@@ -1,0 +1,417 @@
+=====================================================================
+  COMANDOS DEL SERVIDOR C# (ServidorCS) - LinkAO
+  Fuente: ServidorCS/Game/Chat.cs (HandleCommand)
+  Se escriben en el chat del juego. Los alias van entre parentesis.
+  Actualizado: 11/06/2026
+=====================================================================
+
+
+=== UTILIDADES (sobre uno mismo) ====================================
+
+/spawn [npcIndex]
+    Crea un NPC frente al GM. Si no pones numero, spawnea el NPC 500.
+
+/pos  (/donde)
+    Muestra tu posicion actual: mapa, X, Y y heading.
+
+/resucitar
+    Te resucita a vos mismo.
+
+/curar
+    Te llena la vida al maximo.
+
+/mana
+    Te llena el mana al maximo.
+
+/sta  (/stamina)
+    Te llena la stamina al maximo.
+
+/save
+    Guarda tu personaje a disco inmediatamente.
+
+
+=== EVENTOS =========================================================
+
+/eventoexp [multiplicador] [segundos]
+    Activa evento de experiencia multiplicada. Por defecto x2 durante
+    300 segundos.
+
+/invasion <mapa> <cantidad>
+    (Requiere SemiDios) Dispara la invasion de cofres en un mapa.
+
+/centinelaactivado
+    (Requiere Dios) Activa/desactiva el centinela anti-macro.
+
+/eventocaceria  (/eventocaceriaon, /iniciarcaceria)
+    (Requiere Dios) Inicia el evento Caceria por Faccion.
+
+/eventocaceriaoff  (/eventocaceriades, /finalizarcaceria)
+    (Requiere Dios) Finaliza la Caceria y reparte los premios.
+
+/estadocaceria  (/vercaceria)
+    Muestra el estado actual del evento de Caceria.
+
+/cuentaregresiva <segundos>  (/countdown)
+    Envia una cuenta regresiva por consola a todos los jugadores.
+
+/eventoro  (/event-gold)
+    NO IMPLEMENTADO (requiere sistema de eventos de oro).
+
+
+=== STATS (modificar atributos propios o de prueba) =================
+
+/stats <hp> <mana> <sta>
+    Setea vida, mana y stamina.
+
+/exp <cantidad>
+    Agrega experiencia.
+
+/level <1-60>  (/lvl)
+    Setea el nivel.
+
+/gld <cantidad>  (/oro)
+    Setea el oro en mano.
+
+/banco <cantidad>
+    Setea el oro en el banco.
+
+/habilidad <id> <nivel>  (/skill)
+    Setea un skill puntual a un valor.
+
+/atributo <id> <valor>  (/attr)
+    Setea un atributo (fuerza, agilidad, etc.).
+
+
+=== INFORMACION =====================================================
+
+/info <usuario>
+    Informacion general de un usuario.
+
+/inv <usuario>  (/inventario)
+    Muestra el inventario de un usuario.
+
+/bov <usuario>  (/banco-inv)
+    Muestra la boveda (banco) de un usuario.
+
+/hechizos  (/spells)
+    Lista tus hechizos.
+
+/skills <usuario>
+    Muestra los skills de un usuario.
+
+/listusu
+    Lista de usuarios conectados (usada por el Panel GM).
+
+/online
+    Cantidad y lista de usuarios online.
+
+/onlinegm
+    GMs conectados.
+
+/onlinemap
+    Usuarios conectados en tu mapa.
+
+/nene [npcIndex]  (/criaturas)
+    Informacion de criaturas/NPCs del mapa.
+
+/charinfo <usuario>
+    Ficha completa del personaje (online u offline, lee el .chr).
+
+/charinv <usuario>
+    Inventario del personaje leyendo el archivo .chr.
+
+/charbank <usuario>
+    Boveda del personaje leyendo el archivo .chr.
+
+/charskills <usuario>
+    Skills del personaje leyendo el archivo .chr.
+
+/hora
+    Fecha y hora del servidor.
+
+/time
+    Hora del servidor (formato corto HH:mm).
+
+
+=== MENSAJES ========================================================
+
+/gmsg <mensaje>  (/gmessage)
+    Mensaje a todos los GMs conectados.
+
+/smsg <mensaje>  (/smessage)
+    Mensaje del servidor a todos (consola).
+
+/rmsg <mensaje>  (/rmessage)
+    Mensaje global "real" a todos los jugadores.
+
+/talkas <texto>  (/habla-como)
+    Habla por la boca de un NPC (requiere TargetNPC - parcial).
+
+/rem <texto>  (/comment)
+    Comentario que queda en el log del GM, no hace nada visible.
+
+
+=== TELEPORT / MOVIMIENTO ===========================================
+
+/telep [usuario] <mapa> <x> <y>  (/tp)
+    Teletransporta (a vos o a otro usuario) a un mapa y posicion.
+
+/ira <usuario>  (/goto)
+    Te teletransporta a donde esta el usuario.
+
+/ircerca <usuario>  (/near)
+    Te teletransporta a un tile cercano al usuario.
+
+/sum <usuario>  (/summon, /invocacion)
+    Trae al usuario a tu posicion.
+
+
+=== MODOS DEL GM ====================================================
+
+/invisible  (/invi)
+    Toggle invisibilidad de GM.
+
+/trabajando
+    Toggle estado "trabajando" (no molestar).
+
+/ocultando
+    Toggle ocultarse.
+
+/nave  (/navigate)
+    Toggle modo navegacion (caminar sobre agua).
+
+/gmvuelo  (/volar)
+    Toggle vuelo de GM (atraviesa bloqueos).
+
+/showname
+    Muestra/oculta tu nombre sobre el personaje.
+
+
+=== ADMINISTRACION DE USUARIOS ======================================
+
+/ban <usuario> [0=ban|1=unban]
+    Banea o desbanea un personaje.
+
+/banip <ip> [motivo]  (/ban-ip)
+    Banea una direccion IP.
+
+/unbanip <ip>  (/unban-ip)
+    Quita el ban de una IP.
+
+/baniplist
+    Lista las IPs baneadas.
+
+/banipreload
+    Recarga la lista de IPs baneadas desde disco.
+
+/echar <usuario>  (/kick)
+    Desconecta (echa) a un usuario.
+
+/echartodospjs  (/kick-all)
+    Echa a TODOS los jugadores del servidor.
+
+/carcel <usuario> <motivo> <minutos>  (/jail)
+    Manda al usuario a la carcel (mapa prision) por X minutos.
+
+/advertencia <usuario> <motivo>  (/warn)
+    Deja una advertencia registrada al usuario.
+
+/mod <usuario> <opcion> <valor> [valor2]  (/editchar)
+    Edita un personaje (online u offline). Se puede usar "YO".
+    Opciones:
+      1  = oro (setea)
+      2  = exp (suma)
+      3  = cuerpo (body)
+      4  = cabeza (head)
+      7  = nivel (ajusta vida/mana fijos del nivel, exp a 0)
+      8  = clase (por nombre, ej: ASESINO)
+      11 = sexo (HOMBRE / MUJER)
+      12 = raza (HUMANO/ELFO/DROW/GNOMO/ENANO/ORCO)
+      13 = agregar oro al banco (suma)
+
+/apass <usuario>  (/alter-pass)
+    Cambia/altera la password de un personaje.
+
+/altpass <usuario> <copiar_de>
+    Copia la password de un personaje a otro.
+
+/ejecutar <usuario>
+    Mata (ejecuta) al usuario en el acto.
+
+/revivir [usuario]  (/revive)
+    Sin argumento te revive a vos; con nombre revive a otro jugador.
+
+/nick2ip <usuario>
+    Muestra la IP actual de un usuario conectado.
+
+/ip2nick <ip>
+    Muestra que usuarios estan conectados desde esa IP.
+
+/lastip <usuario>
+    Ultima IP conocida del personaje.
+
+/noestupido <usuario>  (/smart)
+    Quita el estado de estupidez a un usuario.
+
+/donador <usuario>
+    Toggle del flag Donador del usuario online.
+
+/darfaccion <usuario> <faccion>  (/faction)
+    Asigna la faccion (1-6) al personaje (escribe el .chr).
+
+/darpun <usuario> <puntos>  (/points)
+    Suma puntos de faccion al personaje.
+
+
+=== NPCs ============================================================
+
+/rmata  (/kill-npc)
+    Mata el NPC al que apuntas (y lo saca del respawn).
+
+/mata  (/kill-all)
+    Mata el NPC objetivo.
+
+/masskill  (/kill-area)
+    Mata todos los NPCs del area alrededor del GM.
+
+/acc <npcIndex>  (/create-npc)
+    Crea un NPC (sin respawn).
+
+/racc <npcIndex>  (/respawn-npc)
+    Crea un NPC con respawn.
+
+/seguir  (/follow)
+    Hace que el NPC objetivo te siga. PENDIENTE (TODO: IA follow).
+
+/reloadnpcs
+    Recarga NPCs.dat sin reiniciar el servidor.
+
+
+=== ITEMS / OBJETOS =================================================
+
+/ci <objIndex> [cantidad]  (/create-item)
+    Crea un objeto en el piso frente al GM.
+
+/dest  (/destroy)
+    Destruye el objeto del piso en tu posicion/target.
+
+/massdest  (/destroy-area)
+    Destruye todos los objetos del area.
+
+/resetinv
+    Resetea el inventario del NPC objetivo. (depende de TargetNPC)
+
+/limpiar  (/clean)
+    Limpia los items tirados en el piso del mundo.
+
+/reloadobj  (/reload-objects)
+    Recarga obj.dat en caliente.
+
+
+=== MAPA / MUNDO ====================================================
+
+/bloq <x> <y>  (/bloqueo)
+    Bloquea/desbloquea un tile del mapa.
+
+/trigger <tipo>
+    Setea el trigger del tile: 0=nada, 1=bajo techo, 2=trigger2,
+    3=pos invalida, 4=zona segura, 5=anti piquete, 6=zona perlea.
+
+/asktrigger
+    Muestra el trigger del tile donde estas parado.
+
+/guardamapa  (/save-map)
+    Guarda el mapa actual a disco.
+
+/modmapinfo <campo> <valor>  (/map-info)
+    Modifica propiedades del mapa (PK, terreno, etc.).
+
+/ct <mapa> <x> <y>  (/create-teleport)
+    Crea un teleport en el tile frente al GM hacia el destino dado.
+
+/dt  (/destroy-teleport)
+    Destruye el teleport en el tile frente al GM.
+
+/lluvia [tipo]  (/rain)
+    Toggle de lluvia para todos los jugadores (0=normal).
+
+
+=== SERVIDOR ========================================================
+
+/apagar  (/shutdown)
+    Apaga el servidor.
+
+/habilitar  (/enable)
+    Toggle: cierra/abre el servidor a usuarios comunes (solo GMs).
+
+/grabar  (/save-all)
+    Guarda TODOS los personajes conectados a disco.
+
+/reloadhechizos  (/reload-spells)
+    Recarga Hechizos.dat en caliente.
+
+/reloadsini  (/reload-ini)
+    Recarga Server.ini en caliente.
+
+/setinivar
+    NO IMPLEMENTADO (setear variable del ini en caliente).
+
+
+=== CLANES ==========================================================
+
+/rajarclan <usuario>  (/remove-guild)
+    Expulsa al usuario de su clan.
+
+/banclan <clan>  (/ban-guild)
+    Banea a todos los miembros del clan.
+
+/miembrosclan <clan>
+    Lista los miembros de un clan.
+
+/onclan <clan>  (/guild-online)
+    Miembros del clan que estan conectados.
+
+/msgclan <clan>
+    Muestra los ultimos mensajes internos del clan.
+
+
+=== SOS / SOPORTE ===================================================
+
+/show
+    Ver mensajes SOS. NO IMPLEMENTADO.
+
+/sosdone <usuario>
+    Marca un SOS como resuelto. NO IMPLEMENTADO.
+
+/soslist
+    Lista los SOS pendientes.
+
+/sosremove <usuario>
+    Quita un SOS de la lista.
+
+/cleansos
+    Borra todos los SOS pendientes.
+
+/panelgm
+    Abre el Panel GM en el cliente (usuarios, teleport, particulas,
+    etc.). El cliente luego pide /listusu.
+
+
+=== NO IMPLEMENTADOS / PENDIENTES (resumen) =========================
+
+/summonbot      - responde "no implementado"
+/setinivar      - solo loguea, no hace nada
+/eventoro       - TODO, requiere sistema de eventos de oro
+/show, /sosdone - placeholders del sistema SOS viejo
+/seguir         - TODO, requiere IA follow de NPC
+/resetinv       - depende de tracking de TargetNPC
+
+=====================================================================
+NOTAS:
+- Los comandos llegan al servidor por chat normal (TalkToMap) o por
+  el packet GMCommands (ID 94); ambos pasan por Chat.HandleCommand.
+- La mayoria requiere privilegios de GM; algunos chequean nivel
+  exacto (SemiDios / Dios) via AdminLoader.STATUS_*.
+- Comandos de jugador como /hogar, /enlistar, /meditar, /salir NO
+  estan aca: el cliente los convierte en packets dedicados.
+=====================================================================

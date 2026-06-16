@@ -1,0 +1,87 @@
+[Macro1]
+Nombre=Arco Élfico
+Grh=917
+Tipo=4
+Slot=20
+SlotSpell=0
+ObjIndex=899
+
+[Macro2]
+Nombre=Arco Élfico
+Grh=917
+Tipo=4
+Slot=20
+SlotSpell=0
+ObjIndex=899
+
+[Macro3]
+Nombre=Flecha Paralizante
+Grh=754
+Tipo=3
+Slot=18
+SlotSpell=0
+ObjIndex=1085
+
+[Macro4]
+Nombre=Flecha Explosiva
+Grh=755
+Tipo=3
+Slot=10
+SlotSpell=0
+ObjIndex=1082
+
+[Macro5]
+Nombre=Flecha Eléctrica
+Grh=965
+Tipo=3
+Slot=21
+SlotSpell=0
+ObjIndex=1086
+
+[Macro6]
+Nombre=Flecha Envenenante
+Grh=1051
+Tipo=3
+Slot=19
+SlotSpell=0
+ObjIndex=1083
+
+[Macro7]
+Nombre=Poción de Remover Parálisis (Alquimia)
+Grh=891
+Tipo=4
+Slot=24
+SlotSpell=0
+ObjIndex=893
+
+[Macro8]
+Nombre=MEDITAR
+Grh=17506
+Tipo=1
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro9]
+Nombre=Poción Roja
+Grh=542
+Tipo=4
+Slot=11
+SlotSpell=0
+ObjIndex=38
+
+[Macro10]
+Nombre=
+Grh=0
+Tipo=0
+Slot=0
+SlotSpell=0
+ObjIndex=0
+
+[Macro11]
+Nombre=
+Grh=0
+Tipo=0
+Slot=0
+SlotSpell=0
+ObjIndex=0

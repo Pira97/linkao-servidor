@@ -1,0 +1,93 @@
+============================================================
+  DEPLOY DEL SERVIDOR POR GITHUB  -  GUIA RAPIDA
+============================================================
+
+QUE HACE ESTO
+-------------
+En tu maquina: SUBIR_A_VM.bat compila el exe y lo sube a GitHub.
+En la VM:      DESPLEGAR_EN_VM.bat baja el exe y arranca el server.
+
+La VM NO necesita .NET ni nada: el exe ya viene compilado
+(self-contained).
+
+Para que el repo no crezca 71 MB por cada update, el push reescribe
+SIEMPRE el mismo commit (--amend + push --force). Por eso en la VM se
+baja con  fetch + reset --hard  (no con pull normal).
+
+Los DATOS VIVOS (..\Servidor\Charfile, Cuentas, GUILDS, Backups,
+logs) NO se tocan: viven solo en la VM y no se pisan nunca.
+
+
+REQUISITO EN LA VM (una sola vez)
+---------------------------------
+- git instalado:  https://git-scm.com/download/win
+- La carpeta hermana  ..\Servidor  con los datos (Maps, Dat,
+  Charfile, etc.) ya copiada en la VM. Esa carga inicial se hace
+  una vez a mano (copia/pega o un .zip).
+
+
+============================================================
+  CONFIGURACION INICIAL  (una sola vez)
+============================================================
+
+PASO 1 - Crear el repositorio en GitHub
+---------------------------------------
+- Entra a https://github.com/new
+- Nombre: por ejemplo  linkao-servidor
+- Marcalo como PRIVADO (recomendado).
+- NO le agregues README ni .gitignore (ya tenemos uno).
+- Crealo. Copia la URL, por ejemplo:
+      https://github.com/TU_USUARIO/linkao-servidor.git
+
+
+PASO 2 - En TU MAQUINA (esta carpeta ServidorCS)
+------------------------------------------------
+Abri una consola en esta carpeta y corre:
+
+    git init
+    git branch -M main
+    call GenerarExe.bat
+    git add -A
+    git commit -m "primer commit servidor"
+    git remote add origin https://github.com/TU_USUARIO/linkao-servidor.git
+    git push -u origin main
+
+
+PASO 3 - En la VM
+-----------------
+Abri una consola donde quieras tener el server y corre:
+
+    git clone https://github.com/TU_USUARIO/linkao-servidor.git ServidorCS
+
+Eso crea la carpeta ServidorCS con el exe. Asegurate de que al lado
+quede la carpeta  Servidor  con los datos:
+
+    ...\algun_lugar\
+        Servidor\        <-- datos (Maps, Dat, Charfile, etc.)
+        ServidorCS\      <-- esto que clonaste (tiene el exe)
+
+
+============================================================
+  USO DIARIO
+============================================================
+
+EN TU MAQUINA, cuando quieras publicar cambios:
+    Doble clic en  SUBIR_A_VM.bat
+    (compila el exe y lo sube)
+
+EN LA VM, para actualizar y arrancar:
+    Doble clic en  DESPLEGAR_EN_VM.bat
+    (baja el exe nuevo y arranca el server en una ventana de consola)
+
+
+============================================================
+  NOTAS
+============================================================
+- El exe pesa ~71 MB; GitHub lo acepta (limite 100 MB por archivo).
+  Si algun dia pasa de 100 MB, habria que usar Git LFS o Releases.
+- DESPLEGAR_EN_VM.bat hace  reset --hard origin/main : descarta
+  cualquier cambio local del lado VM dentro de ServidorCS. Eso esta
+  bien porque la VM solo consume; NO toca ..\Servidor (los datos).
+- Si queres que el server se reinicie solo cuando se cae, avisame y
+  te agrego un loop de auto-reinicio.
+============================================================

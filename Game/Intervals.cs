@@ -15,7 +15,7 @@ public static class Intervals
     public const long ClicsMouse = 200;     // IntervaloClicsMouse (anti-autoclicker)
     public const long MagiaGolpe = 400;     // IntervaloMagiaGolpe
     public const long GolpeMagia = 400;     // IntervaloGolpeMagia
-    public const long GolpeUsar = 400;      // IntervaloGolpeUsar (pociones)
+    public const long GolpeUsar = 300;      // IntervaloGolpeUsar (pociones) — autopot ~3.3/seg
     public const long UsarArco = 1100;      // IntervaloFlechasCazadores
     public const long NpcAtacar = 3000;     // IntervaloPermiteAtacarNpc hardcodea 3000ms (ignora el .ini=2500)
 

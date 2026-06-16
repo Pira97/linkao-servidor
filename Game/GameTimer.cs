@@ -14,10 +14,19 @@ public static class GameTimer
     // Intervalos reales (ms) — Server.ini.
     private const long SanaSinDescansar = 1600, SanaDescansar = 100;
     private const long StaminaSinDescansar = 1500, StaminaDescansar = 1000; // suavizado (VB6: 5/2 por tick de 40ms ≈ regen continuo)
-    private const long IntervaloHambre = 4500, IntervaloSed = 4000;
+    // VB6: el contador acumula DeltaTick = (ms transcurridos / GAME_TIMER_INTERVAL=40) y al
+    // alcanzar IntervaloHambre/Sed (4500/4000 ticks) baja 10 puntos. Es decir, el período real
+    // es IntervaloXxx * 40 ms por cada -10. El valor de Server.ini NO está en ms: son ticks de 40ms.
+    // (Antes se tomaba como ms y bajaba de a 1 → ~4x más rápido de lo correcto.)
+    private const long GameTimerInterval = 40;          // GAME_TIMER_INTERVAL de mMainLoop.bas
+    private const int HambreSedStep = 10;               // VB6 baja de a 10
+    private const long IntervaloHambre = 4500 * GameTimerInterval, IntervaloSed = 4000 * GameTimerInterval;
     // Server.ini IntervaloVeneno=500. VB6 EfectoIncinerado usa el MISMO IntervaloVeneno (no
     // IntervaloIncinerado). Nota: el loop de estados corre a 1Hz, así que el efectivo es ~1s.
     private const long IntervaloVeneno = 500, IntervaloIncinera = 500;
+    // AFK: tras 60s sin moverse, el usuario muestra la partícula de AFK. Índice de partícula ajustable.
+    private const long AFK_TIMEOUT = 60000;
+    public const short AFK_PARTICULA = 238;
     private static readonly Random _rngTimer = new();
 
     /// <summary>Procesa regen/hambre/sed de todos los usuarios logueados. Llamado ~1/seg.</summary>
@@ -39,6 +48,19 @@ public static class GameTimer
             if (u.ResucitandoHasta > 0) Combat.TickResucitar(i, u);
 
             if (u.flags.Muerto == 1) continue;
+
+            // --- AFK: si pasó AFK_TIMEOUT sin moverse y aún no tiene la partícula, difundirla ---
+            if (!u.flags.AfkParticula && u.flags.LastActivityAt > 0
+                && now - u.flags.LastActivityAt >= AFK_TIMEOUT)
+            {
+                u.flags.AfkParticula = true;
+                for (int k = 1; k <= UserListManager.LastUser; k++)
+                {
+                    var o = UserListManager.UserList[k];
+                    if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                        ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, AFK_PARTICULA, -1f, false);
+                }
+            }
 
             bool descansa = u.flags.Descansar != 0;
 
@@ -65,12 +87,12 @@ public static class GameTimer
             if (u.Stats.MaxHam > 0 && now - u._timerHambre >= IntervaloHambre)
             {
                 u._timerHambre = now;
-                if (u.Stats.MinHam > 0) { u.Stats.MinHam--; if (u.Stats.MinHam == 0) u.flags.Hambre = 1; ServerPackets.UpdateHungerAndThirst(u.Conn, u); }
+                if (u.Stats.MinHam > 0) { u.Stats.MinHam = (short)Math.Max(0, u.Stats.MinHam - HambreSedStep); if (u.Stats.MinHam == 0) u.flags.Hambre = 1; ServerPackets.UpdateHungerAndThirst(u.Conn, u); }
             }
             if (u.Stats.MaxAGU > 0 && now - u._timerSed >= IntervaloSed)
             {
                 u._timerSed = now;
-                if (u.Stats.MinAGU > 0) { u.Stats.MinAGU--; if (u.Stats.MinAGU == 0) u.flags.Sed = 1; ServerPackets.UpdateHungerAndThirst(u.Conn, u); }
+                if (u.Stats.MinAGU > 0) { u.Stats.MinAGU = (short)Math.Max(0, u.Stats.MinAGU - HambreSedStep); if (u.Stats.MinAGU == 0) u.flags.Sed = 1; ServerPackets.UpdateHungerAndThirst(u.Conn, u); }
             }
 
             // --- Regen HP: solo si no tiene hambre ni sed (regla VB6) ---

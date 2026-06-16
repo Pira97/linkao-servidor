@@ -36,9 +36,9 @@ public static class CharSaver
             // Si está montado/navegando/metamorfoseado (puede pasar en el autosave, sin pasar por
             // CloseUser que restaura la apariencia), guardamos el cuerpo A PIE en [INIT], NO el del
             // caballo/barca/morph. Así OrigChar y la apariencia base quedan correctas al recargar.
-            var (body, weap, shield, casco) = AparienciaAPie(u);
+            var (body, head, weap, shield, casco) = AparienciaAPie(u);
             doc.Set("INIT", "Body", body.ToString());
-            doc.Set("INIT", "Head", u.Char.Head.ToString());
+            doc.Set("INIT", "Head", head.ToString());
             doc.Set("INIT", "Arma", weap.ToString());
             doc.Set("INIT", "Escudo", shield.ToString());
             doc.Set("INIT", "Casco", casco.ToString());
@@ -193,18 +193,21 @@ public static class CharSaver
     /// Calcula la apariencia "a pie" (body + anims) según el equipo equipado, SIN mutar el runtime.
     /// Se usa para no persistir en [INIT] el cuerpo del caballo/barca/morph durante el autosave.
     /// </summary>
-    private static (short body, short weap, short shield, short casco) AparienciaAPie(User u)
+    private static (short body, short head, short weap, short shield, short casco) AparienciaAPie(User u)
     {
         bool transformado = u.flags.Montando != 0 || u.flags.Navegando || u.flags.Metamorfoseado == 1;
         if (!transformado)
-            return (u.Char.body, u.Char.WeaponAnim, u.Char.ShieldAnim, u.Char.CascoAnim);
+            return (u.Char.body, u.Char.Head, u.Char.WeaponAnim, u.Char.ShieldAnim, u.Char.CascoAnim);
 
         short body = u.Invent.ArmourEqpObjIndex > 0
             ? (short)ObjData.Get(u.Invent.ArmourEqpObjIndex).Ropaje
             : (u.OrigChar.body != 0 ? u.OrigChar.body : u.Char.body);
+        // La barca/montura/morph pone Char.Head=0; la cabeza a-pie está en OrigChar (capturada al
+        // transformarse). Sin esto se guardaba Head=0 → al desembarcar quedaba sin cabeza.
+        short head   = u.OrigChar.Head != 0 ? u.OrigChar.Head : u.Char.Head;
         short weap   = u.Invent.WeaponEqpObjIndex > 0 ? (short)ObjData.Get(u.Invent.WeaponEqpObjIndex).WeaponAnim : (short)0;
         short shield = u.Invent.EscudoEqpObjIndex > 0 ? (short)ObjData.Get(u.Invent.EscudoEqpObjIndex).ShieldAnim : (short)0;
         short casco  = u.Invent.CascoEqpObjIndex  > 0 ? (short)ObjData.Get(u.Invent.CascoEqpObjIndex).CascoAnim  : (short)0;
-        return (body, weap, shield, casco);
+        return (body, head, weap, shield, casco);
     }
 }

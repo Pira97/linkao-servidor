@@ -67,6 +67,7 @@ public static class InframundoEvento
         _pasoSecuencia = 1;
         SeleccionarCiudadesAleatorias();
         Broadcast("¡ALERTA MUNDIAL! Los sellos del Inframundo se han roto...", FONT_WARNING);
+        Events.SonidoInicioEvento(); // sonido de inicio de evento (252)
         _proximoPasoTick = Now + 5000;
     }
 

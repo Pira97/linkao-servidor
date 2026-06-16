@@ -54,7 +54,21 @@ public sealed class IniFile
         => _sections.TryGetValue(section, out var s) && s.TryGetValue(key, out var v) ? v : "";
 
     public int GetInt(string section, string key)
-        => int.TryParse(Get(section, key), out var v) ? v : 0;
+        => ParseLeadingInt(Get(section, key));
+
+    /// <summary>Como VB6 Val(): toma el entero inicial de la cadena e ignora lo que sigue
+    /// (espacios y comentarios inline tipo "38 '11 ..."). Antes int.TryParse fallaba con esos
+    /// valores y devolvía 0 (p.ej. CascoAnim de cascos con comentario → casco invisible).</summary>
+    private static int ParseLeadingInt(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        int i = 0;
+        while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
+        int start = i;
+        if (i < s.Length && (s[i] == '-' || s[i] == '+')) i++;
+        while (i < s.Length && char.IsDigit(s[i])) i++;
+        return int.TryParse(s.AsSpan(start, i - start), out var v) ? v : 0;
+    }
 
     private static readonly Dictionary<string, string> _emptySection = new();
 

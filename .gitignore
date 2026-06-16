@@ -34,3 +34,6 @@ Dat/*.backup_*
 Dat/*.bak
 Dat/_*.py
 Dat/*.backup
+CONECTAR_VM.bat
+version_remota.txt
+Dat/*.bak_*

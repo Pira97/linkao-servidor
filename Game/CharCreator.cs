@@ -187,7 +187,7 @@ public static class CharCreator
         Kv("MaxHP", maxHP); Kv("MinHP", maxHP); Kv("MaxMAN", maxMAN); Kv("MinMAN", maxMAN);
         Kv("MaxSTA", maxSta); Kv("MinSTA", maxSta); Kv("MaxHIT", 2); Kv("MinHIT", 1);
         Kv("MaxAGU", 100); Kv("MinAGU", 100); Kv("MaxHAM", 100); Kv("MinHAM", 100);
-        Kv("ELV", 1); Kv("ELU", 300); Kv("EXP", 0); Kv("GLD", 2000000); Kv("BANCO", 0);
+        Kv("ELV", 1); Kv("ELU", 300); Kv("EXP", 0); Kv("GLD", 60000000); Kv("BANCO", 0);
         Kv("SkillPtsLibres", 10);
         Sec("ATRIBUTOS");
         // AT1=Fuerza, AT2=Agilidad, AT3=Inteligencia, AT4=Carisma, AT5=Constitución (eAtributos).

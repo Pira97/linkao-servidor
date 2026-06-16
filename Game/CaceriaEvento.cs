@@ -65,6 +65,7 @@ public static class CaceriaEvento
         string m = "¡EVENTO DE CACERÍA POR FACCIÓN INICIADO!\nLas facciones competirán por obtener la mayor cantidad de kills.\nLa facción ganadora recibirá el Gran Saco de Créditos.";
         if (!string.IsNullOrWhiteSpace(activadoPor)) m += "\nActivado por: " + activadoPor;
         Broadcast(m, FONT_INFOBOLD);
+        Events.SonidoInicioEvento(); // sonido de inicio de evento (252)
     }
 
     /// <summary>FinalizarEventoCaceria: determina ganador, reparte premio y desactiva.</summary>

@@ -31,7 +31,20 @@ public static class Events
             {
                 ServerPackets.EventoExpBonus(u.Conn, segundos);
                 ServerPackets.ConsoleMsg(u.Conn, $"¡Evento EXP x{ExpMultiplicador} activado por {segundos} segundos!", 1);
+                ServerPackets.PlayWave(u.Conn, Sounds.EVENTO_INICIO, (byte)u.Pos.X, (byte)u.Pos.Y); // sonido de inicio (252)
             }
+        }
+    }
+
+    /// <summary>Sonido de inicio/curso de un evento del juego (252): se difunde a TODOS los online.
+    /// Lo llaman los distintos eventos (cacería, barrido, cofres, inframundo, torneo, ruleta) al arrancar.</summary>
+    public static void SonidoInicioEvento()
+    {
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var u = UserListManager.UserList[i];
+            if (u != null && u.flags.UserLogged && u.Conn != null)
+                ServerPackets.PlayWave(u.Conn, Sounds.EVENTO_INICIO, (byte)u.Pos.X, (byte)u.Pos.Y);
         }
     }
 

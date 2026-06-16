@@ -14,6 +14,29 @@ public static class BalanceData
         public double Evasion, AtaqueArmas, AtaqueProyectiles, AtaqueWrestling, Escudo, AtaqueArpon;
     }
 
+    /// <summary>
+    /// Reglas GLOBALES de combate (sección [COMBATE] de Balance.dat). Antes estaban hardcodeadas en
+    /// Combat.cs; ahora se editan en texto y se recargan en caliente con /reloadbalance. Los defaults
+    /// son EXACTAMENTE los valores que tenía el código, así nada cambia hasta que se toque un número.
+    /// </summary>
+    public struct CombateCfg
+    {
+        public double ArmaduraDefiendePvP; // % (0..1) que absorbe la armadura en PvP. Default 0.25
+        public int DanoMinimoPvP;          // piso de daño PvP. Default 5
+        public double TopeBurstPvP;        // techo de daño PvP = danoBase * esto. Default 1.5
+        public int ImpactoBase;            // base de la curva de acierto. Default 80
+        public int ImpactoMin;             // piso de prob. de impacto. Default 40
+        public int ImpactoMax;             // techo de prob. de impacto. Default 98
+        public double PesoNivel;           // cuánto suma el nivel al poder atq/eva. Default 2.5
+        public int NivelBase;              // nivel a partir del cual el nivel empieza a sumar. Default 12
+        public int EscalaMagiaPvP;         // daño mágico a usuario escala con esto * nivel. Default 2
+        public int EscalaMagiaPvE;         // daño mágico a NPC escala con esto * nivel. Default 3
+        public double BonusStatsMax;       // % extra de daño si Fuerza y Agilidad están al máximo. Default 0.07
+    }
+
+    private static CombateCfg _combate;
+    public static CombateCfg Combate { get { EnsureLoaded(); return _combate; } }
+
     // eClass (Declares.bas:149) → nombre de la sección/clave en Balance.dat.
     private static readonly string[] _nombre =
     {
@@ -80,7 +103,25 @@ public static class BalanceData
             double m = v / 100.0;
             _razaDanoPvp[i] = m < 0.5 ? 0.5 : m > 1.5 ? 1.5 : m;
         }
-        Console.WriteLine($"[BalanceData] ModClase + ModRaza cargado ({(ini != null ? "Balance.dat" : "defaults 1.0")}).");
+        // Reglas globales de combate ([COMBATE]). Cada valor cae a su default histórico si falta.
+        // Los porcentajes (ArmaduraDefiendePvP/TopeBurstPvP/BonusStatsMax) se escriben como número
+        // entero en el .dat (25, 150, 7) y se convierten a fracción acá.
+        _combate = new CombateCfg
+        {
+            ArmaduraDefiendePvP = Dp(ini, "ArmaduraDefiendePvP", 25) / 100.0,
+            DanoMinimoPvP       = (int)Dp(ini, "DanoMinimoPvP", 5),
+            TopeBurstPvP        = Dp(ini, "TopeBurstPvP", 150) / 100.0,
+            ImpactoBase         = (int)Dp(ini, "ImpactoBase", 80),
+            ImpactoMin          = (int)Dp(ini, "ImpactoMin", 40),
+            ImpactoMax          = (int)Dp(ini, "ImpactoMax", 98),
+            PesoNivel           = Dp(ini, "PesoNivel", 25) / 10.0,   // 25 → 2.5 (el .ini no maneja decimales cómodos)
+            NivelBase           = (int)Dp(ini, "NivelBase", 12),
+            EscalaMagiaPvP      = (int)Dp(ini, "EscalaMagiaPvP", 2),
+            EscalaMagiaPvE      = (int)Dp(ini, "EscalaMagiaPvE", 3),
+            BonusStatsMax       = Dp(ini, "BonusStatsMax", 7) / 100.0,
+        };
+
+        Console.WriteLine($"[BalanceData] ModClase + ModRaza + Combate cargado ({(ini != null ? "Balance.dat" : "defaults")}).");
     }
 
     private static double D(IniFile ini, string sec, string key)
@@ -88,6 +129,14 @@ public static class BalanceData
         if (ini == null) return 0;
         string v = ini.Get(sec, key);
         return double.TryParse(v, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0;
+    }
+
+    /// <summary>Lee [COMBATE]/key como número; si falta o el .dat no existe, devuelve el default.</summary>
+    private static double Dp(IniFile ini, string key, double def)
+    {
+        if (ini == null) return def;
+        string v = ini.Get("COMBATE", key);
+        return double.TryParse(v, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : def;
     }
 
     private static string FindFile()

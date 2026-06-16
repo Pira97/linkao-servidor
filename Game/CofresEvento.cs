@@ -38,6 +38,7 @@ public static class CofresEvento
             _cofresRestantes = spawneados;
             _cofresTotales = spawneados;
             Anunciar(mapa, spawneados);
+            Events.SonidoInicioEvento(); // sonido de inicio de evento (252)
         }
         else
         {

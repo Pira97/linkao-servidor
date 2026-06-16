@@ -59,9 +59,12 @@ public static class BarridoEvento
 
         CrearParaTodos();
 
-        string aviso = "¡Una criatura imparable ha aparecido en las profundidades! Aléjate de su camino o serás aplastado.";
-        if (!string.IsNullOrWhiteSpace(activadoPor)) aviso += "\n(Evento activado por: " + activadoPor + ")";
-        BroadcastGlobal(aviso, 4);
+        // Mensaje rolero anunciando que el evento ha dado comienzo.
+        BroadcastGlobal("¡El Barrido ha dado comienzo!", 4);
+        BroadcastGlobal("La tierra tiembla en las profundidades... una bestia colosal ha despertado de su letargo y avanza arrasando todo a su paso. ¡Que los dioses amparen a quien se cruce en su camino!", 4);
+        if (!string.IsNullOrWhiteSpace(activadoPor))
+            BroadcastGlobal("(Evento invocado por: " + activadoPor + ")", 4);
+        Events.SonidoInicioEvento(); // sonido de inicio de evento (252)
     }
 
     /// <summary>Finaliza el evento: quita la criatura del mapa.</summary>

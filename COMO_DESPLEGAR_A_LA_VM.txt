@@ -1,0 +1,64 @@
+============================================================
+ COMO DESPLEGAR EL SERVIDOR A LA VM (paso a paso)
+============================================================
+
+La VM tiene AUTO-DEPLOY: cuando subis desde tu PC, la VM sola
+baja el cambio y reinicia el servidor. NO hay que ejecutar nada
+en la VM.
+
+Funciona por GitHub: tu PC sube el exe + los datos (Dat/obj.dat,
+etc.) y la VM los baja sola. NO se tocan los datos vivos de
+jugadores (Charfile, Cuentas, GUILDS, Backups): quedan intactos
+en la VM.
+
+
+------------------------------------------------------------
+ PASOS - TODO EN TU PC
+------------------------------------------------------------
+
+1) Cerra el servidor local si lo tenes abierto.
+
+2) Si editaste objetos A MANO, primero verifica que el cambio
+   quedo guardado (por el tema OneDrive). Abri PowerShell en la
+   carpeta ServidorCS y corre:
+
+        git status --porcelain Dat/obj.dat
+
+   - Tiene que aparecer:   M Dat/obj.dat
+   - Si sale VACIO  -> OneDrive te revirtio la edicion: volve a
+     guardar el archivo (o pausa OneDrive) y repeti.
+
+   IMPORTANTE: edita SIEMPRE  ServidorCS\Dat\obj.dat
+   (NO el de Servidor\Dat\ ni el de "Editor de Armas Linkao").
+   Guarda en codificacion ANSI / Windows-1252 (NO UTF-8), si no
+   se rompen los acentos (ñ, á, Arpón, Poción, etc.).
+
+3) Doble clic en:   SUBIR_A_VM.bat
+
+   Eso compila el exe y lo sube a GitHub junto con los datos.
+   Espera a que diga "LISTO. Exe subido a GitHub."
+   Si da error de push, revisa internet / credenciales de GitHub.
+
+4) LISTO. La VM se actualiza sola y reinicia el servidor.
+   El servidor LEE obj.dat al ARRANCAR, asi que los cambios de
+   objetos quedan aplicados solos. No hay que recargar nada.
+
+
+------------------------------------------------------------
+ RESUMEN RAPIDO
+------------------------------------------------------------
+   (editar) -> verificar git status -> SUBIR_A_VM.bat -> listo
+   La VM se actualiza y reinicia sola.
+
+
+------------------------------------------------------------
+ SI ALGO NO SE ACTUALIZA EN LA VM
+------------------------------------------------------------
+ - 99% de las veces es que el cambio NO quedo en
+   ServidorCS\Dat\obj.dat antes de subir (OneDrive lo revirtio).
+   Verifica con  git status  ANTES de subir (paso 2).
+ - Recorda que el /editobj en vivo hoy NO guarda bien en disco:
+   por ahora edita obj.dat a mano y subi.
+ - Si la VM no auto-actualiza, entra a la VM y corre a mano:
+   DESPLEGAR_EN_VM.bat   (baja el ultimo cambio y reinicia).
+============================================================

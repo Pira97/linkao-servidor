@@ -254,8 +254,40 @@ public static class AccountManager
             c.HeadAura   = AuraDeSlot(ini, "CascoEqpSlot");
             c.AnilloAura = AuraDeSlot(ini, "AnilloSlot");
             if (c.AnilloAura == 0) c.AnilloAura = AuraDeSlot(ini, "MagicSlot"); // ítem mágico también da aura de anillo
+
+            // El [INIT] guarda SIEMPRE la apariencia a pie (CharSaver.AparienciaAPie). Si el PJ se
+            // deslogueó montado/navegando, la tarjeta de selección debe mostrarlo tal cual se veía en
+            // el render (montado/en barca), igual que reconstruye CharLoader al reloguear.
+            if (ini.GetInt("FLAGS", "Navegando") == 1)
+            {
+                int barco = ObjIndexDeSlot(ini, "BarcoSlot");
+                if (barco > 0)
+                {
+                    int rop = ObjData.Get(barco).Ropaje;
+                    c.Body = (short)(rop > 0 ? rop : 87);
+                    c.Head = 0; c.Weapon = 0; c.Shield = 0; c.Casco = 0;
+                }
+            }
+            else if (ini.GetInt("FLAGS", "Montando") != 0)
+            {
+                int montura = ObjIndexDeSlot(ini, "MonturaSlot");
+                if (montura > 0)
+                {
+                    c.Body = (short)ObjData.Get(montura).Ropaje;
+                    c.Weapon = 0; // montado: sin arma a la vista (DoEquita)
+                }
+            }
         }
         return c;
+    }
+
+    /// <summary>ObjIndex del objeto equipado en el slot indicado por la clave de [Inventory], o 0.</summary>
+    private static int ObjIndexDeSlot(IniFile ini, string slotKey)
+    {
+        int slot = ini.GetInt("Inventory", slotKey);
+        if (slot <= 0) return 0;
+        var parts = ini.Get("Inventory", "Obj" + slot).Split('-');
+        return parts.Length >= 1 && int.TryParse(parts[0], out int oi) && oi > 0 ? oi : 0;
     }
 
     /// <summary>Devuelve el aura (obj.dat "Aura") del objeto equipado en el slot indicado por la clave, o 0.</summary>

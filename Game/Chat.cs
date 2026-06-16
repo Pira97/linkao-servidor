@@ -118,6 +118,7 @@ public static class Chat
         {
             // === UTILIDADES ===
             case "/spawn": return Cmd_Spawn(u, parts);
+            case "/bot": return Cmd_Bot(u, parts);
             case "/pos": case "/donde": return Cmd_Donde(u, parts);
             case "/resucitar": return Cmd_Resucitar(userIndex, u);
             case "/curar": return Cmd_Curar(u);
@@ -224,6 +225,7 @@ public static class Chat
             case "/grabar": case "/save-all": return Cmd_Grabar();
             case "/reloadobj": case "/reload-objects": return Cmd_ReloadObj();
             case "/reloadhechizos": case "/reload-spells": return Cmd_ReloadSpells();
+            case "/reloadbalance": case "/reload-balance": return Cmd_ReloadBalance();
             case "/reloadsini": case "/reload-ini": return Cmd_ReloadIni();
             case "/setinivar": return Cmd_SetIniVar(parts);
 
@@ -308,6 +310,141 @@ public static class Chat
         NpcManager.SpawnAt(u.Pos.Map, npcIdx, (byte)front.X, (byte)front.Y);
         ServerPackets.ConsoleMsg(u.Conn, $"NPC {npcIdx} spawneado en ({front.X},{front.Y}).", 1);
         return true;
+    }
+
+    // Facción por nombre para /bot (1=Armada, 2=Milicia, 3=Caos; 0=ninguna).
+    private static byte FaccionBotPorNombre(string s) => s.Trim().ToLowerInvariant() switch
+    {
+        "armada" or "real" or "imperial" => 1,
+        "milicia" or "republica" or "miliciano" => 2,
+        "caos" or "caotico" => 3,
+        _ => 0,
+    };
+
+    /// <summary>/bot &lt;clase&gt; [raza] [faccion]  — invoca un bot que pelea. /bot all = uno de cada clase.</summary>
+    private static bool Cmd_Bot(User u, string[] parts)
+    {
+        if (parts.Length < 2)
+            return Send(u, "Uso: /bot <clase> [raza] [armada|milicia|caos]  ó  /bot all  ó  /bot pvp <clase> [raza]. Clases: " +
+                string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant())));
+        // /bot pvp <clase> [raza] — bot de sparring que te ATACA a vos (testeo PvP).
+        if (parts[1].Equals("pvp", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("spar", StringComparison.OrdinalIgnoreCase))
+        { SpawnBotSpar(u, parts); return true; }
+        byte raza = parts.Length > 2 ? (byte)RazaPorNombre(parts[2]) : (byte)0;
+        byte faccion = parts.Length > 3 ? FaccionBotPorNombre(parts[3]) : (byte)0;
+        SpawnBotsDesdePacket(u.id, parts[1], raza, faccion);
+        return true;
+    }
+
+    /// <summary>/bot pvp &lt;clase&gt; [raza] — invoca un bot de sparring que TE ataca (testeo PvP).</summary>
+    private static void SpawnBotSpar(User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) { Send(u, "No tenés privilegios para invocar bots."); return; }
+        if (parts.Length < 3)
+        { Send(u, "Uso: /bot pvp <clase> [raza]. Clases: " + string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant()))); return; }
+
+        // "melee" en cualquier posición = sólo cuerpo a cuerpo (no pega desde cualquier lugar).
+        bool soloMelee = parts.Any(p => p.Equals("melee", StringComparison.OrdinalIgnoreCase));
+        byte cl = Bots.ClasePorNombre(parts[2]);
+        if (cl == 0) { Send(u, $"Clase desconocida: '{parts[2]}'. Probá: " +
+            string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant()))); return; }
+        byte raza = parts.Length > 3 && !parts[3].Equals("melee", StringComparison.OrdinalIgnoreCase) ? (byte)RazaPorNombre(parts[3]) : (byte)0;
+
+        // Spawn unos tiles adelante, en la dirección que mira el GM.
+        int hdx = 0, hdy = 0;
+        switch (u.Char.heading) { case 1: hdy = -1; break; case 2: hdx = 1; break; case 3: hdy = 1; break; case 4: hdx = -1; break; default: hdy = 1; break; }
+        const int DIST_FRENTE = 3;
+        byte bx = (byte)Math.Clamp(u.Pos.X + hdx * DIST_FRENTE, 1, 99);
+        byte by = (byte)Math.Clamp(u.Pos.Y + hdy * DIST_FRENTE, 1, 99);
+
+        var bot = Bots.SpawnSpar(u.Pos.Map, bx, by, cl, raza, u.id, u.Char.heading, soloMelee);
+        if (bot == null) Send(u, $"No se pudo invocar (¿llegaste al tope de {Bots.MAX_BOTS} bots? Usá 'Matar todos').");
+        else Send(u, $"Bot de sparring {parts[2]} invocado: te persigue, golpea, inmoviliza y se saca solo la parálisis. Usá 'Matar todos' para eliminarlos.");
+    }
+
+    /// <summary>Lógica común de invocación de bots (la usan el comando /bot y el packet SpawnBot/form).
+    /// clase especial: "__atacar__" = activa el ataque; "__matar__" = elimina todos los bots.</summary>
+    public static void SpawnBotsDesdePacket(int userIndex, string clase, byte raza, byte faccion = 0)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) { Send(u, "No tenés privilegios para invocar bots."); return; }
+
+        // Modo SPARRING PvP: el bot te ataca a VOS (testeo PvP) en vez de seguirte.
+        // Prefijo "pvp:" = normal; "pvpm:" = sólo melee (no pega desde cualquier lugar).
+        if (clase.StartsWith("pvp:", StringComparison.OrdinalIgnoreCase) || clase.StartsWith("pvpm:", StringComparison.OrdinalIgnoreCase))
+        {
+            bool soloMelee = clase.StartsWith("pvpm:", StringComparison.OrdinalIgnoreCase);
+            string claseSpar = clase.Substring(soloMelee ? 5 : 4);
+            // Base de spawn: adelante del GM, en la dirección que mira.
+            int sdx = 0, sdy = 0;
+            switch (u.Char.heading) { case 1: sdy = -1; break; case 2: sdx = 1; break; case 3: sdy = 1; break; case 4: sdx = -1; break; default: sdy = 1; break; }
+            byte sx = (byte)Math.Clamp(u.Pos.X + sdx * 3, 1, 99);
+            byte sy = (byte)Math.Clamp(u.Pos.Y + sdy * 3, 1, 99);
+
+            if (claseSpar.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                int ns = 0;
+                foreach (var c in Bots.Clases)
+                    if (Bots.SpawnSpar(u.Pos.Map, sx, sy, c.Clase, raza, userIndex, u.Char.heading, soloMelee) != null) ns++;
+                Send(u, $"Invocados {ns} bots de sparring: te atacan, inmovilizan y se sacan solos la parálisis. Usá 'Matar todos' para eliminarlos.");
+                return;
+            }
+            byte clSpar = Bots.ClasePorNombre(claseSpar);
+            if (clSpar == 0) { Send(u, $"Clase desconocida: '{claseSpar}'."); return; }
+            var sbot = Bots.SpawnSpar(u.Pos.Map, sx, sy, clSpar, raza, userIndex, u.Char.heading, soloMelee);
+            if (sbot == null) Send(u, $"No se pudo invocar (¿tope de {Bots.MAX_BOTS} bots? Usá 'Matar todos').");
+            else Send(u, $"Bot de sparring {claseSpar} invocado: te persigue, golpea, inmoviliza y se saca solo la parálisis. Usá 'Matar todos' para eliminarlos.");
+            return;
+        }
+
+        // Acciones especiales del formulario.
+        if (clase.Equals("__atacar__", StringComparison.OrdinalIgnoreCase))
+        {
+            Bots.Atacar(userIndex);
+            Send(u, "Tus bots ahora atacan a todos en el área (menos a vos).");
+            return;
+        }
+        if (clase.Equals("__matar__", StringComparison.OrdinalIgnoreCase))
+        {
+            int k = Bots.MatarTodos();
+            Send(u, $"Eliminados {k} bots.");
+            return;
+        }
+        if (clase.Equals("__fila__", StringComparison.OrdinalIgnoreCase) || clase.Equals("fila", StringComparison.OrdinalIgnoreCase))
+        {
+            Bots.Formar(userIndex);
+            Send(u, "Tus bots se forman en fila detrás tuyo.");
+            return;
+        }
+
+        // Base de spawn: VARIOS tiles adelante en la dirección que mira el GM (N=1,E=2,S=3,O=4).
+        int hdx = 0, hdy = 0;
+        switch (u.Char.heading) { case 1: hdy = -1; break; case 2: hdx = 1; break; case 3: hdy = 1; break; case 4: hdx = -1; break; default: hdy = 1; break; }
+        const int DIST_FRENTE = 3;
+        byte baseX = (byte)Math.Clamp(u.Pos.X + hdx * DIST_FRENTE, 1, 99);
+        byte baseY = (byte)Math.Clamp(u.Pos.Y + hdy * DIST_FRENTE, 1, 99);
+
+        if (clase.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            int n = 0;
+            foreach (var c in Bots.Clases)
+            {
+                byte bx = (byte)Math.Clamp(baseX + (n % 5) - 2, 1, 99);
+                byte by = (byte)Math.Clamp(baseY + (n / 5) - 1, 1, 99);
+                if (Bots.Spawn(u.Pos.Map, bx, by, c.Clase, raza, userIndex, faccion, u.Char.heading) != null) n++;
+            }
+            Send(u, $"Invocados {n} bots adelante tuyo.");
+            return;
+        }
+
+        byte cl = Bots.ClasePorNombre(clase);
+        if (cl == 0) { Send(u, $"Clase desconocida: '{clase}'. Probá: " +
+            string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant()))); return; }
+
+        var bot = Bots.Spawn(u.Pos.Map, baseX, baseY, cl, raza, userIndex, faccion, u.Char.heading);
+        if (bot == null) Send(u, $"No se pudo invocar (¿llegaste al tope de {Bots.MAX_BOTS} bots? Usá 'Matar todos').");
+        else Send(u, $"Bot {clase} invocado (te sigue; tocá Atacar para que pelee).");
     }
 
     private static bool Cmd_Donde(User u, string[] parts)
@@ -1528,6 +1665,7 @@ public static class Chat
     }
     private static bool Cmd_ReloadObj()  { ObjData.Reload();   Console.WriteLine("[GM] Objetos recargados.");  return true; }
     private static bool Cmd_ReloadSpells() { SpellData.Reload(); Console.WriteLine("[GM] Hechizos recargados."); return true; }
+    private static bool Cmd_ReloadBalance() { BalanceData.Reload(); Console.WriteLine("[GM] Balance.dat recargado (mods clase/raza + [COMBATE])."); return true; }
     private static bool Cmd_ReloadIni()  { Console.WriteLine("[GM] /reloadsini: recarga de Server.ini no implementada aún."); return true; }
     private static bool Cmd_SetIniVar(string[] parts) { Console.WriteLine("[GM] /setinivar (no implementado)"); return true; }
 

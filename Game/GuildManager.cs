@@ -327,6 +327,8 @@ public static class GuildManager
         SaveInfo(); SaveMembers(g);
 
         ServerPackets.ConsoleMsg(u.Conn, $"Has fundado el clan {g.Name}.", 5);
+        // Fanfarria al fundar el clan (sonido 3) al fundador.
+        ServerPackets.PlayWave(u.Conn, Sounds.FUNDAR_CLAN, (byte)u.Pos.X, (byte)u.Pos.Y);
         return true;
     }
 

@@ -58,6 +58,16 @@ public static class Movement
             u.Pos.Map = ci.Map; u.Pos.X = (short)ci.X; u.Pos.Y = (short)ci.Y;
         }
 
+        // 1b) Nadie entra al mundo DENTRO del mapa de arenas: a la arena siempre se llega por warp
+        // en vivo, nunca logueando ahí. Si un .chr quedó guardado en la arena (p.ej. el usuario se
+        // desconectó en pleno duelo y reconectó antes de que su sesión vieja persistiera la pos de
+        // origen), lo mandamos a Intermundia para que no quede atrapado en la arena.
+        if (u.Pos.Map == ArenaEvento.ARENA_MAP)
+        {
+            var ci = CityData.Get(15);
+            u.Pos.Map = ci.Map; u.Pos.X = (short)ci.X; u.Pos.Y = (short)ci.Y;
+        }
+
         // 2) Clamp a los bordes del mapa.
         if (u.Pos.X < 1) u.Pos.X = 1; else if (u.Pos.X > 100) u.Pos.X = 100;
         if (u.Pos.Y < 1) u.Pos.Y = 1; else if (u.Pos.Y > 100) u.Pos.Y = 100;
@@ -187,6 +197,19 @@ public static class Movement
             // CharacterCreate/CharacterRemove a los que entran/salen de su área. Reemplaza la difusión
             // por mapa completo (ver MODAREAS_AUDIT.md / AreaVisibility).
             AreaVisibility.OnUserMoved(userIndex);
+
+            // AFK: al moverse se registra actividad y se quita la partícula de AFK si la tenía.
+            u.flags.LastActivityAt = Environment.TickCount64;
+            if (u.flags.AfkParticula)
+            {
+                u.flags.AfkParticula = false;
+                for (int k = 1; k <= UserListManager.LastUser; k++)
+                {
+                    var o = UserListManager.UserList[k];
+                    if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                        ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, GameTimer.AFK_PARTICULA, 0f, true);
+                }
+            }
 
             // Casteo de resucitar: al moverse se interrumpe (y se borra la partícula de casteo).
             if (u.ResucitandoHasta > 0)

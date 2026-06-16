@@ -196,7 +196,7 @@
 'PERGAMINOS
 
 [INIT]
-NumOBJs=2032
+NumOBJs=2034
 
 
 '**************************** COMIDAS ****************************
@@ -10842,7 +10842,6 @@ SkHerreria=80
 MinELV=34
 subastable=1
 LocaleID=384
-RazasProhibidas=2,5
 ClasesProhibidas=2,7,5,6,16,4,11,14,15,13,18
 Texto=
 
@@ -14279,8 +14278,10 @@ Texto=
 Name=Baculo de Hechicero (DM +20)
 GrhIndex=19592
 Objtype=2
-MinHIT=17
-MaxHIT=22
+MinHITPVP=210
+MaxHITPVP=215
+MinHITPVE=230
+MaxHITPVE=235
 Valor=0
 Aura=3
 ValorBattle=14000
@@ -16865,10 +16866,10 @@ Texto=
 Name=Flecha Paralizante
 GrhIndex=754
 Objtype=32
-MinHITPVP=160
-MaxHITPVP=155
-MinHITPVE=180
-MaxHITPVE=190
+MinHITPVP=25
+MaxHITPVP=35
+MinHITPVE=55
+MaxHITPVE=55
 Valor=0
 SkCarpinteria=90
 Madera=390
@@ -22655,7 +22656,7 @@ MinELV=23
 Crucial=1
 Aura=38
 LocaleID=1706
-RazasProhibidas=2,5
+RazasProhibidas=1,3,4,6
 ClasesProhibidas=2,7,5,6,16,13,4,15,18,14,11
 Texto=Un pantalón rojo reforzado para combates ligeros.
 
@@ -22671,7 +22672,7 @@ MinELV=23
 Crucial=1
 Aura=31
 LocaleID=1707
-RazasProhibidas=2,5
+RazasProhibidas=1,3,4,6
 ClasesProhibidas=2,7,5,6,16,13,4,15,18,14,11
 Texto=Un pantalón azul reforzado con energía mágica.
 
@@ -23151,6 +23152,7 @@ GrhIndex=32462
 ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=375
+FX=99
 LocaleID=1754
 
 [OBJ1755]
@@ -23159,6 +23161,7 @@ GrhIndex=32464
 ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=376
+FX=98
 LocaleID=1755
 
 [OBJ1756]
@@ -23167,6 +23170,7 @@ GrhIndex=32461
 ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=375
+FX=94
 LocaleID=1756
 
 [OBJ1757]
@@ -23175,6 +23179,7 @@ GrhIndex=32460
 ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=375
+FX=96
 LocaleID=1757
 
 [OBJ1758]
@@ -23183,6 +23188,7 @@ GrhIndex=32457
 ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=375
+FX=95
 LocaleID=1758
 
 [OBJ1759]
@@ -23400,6 +23406,7 @@ GrhIndex=32462
 ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=375
+FX=99
 LocaleID=1785
 
 [OBJ1791]
@@ -25621,3 +25628,25 @@ QueSkill=99
 CuantoAumento=100
 LocaleID=2032
 Texto=Eleva TODAS tus habilidades al maximo.
+
+[OBJ2033]
+Name=Dardo Arcano
+GrhIndex=26025
+Valor=5000
+Crucial=1
+HechizoIndex=121
+Objtype=24
+ClasesProhibidas=1,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,19,20
+LocaleID=2033
+Texto=Hechizo de leveo (nivel 15). Causa dano a tu enemigo.
+
+[OBJ2034]
+Name=Centella Menor
+GrhIndex=26035
+Valor=5000
+Crucial=1
+HechizoIndex=122
+Objtype=24
+ClasesProhibidas=2,3,5,8,10,11,12,13,14,15,16,17,18,19,20
+LocaleID=2034
+Texto=Hechizo de leveo (nivel 15). Causa dano a tu enemigo.

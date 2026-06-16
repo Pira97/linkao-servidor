@@ -33,6 +33,14 @@ if not exist "ServidorCS.exe" (
 )
 
 echo.
+echo === Marcando version (version.txt) ===
+REM Timestamp ordenable: el launcher de la VM lo usa para saber si hay algo nuevo
+REM (sin tocar la API de GitHub, asi no se agota el limite de 60 req/hora).
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMddHHmmss"') do set VER=%%i
+> version.txt echo %VER%
+echo  Version: %VER%
+
+echo.
 echo === Subiendo a GitHub (reescribiendo el commit unico) ===
 git add -A
 git commit --amend -m "servidor %DATE% %TIME%"

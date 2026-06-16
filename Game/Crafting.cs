@@ -141,11 +141,30 @@ public static class Crafting
         // Refrescar inventario y subir la skill.
         SendAllInv(u);
         SubirSkill(u, tipo);
+        // Sonido de fabricación según la herramienta: herrero (martillo=41), carpintero (serrucho=169/170).
+        short snd = tipo switch
+        {
+            CraftType.Blacksmith => Sounds.MARTILLOHERRERO,            // 41
+            CraftType.Carpenter  => (System.Random.Shared.Next(2) == 0 ? Sounds.SERRUCHO1 : Sounds.SERRUCHO2), // 169/170
+            _ => 0,
+        };
+        if (snd > 0) WaveArea(u, snd);
         ServerPackets.ConsoleMsg(u.Conn, $"Has fabricado {cantidad}x {od.Name}.", FONT_INFO);
     }
 
     private static void NoFabricable(User u)
         => ServerPackets.ConsoleMsg(u.Conn, "Ese objeto no se puede fabricar con esta habilidad.", FONT_INFO);
+
+    /// <summary>Difunde un sonido a los usuarios del mapa del jugador (PlayWave por área).</summary>
+    private static void WaveArea(User u, short wave)
+    {
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o != null && o.flags.UserLogged && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                ServerPackets.PlayWave(o.Conn, wave, (byte)u.Pos.X, (byte)u.Pos.Y);
+        }
+    }
 
     private static void SubirSkill(User u, CraftType tipo)
     {

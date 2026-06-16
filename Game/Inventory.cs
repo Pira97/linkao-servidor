@@ -24,6 +24,13 @@ public static class Inventory
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return true; // GM sin restricciones
         if (od.ClasesProhibidas != null && Array.IndexOf(od.ClasesProhibidas, (int)u.Clase) >= 0)
         { motivo = "Tu clase no puede usar este objeto."; return false; }
+        // Pergaminos: restricción de clase definida en el hechizo (ver MotivoNoUsable).
+        if (od.Type == ObjType.Pergaminos && od.HechizoIndex > 0)
+        {
+            var spp = SpellData.Get(od.HechizoIndex);
+            if (spp.ClasesProhibidas != null && Array.IndexOf(spp.ClasesProhibidas, (int)u.Clase) >= 0)
+            { motivo = "Tu clase no puede usar este objeto."; return false; }
+        }
         if (od.RazasProhibidas != null && Array.IndexOf(od.RazasProhibidas, (int)u.raza) >= 0)
         { motivo = "Tu raza no puede usar este objeto."; return false; }
         // Las monturas/barcos NO se gatean por nivel (VB6: por skill Equitacion/Navegacion en DoEquita/DoNavega).
@@ -48,6 +55,14 @@ public static class Inventory
     {
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return 0; // GM: todo
         if (od.ClasesProhibidas != null && Array.IndexOf(od.ClasesProhibidas, (int)u.Clase) >= 0) return 1;
+        // Pergaminos de hechizo: la restricción de clase está en el HECHIZO (ClasesProhibidas de
+        // Hechizos.dat), no en el objeto (el obj usa CPO=, que no se parsea). Sin esto la tienda no
+        // pinta el pergamino en rojo para clases que no pueden aprender/lanzar ese hechizo.
+        if (od.Type == ObjType.Pergaminos && od.HechizoIndex > 0)
+        {
+            var sp = SpellData.Get(od.HechizoIndex);
+            if (sp.ClasesProhibidas != null && Array.IndexOf(sp.ClasesProhibidas, (int)u.Clase) >= 0) return 1;
+        }
         if (od.RazasProhibidas != null && Array.IndexOf(od.RazasProhibidas, (int)u.raza) >= 0) return 2;
         if (od.Mujer != 0 && od.Hombre == 0 && u.Genero != 2) return 3;
         if (od.Hombre != 0 && od.Mujer == 0 && u.Genero != 1) return 3;
@@ -130,7 +145,8 @@ public static class Inventory
         {
             if (amount > 100000) return;               // VB6: no tirar demasiado oro de una
             TirarOro(u, amount);
-            BroadcastWaveArea(u, SND_ORO2);
+            // Sonido por cantidad: poca (<10000 → 171) o mucha (≥10000 → 172).
+            BroadcastWaveArea(u, amount >= 10000 ? SND_ORO2 : Sounds.ORO_POCO);
             ServerPackets.UpdateGold(u.Conn, u.Stats.GLD);
             return;
         }
@@ -162,6 +178,11 @@ public static class Inventory
 
         // Item newbie permanente (Permanente==2) → confirmación de eliminación (accion 10).
         if (od.Permanente == 2)
+        { ServerPackets.ShowMessageBox(u.Conn, "¿Deseas eliminar este objeto?", true, 10); return; }
+
+        // Items newbie (Newbie>0): no se tiran al piso, pero el jugador debe poder eliminarlos
+        // (antes DropObj los bloqueaba sin salida). Se ofrece la confirmación de destrucción (accion 10).
+        if (ItemNewbie(item.ObjIndex) && u.FaccionStatus < 7)
         { ServerPackets.ShowMessageBox(u.Conn, "¿Deseas eliminar este objeto?", true, 10); return; }
 
         DropObj(u, slot, amount, u.Pos.Map, u.Pos.X, u.Pos.Y);
@@ -438,6 +459,10 @@ public static class Inventory
                 u.Invent.MagicSlot = slot;
                 SetAura(u, ref u.Char.Anillo_Aura, 6, od.Aura); // aura en la ranura de anillo (6)
                 SndAura(u, od, true);
+                // Sonido al equipar collar/pendiente (458).
+                if (od.Name != null && (od.Name.Contains("Collar", StringComparison.OrdinalIgnoreCase)
+                    || od.Name.Contains("Pendiente", StringComparison.OrdinalIgnoreCase)))
+                    BroadcastWaveArea(u, Sounds.COLLAR_PENDIENTE);
                 AplicarEfectoMagico(u, od, equip: true);
                 SendSlot(u, slot);
                 return; // no cambia la apariencia → sin BroadcastCharChange
@@ -582,7 +607,11 @@ public static class Inventory
                                       || map.HasWater(u.Pos.X, u.Pos.Y - 1) || map.HasWater(u.Pos.X, u.Pos.Y + 1));
             if (!costa) { ServerPackets.ConsoleMsg(u.Conn, "¡Estás demasiado lejos del agua!", 1); return; }
 
-            if (u.flags.Montando == 1) { u.flags.Montando = 0; ServerPackets.MontateToggle(u.Conn); }
+            // No se puede embarcar montado: hay que desmontar primero (simétrico a DoEquita, que
+            // bloquea montar mientras se navega). Antes se forzaba el desmonte en medio del embarque
+            // y quedaba estado mixto (montura+barca con "+" y el cliente creyendo que seguía montado).
+            if (u.flags.Montando == 1)
+            { ServerPackets.ConsoleMsg(u.Conn, "No puedes hacer eso mientras montas.", 1); return; }
             // Muerto → barca fantasma (iFragataFantasmal=87); vivo → body del barco (Trabajo.bas:192).
             u.Char.body = u.flags.Muerto == 1 ? (short)87 : (short)(od.Ropaje > 0 ? od.Ropaje : 87);
             u.Char.Head = 0;
@@ -801,18 +830,18 @@ public static class Inventory
                 return;
 
             // Fuegos artificiales (cañitas/cohetes/petardos): son ObjType=11 sin SubTipo de poción,
-            // con un campo "Particula=" en obj.dat. Al usarlos lanzan esa partícula sobre el personaje
-            // (temporal) y reproducen su sonido (Snd1) en el área. Se consume 1.
-            case ObjType.Pociones when od.Particula > 0:
+            // con un campo "Particula=" (partícula de terreno) o "FX=" (FX sobre el personaje) en obj.dat.
+            // Al usarlos lanzan ese efecto y reproducen su sonido (Snd1) en el área. Se consume 1.
+            case ObjType.Pociones when od.Particula > 0 || od.FX > 0:
                 LanzarFuegoArtificial(u, od);
                 consumir = true;
                 break;
 
             case ObjType.Pociones:
-                // Cooldown de uso de pociones (IntervaloGolpeUsar = 400ms), salvo autopot:
-                // el autopot ya viene limitado por el cliente (250ms) y por el rate-limit
-                // anti-cheat (10/seg) del handler.
-                if (!esAutoPot && !Intervals.PuedeGolpeUsar(u)) return;
+                // Cooldown de uso de pociones (IntervaloGolpeUsar = 400ms). Se aplica también al
+                // autopot: antes el autopot lo salteaba y solo lo frenaba el rate-limit de 10/seg
+                // (~100ms), por lo que poteaba 4× más rápido que el uso manual.
+                if (!Intervals.PuedeGolpeUsar(u)) return;
                 consumir = UsarPocion(userIndex, u, od);
                 break;
 
@@ -896,7 +925,11 @@ public static class Inventory
             // otInstrumentos=26 (InvUsuario.bas:2033): toca el instrumento (Snd1) y duerme NPCs en radio 5.
             case ObjType.Instrumentos:
             {
-                if (od.Snd1 > 0) BroadcastWaveArea(u, (short)od.Snd1);
+                // Flauta → sonido 393 (custom). Otros instrumentos usan su Snd1 de obj.dat.
+                short sndInstr = od.Snd1 > 0 ? (short)od.Snd1 : (short)0;
+                if (od.Name != null && od.Name.Contains("Flauta", StringComparison.OrdinalIgnoreCase))
+                    sndInstr = Sounds.FLAUTA;
+                if (sndInstr > 0) BroadcastWaveArea(u, sndInstr);
                 int dur = od.DuracionEfecto / 1000;
                 if (dur < 30) dur = 60;
                 double hasta = Environment.TickCount64 / 1000.0 + dur;
@@ -1082,16 +1115,59 @@ public static class Inventory
     /// posición), de forma temporal, a todos los del mapa, y reproduce su sonido (Snd1). La partícula
     /// se borra sola tras DURACION segundos (EfectoTerrenoParticula: Time>1 = vida finita en segundos).
     /// </summary>
+    // Paleta de FX de cañitas voladoras (fxs.ind): celeste/verde/violeta/azulado/amarillo.
+    // Se usa para el "estallido múltiple": los FX vecinos toman colores variados de esta paleta
+    // para simular un fuego artificial real (mezcla de colores). El central usa el color propio.
+    private static readonly short[] _paletaFuegos = { 94, 95, 96, 98, 99 };
+
+    // Estallido múltiple: tile central + un anillo de tiles vecinos donde "explotan" los FX de colores.
+    private static readonly (int dx, int dy)[] _estallidoOffsets =
+    {
+        (0, 0),                          // centro (color propio)
+        (-1, -1), (1, -1), (-1, 1), (1, 1), // diagonales
+        (0, -2),                         // chispa que sube un poco más alto
+    };
+
     private static void LanzarFuegoArtificial(User u, ObjData.Obj od)
     {
         const int DURACION = 3; // segundos que vive la partícula en el tile (luego se borra sola)
         byte px = (byte)u.Pos.X, py = (byte)u.Pos.Y;
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+
+        if (od.FX > 0)
         {
-            var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
-                ServerPackets.EfectoTerrenoParticula(o.Conn, (short)od.Particula, px, py, DURACION);
+            // Estallido múltiple: armar la lista de puntos (tile + color) UNA vez y mandarla a todos.
+            // Centro = color propio de la cañita; vecinos = colores variados de la paleta (más vistoso).
+            var puntos = new List<(byte x, byte y, short fx)>(_estallidoOffsets.Length);
+            for (int k = 0; k < _estallidoOffsets.Length; k++)
+            {
+                int tx = px + _estallidoOffsets[k].dx;
+                int ty = py + _estallidoOffsets[k].dy;
+                if (tx < 1 || tx > 100 || ty < 1 || ty > 100) continue; // dentro del mapa
+                short fx = k == 0 ? (short)od.FX : _paletaFuegos[Random.Shared.Next(_paletaFuegos.Length)];
+                puntos.Add(((byte)tx, (byte)ty, fx));
+            }
+            for (int i = 1; i <= UserListManager.LastUser; i++)
+            {
+                var o = UserListManager.UserList[i];
+                if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                    foreach (var pt in puntos)
+                        // FX anclado al TILE (no sigue al personaje). Loops=0 → animación completa.
+                        ServerPackets.EfectoTerrenoFX(o.Conn, pt.fx, pt.x, pt.y, 0);
+            }
         }
+
+        if (od.Particula > 0)
+        {
+            for (int i = 1; i <= UserListManager.LastUser; i++)
+            {
+                var o = UserListManager.UserList[i];
+                if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                    // Fuegos con partícula de terreno (cohetes/petardos clásicos).
+                    ServerPackets.EfectoTerrenoParticula(o.Conn, (short)od.Particula, px, py, DURACION);
+            }
+        }
+
+        // Sonido del estallido: el propio de la cañita (Snd1), que ya sonaba bien.
         if (od.Snd1 > 0) BroadcastWaveArea(u, (short)od.Snd1);
     }
 
@@ -1198,6 +1274,21 @@ public static class Inventory
             return;
         }
 
+        // Respetar la restricción de clase del hechizo (ClasesProhibidas de Hechizos.dat):
+        // si la clase no puede lanzarlo, tampoco puede aprenderlo desde el pergamino.
+        // (El VB6 no lo validaba, así un Paladín podía "gastar" el pergamino sin poder
+        //  usar el hechizo; ahora queda consistente con la validación de lanzamiento.)
+        if (!esGm && !esPergaminoEspecial)
+        {
+            var sp = SpellData.Get(hIndex);
+            if (sp.ClasesProhibidas != null
+                && Array.IndexOf(sp.ClasesProhibidas, (int)u.Clase) >= 0)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "Tu clase no puede aprender este hechizo.", 1);
+                return;
+            }
+        }
+
         // AgregarHechizo: ¿ya lo tiene? (TieneHechizo)
         for (int k = 1; k <= Constants.MAXUSERHECHIZOS; k++)
             if (u.Stats.UserHechizos[k] == hIndex)
@@ -1243,7 +1334,9 @@ public static class Inventory
         var od = ObjData.Get(it.ObjIndex);
         if (od.Real > 0 || od.Caos > 0 || od.Milicia > 0)
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes destruir ese objeto.", 1); return; }
-        if (od.NoSeCae > 0 && od.Permanente != 2)
+        // NoSeCae bloquea destruir, salvo newbies/permanentes (Permanente==2) o items newbie:
+        // el jugador debe poder eliminar los items newbie confirmando.
+        if (od.NoSeCae > 0 && od.Permanente != 2 && od.Newbie == 0)
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes destruir ese objeto.", 1); return; }
 
         int quita = Math.Min(Math.Max(1, amount), it.Amount);
@@ -1625,6 +1718,15 @@ public static class Inventory
         byte puedeUsar = 1;
         if (o.ObjIndex > 0) puedeUsar = PuedeUsarObjeto(u, ObjData.Get(o.ObjIndex), out _) ? (byte)1 : (byte)0;
         ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, o.ObjIndex, o.Amount, o.Equipped, 0f, puedeUsar);
+    }
+
+    /// <summary>Reenvía TODOS los slots del inventario al cliente. Se usa tras desequipar al morir
+    /// (UserDie) para que la UI no siga mostrando los ítems con el "+" de equipado.</summary>
+    public static void EnviarInventarioCompleto(User u)
+    {
+        if (u?.Conn == null) return;
+        for (int slot = 1; slot <= Constants.MAX_INVENTORY_SLOTS; slot++)
+            SendSlot(u, slot);
     }
 
     /// <summary>

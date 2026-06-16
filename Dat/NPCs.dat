@@ -1492,7 +1492,7 @@ HP=10000
 RespawnTime=1
 WeaponAnim=6
 TipoItems=24
-NROITEMS=13
+NROITEMS=15
 'Proyectil Mágico
 Obj1=199-100
 'Saeta Ígnea
@@ -1519,6 +1519,10 @@ Obj11=568-100
 Obj12=206-100
 'Inmovilizar
 Obj13=530-100
+'Dardo Arcano (leveo)
+Obj14=2033-100
+'Centella Menor (leveo)
+Obj15=2034-100
 LocaleID=46
 MinHP=10000
 MaxHP=10000
@@ -5330,7 +5334,7 @@ Heading=3
 Movement=1
 Comercia=1
 TipoItems=1000
-NROITEMS=23
+NROITEMS=30
 'Poción Roja
 Obj1=38-100
 'Poción Azul
@@ -5377,6 +5381,20 @@ Obj21=585-100
 Obj22=586-100
 'Roca Escarlata
 Obj23=649-100
+'Barca
+Obj24=474-100
+'Montura de Viajero (Altos)
+Obj25=1667-100
+'Collar De Rykan (3/3)
+Obj26=1601-100
+'Collar De Rykan (2/3)
+Obj27=1846-100
+'Collar De Rykan (1/3)
+Obj28=1847-100
+'Pendiente del Sacrificio (3/3)
+Obj29=1081-100
+'Manual Maestro de Habilidades (Scroll del Maestro)
+Obj30=2032-100
 HP=10000
 RespawnTime=1
 LocaleID=269

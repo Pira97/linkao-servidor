@@ -1,0 +1,25 @@
+{
+  "Season": 2,
+  "Puntos": 79,
+  "Nivel": 3,
+  "Premium": true,
+  "ReclamadosFree": [
+    1,
+    2,
+    3
+  ],
+  "ReclamadosPrem": [
+    1,
+    2,
+    3
+  ],
+  "Titulo": "",
+  "MisionProgreso": {
+    "1": 10,
+    "2": 3
+  },
+  "MisionesCompletadas": [
+    1,
+    2
+  ]
+}

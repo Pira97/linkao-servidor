@@ -30,7 +30,21 @@ public sealed class GameServer
 
     public async Task RunAsync(CancellationToken ct = default)
     {
-        _listener.Start();
+        // Permitir reusar la dirección: tras matar la instancia previa, su socket puede quedar
+        // unos segundos en TIME_WAIT y el bind fallaría con 10048 sin esto.
+        try { _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true); } catch { }
+
+        // Reintentar el bind si el puerto todavía no terminó de liberarse (evita el loop de
+        // reinicios del launcher por SocketException 10048).
+        for (int intento = 1; ; intento++)
+        {
+            try { _listener.Start(); break; }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse && intento <= 10)
+            {
+                Console.WriteLine($"[ServidorCS] Puerto {_port} ocupado, reintento {intento}/10 en 1s...");
+                await Task.Delay(1000, ct);
+            }
+        }
         Console.WriteLine($"[ServidorCS] Escuchando en 0.0.0.0:{_port}");
 
         // Flush periódico de las colas de salida (como el timer del server VB6).

@@ -342,6 +342,7 @@ PropioMsg=Te has lanzado el hechizo Grito de Igr.
 
 Tipo=1
 WAV=92
+Particle=167
 
 
 SubeFU=1
@@ -626,6 +627,7 @@ TargetMsg=lanzo Desencantar sobre vos.
 PropioMsg=Has lanzado Desencantar sobre ti.
 Tipo=2
 WAV=59
+FXgrh=30
 Particle=85
 desencantar=1
 autolanzar=1
@@ -1488,7 +1490,7 @@ TargetMsg=lanzo Tormenta ácida sobre vos.
 PropioMsg=Has lanzado Tormenta ácida sobre ti.
 Tipo=1
 WAV=127
-FXgrh=32
+FXgrh=136
 loops=0
 
 SubeHP=2
@@ -1620,7 +1622,7 @@ Tipo=1
 WAV=94
 FXgrh=45
 loops=0
-Particle=1
+Particle=0
 TimeParticula=100
 
 SubeHP=2
@@ -1741,7 +1743,7 @@ PropioMsg=Te has curado.
 
 Tipo=1
 WAV=240
-Particle=119
+Particle=27
 
 loops=1
 
@@ -1767,7 +1769,7 @@ TargetMsg=te ha lanzado Descarga Flamígera
 PropioMsg=Te has lanzado Descarga Flamígera
 Anillo=1
 Tipo=1
-WAV=27
+WAV=242
 Particle=84
 loops=0
 
@@ -2373,7 +2375,7 @@ HechizeroMsg=Has lanzado Descarga Eléctrica sobre
 TargetMsg=lanzo Descarga Eléctrica sobre vos.
 PropioMsg=Has lanzado Descarga Eléctrica sobre ti.
 Tipo=1
-WAV=231
+WAV=234
 loops=0
 Resis=1
 Particle=49
@@ -2508,7 +2510,7 @@ PalabrasMagicas=Vothaler Visibli
 
 Target=4
 Tipo=12
-WAV=130
+WAV=372
 Particle=82
 TimeParticula=200
 loops=1
@@ -2517,7 +2519,7 @@ MinSkill=100
 ManaRequerido=1400
 ExclusivoClase=MAGO
 StaRequerido=150
-ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
+ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -3106,7 +3108,7 @@ PalabrasMagicas=In Lor An
 
 Target=4
 Tipo=12
-WAV=130
+WAV=372
 Particle=82
 TimeParticula=200
 loops=1
@@ -3121,3 +3123,49 @@ ClasesProhibidas=
 ClasesProhibidas=
 [Hechizo99]
 ClasesProhibidas=
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&  HECHIZOS DE LEVEO  &&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+[HECHIZO121]
+Nombre=Dardo Arcano
+Desc=Hechizo de iniciacion para clases magicas. Causa dano a tu enemigo.
+PalabrasMagicas=Eron Tir
+HechizeroMsg=Has lanzado Dardo Arcano sobre
+TargetMsg=lanzo Dardo Arcano sobre vos.
+PropioMsg=Has lanzado Dardo Arcano sobre ti.
+Tipo=1
+WAV=448
+FXgrh=152
+loops=0
+SubeHP=2
+MinHP=26
+MaxHP=34
+MinLevel=15
+MinSkill=35
+ManaRequerido=90
+StaRequerido=15
+Target=3
+ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
+
+[HECHIZO122]
+Nombre=Centella Menor
+Desc=Hechizo de iniciacion para clases semi-magicas. Causa dano a tu enemigo.
+PalabrasMagicas=Sik Tir
+HechizeroMsg=Has lanzado Centella Menor sobre
+TargetMsg=lanzo Centella Menor sobre vos.
+PropioMsg=Has lanzado Centella Menor sobre ti.
+Tipo=1
+WAV=456
+FXgrh=153
+loops=0
+SubeHP=2
+MinHP=18
+MaxHP=24
+MinLevel=15
+MinSkill=35
+ManaRequerido=130
+StaRequerido=20
+Target=3
+ClasesProhibidas=2-3-5-8-10-11-12-13-14-15-16-17-18

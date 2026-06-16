@@ -81,6 +81,8 @@ public static class UserListManager
         if (u.Trade != null) UserTrade.Cancel(userIndex);
         if (u.flags.UserLogged && !string.IsNullOrEmpty(u.Name)) CharSaver.SaveUser(u);
 
+        // Sonido de desconexión (SND_DESCONEXION=434): SOLO lo escucha el que se desloguea.
+        if (u.Conn != null) ServerPackets.PlayWave(u.Conn, Sounds.DESCONEXION, (byte)u.Pos.X, (byte)u.Pos.Y);
         if (u.flags.UserLogged && u.Char.CharIndex > 0)
         {
             for (int i = 1; i <= LastUser; i++)
@@ -93,6 +95,7 @@ public static class UserListManager
             }
         }
 
+        u.flags.KillStreak = 0;
         u.flags.UserLogged = false;
         u.Name = "";
         CharIndexPool.Free(u.Char.CharIndex);   // reusar el índice (el pool del cliente está acotado a 10000)
@@ -124,9 +127,10 @@ public static class UserListManager
 
         // Si estaba metamorfoseado, revertir antes de guardar para no persistir el body transformado.
         if (u.flags.Metamorfoseado == 1) Combat.RevertirMetamorfosis(userIndex);
-        // Si estaba montado/navegando, restaurar la apariencia a pie (no persistir el body del caballo/barca).
-        if (u.flags.Montando != 0 || u.flags.Navegando)
-        { u.flags.Montando = 0; u.flags.Navegando = false; Inventory.RestaurarAparienciaAPie(u); }
+        // Montado/navegando: NO se limpian los flags al desloguear — deben persistir para reaparecer
+        // montado/en barca tal cual se veía en el render (igual que LogoutToCharList). El [INIT] del
+        // .chr igual se guarda con el body a pie (CharSaver.AparienciaAPie detecta estos flags), y el
+        // loader reconstruye el body de montura/barca al reloguear desde Montando/Navegando + el slot.
         // Si tenía atributos buffeados/debuffeados, restaurar para no persistir valores temporales.
         if (u.flags.TomoPocion) Combat.RestaurarAtributos(u);
         // Si tenía un portal en curso/abierto, cerrarlo para no dejar el objeto y la salida colgados.
@@ -138,9 +142,13 @@ public static class UserListManager
 
         // Avisar a los demás del mapa que este personaje se va (CharacterRemove) y limpiar la
         // visibilidad por área (lo saca del set de quienes lo veían).
+        // Sonido de desconexión (SND_DESCONEXION=434): SOLO lo escucha el que se desloguea.
+        if (u.flags.UserLogged && u.Conn != null)
+            ServerPackets.PlayWave(u.Conn, Sounds.DESCONEXION, (byte)u.Pos.X, (byte)u.Pos.Y);
         if (u.flags.UserLogged && u.Char.CharIndex > 0)
             AreaVisibility.OnUserLeave(userIndex);
 
+        u.flags.KillStreak = 0;
         u.flags.UserLogged = false;
         u.ConnIDValida = false;
         u.ConnID = -1;

@@ -159,4 +159,8 @@ public enum ServerPacketID : short
 
     // --- Ciclo Día/Noche (NUEVO, no VB6) ---
     DayNightInfo = 179,    // Byte hora (0-23), Byte minuto (0-59), Byte inDungeon (1=neutro)
+
+    // --- Battle Pass / Pase de Temporada (NUEVO, no VB6) ---
+    BattlePassInfo = 180,   // estado completo: temporada + tabla de niveles + flags de reclamado
+    BattlePassUpdate = 181, // Long puntos, Byte nivel, ASCIIString mensaje (push tras ganar puntos/acción)
 }

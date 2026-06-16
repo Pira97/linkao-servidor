@@ -276,3 +276,34 @@ PorcentajeRecuperoMana=6
 
 [GRUPO]
 ExponenteNivelGrupo=1.75
+[COMBATE]
+; ====== Reglas globales de combate (editables en caliente con /reloadbalance) ======
+; Si borras una linea, vuelve al valor por defecto (el mismo que tenia el codigo).
+; Los porcentajes van como numero entero: 25 = 25%, 150 = 150%.
+
+; Cuanto absorbe la armadura en PvP (PvE siempre absorbe 100%). Default 25.
+; Subilo (ej 40) para que el PvP sea mas lento y la armadura valga mas.
+ArmaduraDefiendePvP=25
+
+; Piso de dano en PvP: ningun golpe que conecta pega menos que esto. Default 5.
+DanoMinimoPvP=5
+
+; Techo de dano PvP = dano base del arma * (este % / 100). Default 150 (=1.5x).
+TopeBurstPvP=150
+
+; Curva de probabilidad de acertar: prob = ImpactoBase + (ataque - evasion), recortada a [Min, Max].
+ImpactoBase=80
+ImpactoMin=40
+ImpactoMax=98
+
+; Cuanto pesa el nivel en ataque y evasion. PesoNivel va x10: 25 = 2.5 por nivel. Default 25.
+; NivelBase = a partir de que nivel empieza a sumar. Default 12.
+PesoNivel=25
+NivelBase=12
+
+; Escala del dano magico con el nivel del lanzador (x nivel). Default: 2 en PvP, 3 en PvE.
+EscalaMagiaPvP=2
+EscalaMagiaPvE=3
+
+; Bonus de dano (%) si Fuerza Y Agilidad estan al maximo. Default 7.
+BonusStatsMax=7

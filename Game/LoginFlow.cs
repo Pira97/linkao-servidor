@@ -29,6 +29,19 @@ public static class LoginFlow
         // VB6 TCP.bas:2212-2235: asignar Faccion.Status según nivel de privilegio GM
         u.FaccionStatus = AdminLoader.GetFaccionStatus(u.Name);
 
+        // GMs/Dioses (FaccionStatus >= Consejero): vida/maná/energía/hambre/sed al máximo que permite
+        // el protocolo (Integer de 16 bits = 32767). Prácticamente infinito para staff.
+        if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO)
+        {
+            const short STAT_GM = short.MaxValue; // 32767
+            u.Stats.MaxHP  = STAT_GM; u.Stats.MinHP  = STAT_GM;
+            u.Stats.MaxMAN = STAT_GM; u.Stats.MinMAN = STAT_GM;
+            u.Stats.MaxSta = STAT_GM; u.Stats.MinSta = STAT_GM;
+            u.Stats.MaxHam = STAT_GM; u.Stats.MinHam = STAT_GM;
+            u.Stats.MaxAGU = STAT_GM; u.Stats.MinAGU = STAT_GM;
+            u.flags.Hambre = 0; u.flags.Sed = 0;
+        }
+
         // Personaje nivel 15+ que quedó adentro del Dungeon Newbie: se lo reubica en la
         // ciudad de su facción ANTES de mandarle el mundo (solo ajusta u.Pos, sin warp).
         Facciones.SalirDungeonNewbie(u, warpear: false);
@@ -122,6 +135,22 @@ public static class LoginFlow
         // Aviso de condena de cárcel pendiente (TCP.bas:1301). El preso sigue confinado al reloguear.
         if (u.flags.Pena > 0)
             ServerPackets.ConsoleMsg(conn, $"Estás cumpliendo condena. Te quedan {u.flags.Pena} minutos.", 4);
+
+        // Sonido de entrada al mundo (SND_ENTRADA=15): lo escucha el que entra Y los ya logueados
+        // del mismo mapa (antes solo se mandaba al propio conn y los demás no lo oían).
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o != null && o.flags.UserLogged && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                ServerPackets.PlayWave(o.Conn, Sounds.ENTRADA, (byte)u.Pos.X, (byte)u.Pos.Y);
+        }
+
+        // AFK: arrancar el contador de inactividad al ingresar.
+        u.flags.LastActivityAt = Environment.TickCount64;
+        u.flags.AfkParticula = false;
+
+        // Battle Pass: carga el progreso del personaje (reset si cambió la temporada) y envía el estado.
+        BattlePass.OnLogin(conn.UserIndex);
 
         Console.WriteLine($"[ServidorCS] {u.Name} entró al mundo en mapa {u.Pos.Map} ({u.Pos.X},{u.Pos.Y}) con {u.Invent.NroItems} items");
     }

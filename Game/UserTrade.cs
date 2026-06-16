@@ -64,6 +64,18 @@ public static class UserTrade
         if (amount <= 0 || amount > item.Amount) amount = item.Amount;
 
         var offer = userIndex == s.UserA ? s.OfferA : s.OfferB;
+        // ANTI-DUPE: un mismo slot de inventario no puede ofertarse en dos huecos a la vez.
+        // Si ya estaba ofertado, se reemplaza la cantidad en su hueco (no se agrega otro).
+        for (int i = 1; i <= UserTradeSession.MAX_OFFER_SLOTS; i++)
+        {
+            if (offer[i].obj != 0 && offer[i].invSlot == invSlot)
+            {
+                offer[i] = (item.ObjIndex, amount, invSlot);
+                ResetConfirms(s);
+                SendUpdate(s);
+                return;
+            }
+        }
         // Buscar slot de oferta libre (1-5).
         for (int i = 1; i <= UserTradeSession.MAX_OFFER_SLOTS; i++)
         {
@@ -132,14 +144,18 @@ public static class UserTrade
         {
             if (offer[i].obj == 0) continue;
             short obj = offer[i].obj; int amt = offer[i].amount; byte slot = offer[i].invSlot;
+            // ANTI-DUPE: solo se entrega lo que el oferente realmente tiene en ese slot.
+            // Si el slot ya no contiene el objeto (p.ej. ofertado dos veces), no se transfiere nada.
+            if (from.Invent.Object[slot].ObjIndex != obj) continue;
+            int give = Math.Min(amt, from.Invent.Object[slot].Amount);
+            if (give <= 0) continue;
             // Quitar del oferente (desequipa si entrega el stack equipado).
-            if (from.Invent.Object[slot].ObjIndex == obj)
-                Inventory.QuitarUserInvItem(from, slot, amt);
+            Inventory.QuitarUserInvItem(from, slot, give);
             // Dar al receptor.
             int dest = FindInvSlot(to, obj);
             if (dest == 0) continue; // sin espacio: se pierde (simplificación)
-            if (to.Invent.Object[dest].ObjIndex == obj) to.Invent.Object[dest].Amount += amt;
-            else { to.Invent.Object[dest].ObjIndex = obj; to.Invent.Object[dest].Amount = amt; to.Invent.NroItems++; }
+            if (to.Invent.Object[dest].ObjIndex == obj) to.Invent.Object[dest].Amount += give;
+            else { to.Invent.Object[dest].ObjIndex = obj; to.Invent.Object[dest].Amount = give; to.Invent.NroItems++; }
         }
     }
 

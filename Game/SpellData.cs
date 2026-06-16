@@ -43,6 +43,7 @@ public static class SpellData
         public bool HechizoDeArea;     // afecta a todos los del área (no solo al target)
         public int AreaRadio;          // radio del área (tiles)
         public int MinSkill;           // skill mínimo de Magia para lanzarlo
+        public int MinLevel;           // nivel mínimo del lanzador (0 = sin requisito). Hechizos de leveo.
         public string HechizeroMsg, TargetMsg, PropioMsg; // mensajes (lanzador / objetivo / propio)
         public bool Warp;              // teletransporta al objetivo al tile apuntado
         public int MaterializaObj, MaterializaCant; // crea un objeto en el piso
@@ -140,6 +141,7 @@ public static class SpellData
                 HechizoDeArea = ini.GetInt("HECHIZO" + i, "HechizoDeArea") == 1,
                 AreaRadio = ini.GetInt("HECHIZO" + i, "AreaEfecto"),
                 MinSkill = ini.GetInt("HECHIZO" + i, "MinSkill"),
+                MinLevel = ini.GetInt("HECHIZO" + i, "MinLevel"),
                 HechizeroMsg = ini.Get("HECHIZO" + i, "HechizeroMsg"),
                 TargetMsg = ini.Get("HECHIZO" + i, "TargetMsg"),
                 PropioMsg = ini.Get("HECHIZO" + i, "PropioMsg"),

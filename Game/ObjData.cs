@@ -109,6 +109,9 @@ public static class ObjData
         public int SlotsExtra;
         // Fuegos artificiales (cañitas/cohetes): índice de partícula que lanza al usarse (obj.dat "Particula").
         public int Particula;
+        // Fuegos artificiales por FX (cañitas voladoras de colores): FX de fxs.ind que se muestra
+        // sobre el personaje al usarse (obj.dat "FX"). 94=celeste, 95=verde, 96=violeta, 98=azulado, 99=amarillo.
+        public int FX;
     }
 
     // Parsea "608-1,1081-2,1147-1" → pares (608,1),(1081,2),(1147,1). Vacío/null → null.
@@ -190,7 +193,7 @@ public static class ObjData
         for (int i = 1; i <= max; i++)
             _objs[i] = ParseObj(ini, i);
 
-        Console.WriteLine($"[ServidorCS] obj.dat cargado: {max} objetos");
+        Console.WriteLine($"[ServidorCS] obj.dat cargado: {max} objetos desde {file}");
     }
 
     /// <summary>
@@ -306,6 +309,7 @@ public static class ObjData
                 IndexCerradaLlave = ini.GetInt("OBJ" + i, "IndexCerradaLlave"),
                 Clave = ini.GetInt("OBJ" + i, "Clave"),
                 Particula = ini.GetInt("OBJ" + i, "Particula"),
+                FX = ini.GetInt("OBJ" + i, "FX"),
             };
 
             // otRegalos (53): lista de ítems que entrega al usarlo (campo "Items=").
@@ -334,10 +338,13 @@ public static class ObjData
     {
         foreach (var c in new[]
         {
-            Path.Combine(DataPaths.Sub("Dat"), "obj.dat"),
-            DataPaths.Root + "obj.dat",
+            // El obj.dat se versiona y se sube junto al exe (ver .gitignore: "Dat/ SI se versiona;
+            // local manda"). Por eso se busca PRIMERO en la carpeta del exe, no en la carpeta de
+            // datos vivos (Servidor/), que en la VM tiene una copia vieja que el bat nunca toca.
             Path.Combine(AppContext.BaseDirectory, "Dat", "obj.dat"),
             Path.Combine(AppContext.BaseDirectory, "obj.dat"),
+            Path.Combine(DataPaths.Sub("Dat"), "obj.dat"),
+            DataPaths.Root + "obj.dat",
         })
         {
             if (File.Exists(c)) return c;

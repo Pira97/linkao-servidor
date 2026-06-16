@@ -16,6 +16,7 @@ public static class Backup
         {
             // 1) Asegurar que los .chr estén al día (GuardarUsuarios → SaveUser de cada online).
             CharSaver.SaveAllOnline();
+            BattlePass.SaveAll(); // progreso del pase de temporada al día antes del snapshot
 
             // 2) Copiar todos los .chr a Backups\Auto_<timestamp>\Charfile\.
             string charDir = CharLoader.CharPath;
@@ -33,8 +34,26 @@ public static class Backup
                 catch { /* archivo en uso: omitir */ }
             }
 
+            // 3) Copiar el progreso del pase de temporada (BattlePass\*.json) al snapshot.
+            int bpCopied = 0;
+            try
+            {
+                string bpDir = string.IsNullOrEmpty(DataPaths.Root) ? "BattlePass" : DataPaths.Sub("BattlePass");
+                if (Directory.Exists(bpDir))
+                {
+                    string bpDest = Path.Combine(backupsRoot, "Auto_" + stamp, "BattlePass");
+                    Directory.CreateDirectory(bpDest);
+                    foreach (var f in Directory.GetFiles(bpDir, "*.json"))
+                    {
+                        try { File.Copy(f, Path.Combine(bpDest, Path.GetFileName(f)), overwrite: true); bpCopied++; }
+                        catch { /* archivo en uso: omitir */ }
+                    }
+                }
+            }
+            catch { /* no romper el backup de personajes por el pase */ }
+
             CleanupOld(backupsRoot);
-            Console.WriteLine($"[Backup] Snapshot Auto_{stamp} completado ({copied} personajes).");
+            Console.WriteLine($"[Backup] Snapshot Auto_{stamp} completado ({copied} personajes, {bpCopied} pases).");
         }
         catch (Exception ex)
         {

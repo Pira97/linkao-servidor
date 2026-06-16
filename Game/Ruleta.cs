@@ -71,7 +71,10 @@ public static class Ruleta
     }
 
     private static void Anunciar()
-        => Broadcast($"*** RULETA DE EVENTOS *** {Nombre(EventoActivo)} ACTIVADO! {Descripcion(EventoActivo)} Durante 1 hora.", FONT_INFOBOLD);
+    {
+        Broadcast($"*** RULETA DE EVENTOS *** {Nombre(EventoActivo)} ACTIVADO! {Descripcion(EventoActivo)} Durante 1 hora.", FONT_INFOBOLD);
+        Events.SonidoInicioEvento(); // sonido de inicio de evento (252)
+    }
 
     private static void Finalizar()
     {

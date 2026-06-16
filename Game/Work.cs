@@ -347,6 +347,7 @@ public static class Work
             Entregar(u, Pescado, Random.Shared.Next(10, 31));
             ServerPackets.ConsoleMsg(u.Conn, "¡Has pescado algo!", 1);
             Skills.SubirSkill(userIndex, SkillPesca); // SubirSkill 1:1 (Trabajo.bas:1691)
+            BattlePass.OnWork(userIndex);
         }
         else ServerPackets.ConsoleMsg(u.Conn, "¡No has pescado nada!", 1);
     }
@@ -370,6 +371,7 @@ public static class Work
             Entregar(u, Lena, Random.Shared.Next(10, 31));
             ServerPackets.ConsoleMsg(u.Conn, "¡Has conseguido algo de leña!", 1);
             Skills.SubirSkill(userIndex, SkillTalar); // SubirSkill 1:1 (Trabajo.bas:2203)
+            BattlePass.OnWork(userIndex);
         }
         else ServerPackets.ConsoleMsg(u.Conn, "¡No has obtenido leña!", 1);
     }
@@ -395,6 +397,7 @@ public static class Work
             Entregar(u, mineral, Random.Shared.Next(10, 31) * Ruleta.MultiplicadorMineria());
             ServerPackets.ConsoleMsg(u.Conn, "¡Has extraído algunos minerales!", 1);
             Skills.SubirSkill(userIndex, SkillMineria); // SubirSkill 1:1 (Trabajo.bas:2346)
+            BattlePass.OnWork(userIndex);
         }
         else ServerPackets.ConsoleMsg(u.Conn, "¡No has conseguido nada!", 1);
     }
@@ -411,6 +414,7 @@ public static class Work
             int amount = u.Clase == ClDruida ? Random.Shared.Next(1, 7) : Random.Shared.Next(1, 3);
             Entregar(u, Raiz, amount);
             ServerPackets.ConsoleMsg(u.Conn, $"¡Has obtenido raíces! ({amount})", 1);
+            BattlePass.OnWork(userIndex);
         }
         else ServerPackets.ConsoleMsg(u.Conn, "¡No has obtenido raíces!", 1);
         Skills.SubirSkill(userIndex, SkillBotanica); // SubirSkill 1:1 (Trabajo.bas:2268, fuera del bloque éxito)

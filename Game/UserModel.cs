@@ -207,6 +207,13 @@ public sealed class UserFlags
     public byte CheckAmigos;
     // Veces que el usuario murió (a manos de otro jugador). .chr [FLAGS] Murio. Usado por MiniStats.
     public int MuertesUsuario;
+    // Racha de kills PvP seguidas (killstreak). Se reinicia al morir y al desconectarse.
+    // Dispara sonidos: 1=FIRST_BLOOD(262), 2=DOUBLE_KILL(261), 3=TRIPLE_KILL(270), >=7=KILL_SPREE(175).
+    public int KillStreak;
+    // AFK: momento (TickCount64 ms) de la última actividad/movimiento del usuario, y si tiene la
+    // partícula de AFK activa. Si pasa AFK_TIMEOUT sin moverse, se le difunde la partícula; al moverse se quita.
+    public long LastActivityAt;
+    public bool AfkParticula;
     // Aggro: CharIndex del NPC que ataca al usuario / que el usuario ataca (0 = ninguno). VB6
     // UserFlags.AtacadoPorNpc/NPCAtacado (allí es npcindex; acá CharIndex). Se resetean al morir.
     public int AtacadoPorNpc;
@@ -285,6 +292,16 @@ public sealed class User
     public string QuienAmigo = ""; // nombre de quien envió la última solicitud de amistad pendiente
     public AntiClickState AntiClick = new(); // estado anti-autoclicker
     public int CreditoDonador; // saldo de créditos de donación (cuenta .cnt [cuenta] Creditos)
+
+    // --- Battle Pass (NUEVO, no VB6) — boosts personales temporales otorgados por el pase. ---
+    // Multiplicador y vencimiento (TickCount64 en segundos) de exp/oro EXTRA personal, encima del
+    // multiplicador global de evento. 1.0 / 0 = sin boost activo. [[battle_pass]]
+    public double ExpBoostMult = 1.0;
+    public long ExpBoostUntil;   // segundos (Environment.TickCount64/1000) hasta cuando dura
+    public double OroBoostMult = 1.0;
+    public long OroBoostUntil;
+
+    public BattlePass.Progress BattlePass; // progreso del pase de temporada (cargado al login)
 
     /// <summary>Lista de amigos inicializada con todos los slots en "Vacio" (1:1 VB6 .chr nuevo).</summary>
     public static AmigoSlot[] NuevaListaAmigos()
@@ -413,6 +430,8 @@ public sealed class User
         Pos = default;
         GuildIndex = 0; PartyId = 0; FundandoGuildAlineacion = 0;
         CreditoDonador = 0;
+        ExpBoostMult = 1.0; ExpBoostUntil = 0; OroBoostMult = 1.0; OroBoostUntil = 0;
+        BattlePass = null;
         SpellPendiente = 0;
         TargetNpcCharIndex = 0; TargetUserCharIndex = 0; Comerciando = false; Trade = null;
         TargetObj = 0; TargetMap = 0; TargetX = 0; TargetY = 0;

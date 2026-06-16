@@ -128,6 +128,10 @@ public static class Facciones
         var muerto = UserListManager.UserList[muertoIdx];
         if (atacante == null || muerto == null) return;
 
+        // Killstreak (racha de kills seguidas): suena a los cercanos del matador. Se reinicia al morir
+        // o desconectarse (UserDie/CloseUser). 1=primera sangre, 2=doble, 3=triple, >=7=racha.
+        SonarKillstreak(atacante);
+
         // Evento Cacería por Facción: contar el kill por facción del atacante (VB6: en ContarMuerte).
         CaceriaEvento.SumarKill(atacanteIdx, muertoIdx);
 
@@ -143,6 +147,9 @@ public static class Facciones
         // VB6 también excluye muerto Desnudo y TriggerZonaPelea (TRIGGER6); ambos dependen de
         // sistemas aún no portados (flag Desnudo / triggers de zona) → se omiten por ahora.
 
+        // Battle Pass: puntos de pase por kill legítimo en PvP (ya pasó nivel/newbie).
+        BattlePass.OnPvpKill(atacanteIdx);
+
         // Sumar al contador del atacante según la facción de la víctima.
         switch (muerto.Faccion.Status)
         {
@@ -152,6 +159,27 @@ public static class Facciones
             case ARMADA:      atacante.Faccion.ArmadaMatados++;       break;
             case MILICIA:     atacante.Faccion.MilicianosMatados++;   break;
             case CAOS:        atacante.Faccion.CaosMatados++;         break;
+        }
+    }
+
+    /// <summary>Avanza la racha de kills del matador y difunde el sonido correspondiente a los del mapa
+    /// cercanos a su posición (262 1ª, 261 2da, 270 3ra, 175 a partir de la 7ma).</summary>
+    private static void SonarKillstreak(User atacante)
+    {
+        atacante.flags.KillStreak++;
+        short snd = atacante.flags.KillStreak switch
+        {
+            1 => Sounds.FIRST_BLOOD,
+            2 => Sounds.DOUBLE_KILL,
+            3 => Sounds.TRIPLE_KILL,
+            _ => 0,
+        };
+        if (snd == 0) return;
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o != null && o.flags.UserLogged && o.Conn != null && o.Pos.Map == atacante.Pos.Map)
+                ServerPackets.PlayWave(o.Conn, snd, (byte)atacante.Pos.X, (byte)atacante.Pos.Y);
         }
     }
 

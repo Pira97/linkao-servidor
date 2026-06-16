@@ -911,6 +911,19 @@ public static class ServerPackets
     }
 
     /// <summary>
+    /// CharTyping: Byte(id) + Integer(CharIndex) + Byte(Typing 0|1).
+    /// Muestra/oculta la burbuja de "escribiendo" sobre un personaje. Equiv. PrepareMessageCharTyping (VB6).
+    /// </summary>
+    public static void CharTyping(Connection conn, short charIndex, byte typing)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.CharTyping);
+        p.WriteInteger(charIndex);
+        p.WriteByte(typing);
+        Send(conn, p);
+    }
+
+    /// <summary>
     /// EfectoTerrenoParticula: Byte(id) + Integer(ParticulaFx) + Byte(X) + Byte(Y) + Long(Time).
     /// Partícula sobre un tile. Time=0 → quitar; Time=1 → infinita (partículas de mapa); otro → duración.
     /// </summary>
@@ -922,6 +935,23 @@ public static class ServerPackets
         p.WriteByte(x);
         p.WriteByte(y);
         p.WriteLong(time);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// EfectoTerrenoFX: Byte(id) + Integer(fx) + Byte(X) + Byte(Y) + Integer(Loops).
+    /// FX anclado a un tile fijo del mapa (no sigue al personaje). Lo usa, p.ej., la cañita voladora:
+    /// queda en la posición donde se lanzó. Loops controla cuántos ciclos de animación dura
+    /// (0 = una animación completa; -1 = infinito).
+    /// </summary>
+    public static void EfectoTerrenoFX(Connection conn, short fx, byte x, byte y, int loops)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EfectoTerrenoFX);
+        p.WriteInteger(fx);
+        p.WriteByte(x);
+        p.WriteByte(y);
+        p.WriteInteger((short)loops);
         Send(conn, p);
     }
 
@@ -1388,6 +1418,71 @@ public static class ServerPackets
         p.WriteByte((byte)ServerPacketID.ReportNotify);
         p.WriteByte(kind);
         p.WriteASCIIString(message ?? "");
+        Send(conn, p);
+    }
+
+    // ============================================================
+    //  Battle Pass / Pase de Temporada (NUEVO, no VB6)
+    // ============================================================
+    /// <summary>
+    /// BattlePassInfo: estado completo del pase para pintar la UI.
+    ///   Long seasonId, ASCIIString nombre, Byte nivelesMax, Long puntosPorNivel,
+    ///   Long puntos, Byte nivel, Byte premium, Long precioCredito, Long precioMP,
+    ///   Byte count, count×[Byte nivel, ASCIIString freeDesc, ASCIIString premDesc,
+    ///                       Byte reclamadoFree, Byte reclamadoPrem]
+    /// </summary>
+    public static void BattlePassInfo(Connection conn, Game.BattlePass.Season season,
+        Game.BattlePass.Progress prog, List<(int level, string free, string prem)> descs, string comoGanar,
+        List<(string desc, int actual, int objetivo, bool completada, int puntos)> misiones)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.BattlePassInfo);
+        p.WriteLong(season.Id);
+        p.WriteASCIIString(season.Nombre ?? "");
+        p.WriteByte((byte)System.Math.Min(season.NivelesMax, 255));
+        p.WriteLong(season.PuntosPorNivel);
+        p.WriteLong(prog.Puntos);
+        p.WriteByte((byte)System.Math.Min(prog.Nivel, 255));
+        p.WriteByte((byte)(prog.Premium ? 1 : 0));
+        p.WriteLong(season.PrecioCredito);
+        p.WriteLong(season.PrecioMercadoPago);
+        p.WriteASCIIString(comoGanar ?? "");
+
+        byte n = (byte)System.Math.Min(descs.Count, 255);
+        p.WriteByte(n);
+        for (int i = 0; i < n; i++)
+        {
+            var d = descs[i];
+            p.WriteByte((byte)System.Math.Min(d.level, 255));
+            p.WriteASCIIString(d.free ?? "");
+            p.WriteASCIIString(d.prem ?? "");
+            p.WriteByte((byte)(prog.ReclamadosFree.Contains(d.level) ? 1 : 0));
+            p.WriteByte((byte)(prog.ReclamadosPrem.Contains(d.level) ? 1 : 0));
+        }
+
+        // Misiones: Byte count, count×[ASCIIString desc, Integer actual, Integer objetivo, Byte completada, Integer puntos]
+        byte nm = (byte)System.Math.Min(misiones.Count, 255);
+        p.WriteByte(nm);
+        for (int i = 0; i < nm; i++)
+        {
+            var m = misiones[i];
+            p.WriteASCIIString(m.desc ?? "");
+            p.WriteInteger((short)System.Math.Min(m.actual, short.MaxValue));
+            p.WriteInteger((short)System.Math.Min(m.objetivo, short.MaxValue));
+            p.WriteByte((byte)(m.completada ? 1 : 0));
+            p.WriteInteger((short)System.Math.Min(m.puntos, short.MaxValue));
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>BattlePassUpdate: Long puntos, Byte nivel, ASCIIString mensaje.</summary>
+    public static void BattlePassUpdate(Connection conn, int puntos, byte nivel, string mensaje)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.BattlePassUpdate);
+        p.WriteLong(puntos);
+        p.WriteByte(nivel);
+        p.WriteASCIIString(mensaje ?? "");
         Send(conn, p);
     }
 

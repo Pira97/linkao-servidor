@@ -165,4 +165,12 @@ public enum ClientPacketID : short
 
     // --- Recarga global del editor de objetos (NUEVO, no VB6) ---
     ObjEditorReloadAll = 150,     // (sin payload) relee TODO el obj.dat de disco en caliente (GM)
+
+    // --- Bots de prueba invocables (NUEVO, no VB6) ---
+    SpawnBot = 151,               // ASCIIString clase ("all" = uno de cada), Byte raza (0=default)
+
+    // --- Battle Pass / Pase de Temporada (NUEVO, no VB6) ---
+    BattlePassRequest = 152,      // (sin payload) pide el estado completo del pase
+    BattlePassClaim = 153,        // Byte nivel, Byte carril (0=gratis, 1=premium)
+    BattlePassBuy = 154,          // Byte metodo (0=créditos donador, 1=MercadoPago)
 }

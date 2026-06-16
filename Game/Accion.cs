@@ -311,6 +311,16 @@ public static class Accion
             if (u.flags.Muerto == 1)
             {
                 Combat.Resucitar(userIndex);
+                // El sonido de revivir SOLO suena cuando te revive el sacerdote (no en hechizos de resu).
+                for (int i = 1; i <= UserListManager.LastUser; i++)
+                {
+                    var o = UserListManager.UserList[i];
+                    if (o != null && o.flags.UserLogged && o.Conn != null && o.Pos.Map == map)
+                    {
+                        ServerPackets.PlayWave(o.Conn, Sounds.RESUCITADO, (byte)u.Pos.X, (byte)u.Pos.Y); // 204
+                        ServerPackets.PlayWave(o.Conn, Sounds.RESUCITAR, (byte)u.Pos.X, (byte)u.Pos.Y);  // 84
+                    }
+                }
                 ServerPackets.ConsoleMsg(u.Conn, "¡Has sido revivido!", FONT_INFO);
                 return;
             }
@@ -328,7 +338,7 @@ public static class Accion
                     var o = UserListManager.UserList[i];
                     if (o != null && o.flags.UserLogged && o.Conn != null && o.Pos.Map == map)
                     {
-                        ServerPackets.PlayWave(o.Conn, Sounds.SANAR, (byte)u.Pos.X, (byte)u.Pos.Y);
+                        ServerPackets.PlayWave(o.Conn, Sounds.SANAR_HERIDAS, (byte)u.Pos.X, (byte)u.Pos.Y);
                         ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, 28, 100f, false);
                     }
                 }
@@ -338,6 +348,17 @@ public static class Accion
             // Si el sacerdote te atiende (tu ciudad o ciudad neutral que atiende a todos),
             // ofrece fijar este mapa como tu hogar (ShowMessageBox accion 5 → SeleccionarHogar caso 1).
             u.TargetNpcCharIndex = npc.CharIndex;
+            // Si este mapa YA es tu hogar, no preguntar de nuevo: avisar por consola.
+            int equidadHogar = u.Hogar switch
+            {
+                1 => 34, 2 => 194, 3 => 1, 4 => 59, 5 => 20, 6 => 37, 7 => 62,
+                8 => 151, 9 => 218, 10 => 180, 11 => 185, 12 => 111, _ => 0,
+            };
+            if (u.Pos.Map == equidadHogar)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "Ya asignaste esta ciudad como tu hogar.", FONT_INFO);
+                return;
+            }
             ServerPackets.ShowMessageBox(u.Conn, "¿Deseas establecer esta ciudad como tu hogar?", true, 5);
             return;
         }

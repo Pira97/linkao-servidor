@@ -235,6 +235,13 @@ public static class PacketHandler
             case ClientPacketID.ObjEditorDetailRequest: HandleObjEditorDetailRequest(conn); return true;
             case ClientPacketID.ObjEditorSave:          HandleObjEditorSave(conn);          return true;
             case ClientPacketID.ObjEditorReloadAll:     HandleObjEditorReloadAll(conn);     return true;
+            case ClientPacketID.SpawnBot:               HandleSpawnBot(conn);               return true;
+
+            // --- Battle Pass / Pase de Temporada (NUEVO, no VB6) ---
+            case ClientPacketID.BattlePassRequest:      HandleBattlePassRequest(conn);      return true;
+            case ClientPacketID.BattlePassClaim:        HandleBattlePassClaim(conn);        return true;
+            case ClientPacketID.BattlePassBuy:          HandleBattlePassBuy(conn);          return true;
+
             case ClientPacketID.NpcCatalogRequest:      HandleNpcCatalogRequest(conn);      return true;
             case ClientPacketID.TorneoAction:           HandleTorneoAction(conn);           return true;
             case ClientPacketID.QueryMapNpcs:           HandleQueryMapNpcs(conn);           return true;
@@ -727,6 +734,13 @@ public static class PacketHandler
                 var o = Game.UserListManager.UserList[i];
                 if (o.flags.UserLogged && o.Conn != null) ServerPackets.ConsoleMsg(o.Conn, anuncio, 5);
             }
+            // Sonido de casamiento entre usuarios (140) a la pareja y a los del mapa del sacerdote.
+            for (int i = 1; i <= Game.UserListManager.LastUser; i++)
+            {
+                var o = Game.UserListManager.UserList[i];
+                if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                    ServerPackets.PlayWave(o.Conn, Game.Sounds.CASAMIENTO_USERS, (byte)u.Pos.X, (byte)u.Pos.Y);
+            }
             return;
         }
 
@@ -1007,6 +1021,11 @@ public static class PacketHandler
         // la cuenta regresiva de un combate de torneo.
         if (u.flags.Paralizado == 0 && u.flags.Inmovilizado == 0 && !u.flags.TorneoCongelado)
             Game.Movement.MoveUserChar(conn.UserIndex, heading);
+        else
+            // Paralizado/inmovilizado/congelado: el cliente igual predijo el paso localmente. Como el
+            // server NO lo movió, hay que reenviarle su posición real (PosUpdate) para resincronizar;
+            // si no, el personaje queda "buggeado" adelantado respecto del server. (VB6 WritePosUpdate.)
+            ServerPackets.PosUpdate(conn, (byte)u.Pos.X, (byte)u.Pos.Y);
     }
 
     /// <summary>
@@ -1080,6 +1099,39 @@ public static class PacketHandler
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (!u.flags.UserLogged) return;
         Game.ReportManager.Create(conn.UserIndex, cat, subject, body);
+    }
+
+    // --- Battle Pass / Pase de Temporada (NUEVO, no VB6) ---
+    /// <summary>BattlePassRequest: sin payload. Reenvía el estado completo del pase.</summary>
+    private static void HandleBattlePassRequest(Connection conn)
+    {
+        conn.IncomingData.ReadByte(); // id
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (!u.flags.UserLogged) return;
+        Game.BattlePass.OnLogin(conn.UserIndex); // recarga+envía estado (idempotente)
+    }
+
+    /// <summary>BattlePassClaim: Byte(nivel), Byte(carril 0=gratis/1=premium).</summary>
+    private static void HandleBattlePassClaim(Connection conn)
+    {
+        var b = conn.IncomingData;
+        b.ReadByte(); // id
+        byte nivel = b.ReadByte();
+        byte carril = b.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (!u.flags.UserLogged) return;
+        Game.BattlePass.Claim(conn.UserIndex, nivel, carril);
+    }
+
+    /// <summary>BattlePassBuy: Byte(metodo 0=créditos/1=MercadoPago).</summary>
+    private static void HandleBattlePassBuy(Connection conn)
+    {
+        var b = conn.IncomingData;
+        b.ReadByte(); // id
+        byte metodo = b.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (!u.flags.UserLogged) return;
+        Game.BattlePass.BuyPremium(conn.UserIndex, metodo);
     }
 
     /// <summary>ReportListRequest: Byte(filter).</summary>
@@ -1221,6 +1273,18 @@ public static class PacketHandler
     {
         conn.IncomingData.ReadByte(); // id
         Game.ObjEditor.ReloadAll(conn);
+    }
+
+    /// <summary>SpawnBot: Byte(id) ASCIIString(clase) Byte(raza). Invoca bot(s) que pelean (GM).</summary>
+    private static void HandleSpawnBot(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 2) throw new NotEnoughDataException();
+        b.ReadByte(); // id
+        string clase = b.ReadASCIIString();
+        byte raza = b.ReadByte();
+        byte faccion = b.ReadByte();   // 0=ninguna, 1=Armada, 2=Milicia, 3=Caos
+        Game.Chat.SpawnBotsDesdePacket(conn.UserIndex, clase, raza, faccion);
     }
 
     /// <summary>HandleRequestPositionUpdate. Cable: solo Byte(id). Responde PosUpdate.</summary>
@@ -2253,8 +2317,19 @@ public static class PacketHandler
     {
         var b = conn.IncomingData;
         if (b.Length < 2) throw new NotEnoughDataException();
-        b.ReadByte(); b.ReadByte();   // id + flag typing (sin lógica por ahora)
-        // TODO: difundir CharTyping(163) a los del área para mostrar el indicador.
+        b.ReadByte();
+        byte typingFlag = b.ReadByte();
+
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u?.flags.UserLogged != true) return;
+
+        // Difunde CharTyping(163) a los demás del área (VB6: SendData ToPCAreaButIndex).
+        for (int i = 1; i <= Game.UserListManager.LastUser; i++)
+        {
+            var o = Game.UserListManager.UserList[i];
+            if (o?.flags.UserLogged == true && o.Conn != null && o.Conn != conn && o.Pos.Map == u.Pos.Map)
+                ServerPackets.CharTyping(o.Conn, u.Char.CharIndex, typingFlag);
+        }
     }
 
     /// <summary>SaveMacrosConfig. Cable: Byte(id) + ASCIIString(blob). Persiste el blob en &lt;NOMBRE&gt;.mac.</summary>

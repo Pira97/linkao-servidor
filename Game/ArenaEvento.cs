@@ -11,7 +11,7 @@ namespace ServidorCS.Game;
 public static class ArenaEvento
 {
     private const byte LEVEL_MIN = 40, LEVEL_MAX = 50;
-    private const int ARENA_MAP = 859;
+    public const int ARENA_MAP = 859;
     private const byte FONT_INFO = 3, FONT_INFOBOLD = 4, FONT_SERVER = 8, FONT_FIGHT = 5;
 
     private sealed class Arena

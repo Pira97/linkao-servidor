@@ -29,6 +29,8 @@ public static class NpcData
         public short Snd1, Snd2, Snd3;
         // Equipamiento visible (NPCs.dat): anims de arma/escudo/casco (guardias, etc.). Se mandan en CharacterCreate.
         public short WeaponAnim, ShieldAnim, CascoAnim;
+        // Auras por slot (bots): del campo Aura de cada ítem sacro. 0 = sin aura.
+        public short Aura, AuraArma, AuraEscudo, AuraCasco;
         // AguaValida (NPCs.dat): 1 = puede pisar agua (criaturas marinas). 0 = bloqueado por agua.
         public bool AguaValida;
         // TierraInvalida (NPCs.dat "TierraInValida"): 1 = NO puede pisar tierra (criatura solo-agua).
@@ -41,6 +43,14 @@ public static class NpcData
     {
         EnsureLoaded();
         return _cache.TryGetValue(npcIndex, out var n) ? n : default;
+    }
+
+    /// <summary>Registra/define un NPC en memoria (sin tocar NPCs.dat). Lo usa el sistema de
+    /// bots para crear definiciones sintéticas en índices altos. Sobrescribe si ya existe.</summary>
+    public static void Register(int npcIndex, NpcInfo info)
+    {
+        EnsureLoaded();
+        _cache[npcIndex] = info;
     }
 
     /// <summary>Catálogo resumido (índice + nombre + tipo) de todos los NPCs cargados,

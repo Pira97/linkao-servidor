@@ -19,10 +19,18 @@ output.log
 # Config propia de cada maquina (la VM mantiene la suya)
 Server.ini
 
-# --- Datos vivos: NUNCA se versionan (la VM mantiene los suyos) ---
+# --- Datos vivos de jugadores: NUNCA se versionan (la VM mantiene los suyos) ---
 Charfile/
 Cuentas/
-Dat/
-Maps/
 GUILDS/
 Backups/
+
+# --- Maps: no se editan en vivo; la VM ya los tiene. No los subimos. ---
+Maps/
+
+# NOTA: Dat/ (obj.dat y demas .dat) SI se versiona: se edita en LOCAL y se sube.
+#       Local manda. Backups/temporales de esa carpeta NO se suben:
+Dat/*.backup_*
+Dat/*.bak
+Dat/_*.py
+Dat/*.backup

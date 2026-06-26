@@ -206,8 +206,14 @@ public static class MercadoPago
 
             var (ok, aprobado, revertido) = await ConsultarPagoAsync(p.ExtRef);
             if (!ok) continue;
-            if (p.Estado == "PENDIENTE" && aprobado) AcreditarCompra(p);
-            else if (p.Estado == "ACREDITADO" && revertido && !aprobado) RevertirCompra(p);
+            // Acreditar/revertir muta UserList[] (créditos) y manda packets: bajo GameLock para no
+            // pisar a un handler o al tick (este hilo de polling es OTRO mutador del mundo). Orden
+            // GameLock→_lock igual que los handlers (RequestShopData/ShopBuyItem) → sin deadlock.
+            lock (UserListManager.GameLock)
+            {
+                if (p.Estado == "PENDIENTE" && aprobado) AcreditarCompra(p);
+                else if (p.Estado == "ACREDITADO" && revertido && !aprobado) RevertirCompra(p);
+            }
         }
     }
 

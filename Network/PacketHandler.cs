@@ -27,6 +27,10 @@ public static class PacketHandler
     {
         var incoming = conn.IncomingData;
 
+        // GameLock (mundo) ANTES de incoming (cola de la conexión): mientras un handler corre, ni el
+        // tick de IA ni otra conexión ni una desconexión pueden mutar UserList/NPCs/visibilidad a la
+        // vez. Restaura la semántica monohilo del VB6 que estos handlers asumen. Ver UserListManager.GameLock.
+        lock (Game.UserListManager.GameLock)
         lock (incoming)
         {
             while (incoming.Length > 0)

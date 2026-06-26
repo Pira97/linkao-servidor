@@ -92,7 +92,10 @@ public sealed class GameServer
     {
         _connections.TryRemove(conn.UserIndex, out _);
         AntiDos.Liberar(conn.RemoteIp); // liberar el cupo de la IP
-        Game.UserListManager.CloseUser(conn.UserIndex);
+        // CloseUser muta UserList/visibilidad de otros (CharacterRemove, AreaVisibility.OnUserLeave):
+        // bajo GameLock para no pisarse con un handler o con el tick de IA corriendo en otro hilo.
+        lock (Game.UserListManager.GameLock)
+            Game.UserListManager.CloseUser(conn.UserIndex);
         conn.Close();
         Console.WriteLine($"[ServidorCS] Conexión #{conn.UserIndex} cerrada");
     }
@@ -106,43 +109,60 @@ public sealed class GameServer
             double nextBackup = Environment.TickCount64 / 1000.0 + BackupSeconds;
             while (!ct.IsCancellationRequested)
             {
-                // IA de NPCs en cada ciclo (~10ms). El ritmo real de cada NPC lo limita
-                // NextAiAt (~376ms); el muestreo fino (10ms) evita que el redondeo del ciclo
-                // empuje el intervalo muy por encima de los 376ms de animación del cliente.
-                Game.NpcManager.TickAI();
-
-                // Evento "El Barrido": criatura de movimiento rápido (su propio ritmo lo limita
-                // MOVE_INTERVAL_MS internamente; el muestreo fino de ~10ms le da fluidez).
-                Game.BarridoEvento.Tick();
-
-                // Veneno/incineración a ~500ms (50×10ms): el VB6 los aplica cada IntervaloVeneno=500ms (2Hz).
-                if (tick % 50 == 0) Game.GameTimer.TickEfectosDanio();
-
-                // Respawn de NPCs, efectos de estado y eventos ~1 vez por segundo (100×10ms).
-                if (++tick >= 100) { tick = 0; Game.NpcManager.TickRespawns(); Game.Combat.TickEstados(); Game.Events.Tick(); Game.GameTimer.Tick(); Game.Clima.Tick(); Game.DayNightCycle.Tick(); Game.Ruleta.Tick(); Game.InframundoEvento.Verificar(); Game.ArenaEvento.Procesar(); Game.TorneoEvento.Procesar(); Game.Subastas.CheckExpirations();
-                    Game.Centinela.CallUserAttention();
-                    if (++_minuteCounter >= 60) { _minuteCounter = 0; Game.Centinela.PasarMinuto(); Game.WorldCleanup.PasarMinuto(); Game.Jail.PurgarPenas(); } }
-
-                // Flush DESPUÉS de generar los moves: así el CharacterMove se envía en el mismo
-                // ciclo en que se genera, no en el siguiente. Antes, hacer flush primero metía
-                // 0-10ms de latencia variable en la LLEGADA al cliente (jitter) aunque el move
-                // se generara a 375ms regular → micro-gaps irregulares en la caminata.
-                foreach (var conn in _connections.Values)
-                    await conn.FlushAsync();
-
-                // Autosave periódico de todos los usuarios logueados.
-                double now = Environment.TickCount64 / 1000.0;
-                if (now >= nextAutosave)
+                try
                 {
-                    nextAutosave = now + AutosaveSeconds;
-                    Game.CharSaver.SaveAllOnline();
+                    // --- Lógica del mundo bajo GameLock: misma semántica monohilo que el VB6. Mientras
+                    //     corre el tick, ningún handler de packets ni OnClose puede mutar el mundo. No se
+                    //     puede mantener un lock a través de un await, así que el flush de red y el
+                    //     Task.Delay quedan FUERA del lock.
+                    lock (Game.UserListManager.GameLock)
+                    {
+                        // IA de NPCs en cada ciclo (~10ms). El ritmo real de cada NPC lo limita
+                        // NextAiAt (~376ms); el muestreo fino (10ms) evita que el redondeo del ciclo
+                        // empuje el intervalo muy por encima de los 376ms de animación del cliente.
+                        Game.NpcManager.TickAI();
+
+                        // Evento "El Barrido": criatura de movimiento rápido (su propio ritmo lo limita
+                        // MOVE_INTERVAL_MS internamente; el muestreo fino de ~10ms le da fluidez).
+                        Game.BarridoEvento.Tick();
+
+                        // Veneno/incineración a ~500ms (50×10ms): el VB6 los aplica cada IntervaloVeneno=500ms (2Hz).
+                        if (tick % 50 == 0) Game.GameTimer.TickEfectosDanio();
+
+                        // Respawn de NPCs, efectos de estado y eventos ~1 vez por segundo (100×10ms).
+                        if (++tick >= 100) { tick = 0; Game.NpcManager.TickRespawns(); Game.Combat.TickEstados(); Game.Events.Tick(); Game.GameTimer.Tick(); Game.Clima.Tick(); Game.DayNightCycle.Tick(); Game.Ruleta.Tick(); Game.InframundoEvento.Verificar(); Game.ArenaEvento.Procesar(); Game.TorneoEvento.Procesar(); Game.Subastas.CheckExpirations();
+                            Game.Centinela.CallUserAttention();
+                            if (++_minuteCounter >= 60) { _minuteCounter = 0; Game.Centinela.PasarMinuto(); Game.WorldCleanup.PasarMinuto(); Game.Jail.PurgarPenas(); } }
+
+                        // Autosave / backup: bajo el lock para tomar un snapshot consistente del mundo
+                        // (igual que el VB6, que guardaba en su único hilo).
+                        double now = Environment.TickCount64 / 1000.0;
+                        if (now >= nextAutosave)
+                        {
+                            nextAutosave = now + AutosaveSeconds;
+                            Game.CharSaver.SaveAllOnline();
+                        }
+                        if (now >= nextBackup)
+                        {
+                            nextBackup = now + BackupSeconds;
+                            Game.Backup.Snapshot();
+                        }
+                    }
+
+                    // Flush DESPUÉS de generar los moves: así el CharacterMove se envía en el mismo
+                    // ciclo en que se genera, no en el siguiente. Antes, hacer flush primero metía
+                    // 0-10ms de latencia variable en la LLEGADA al cliente (jitter) aunque el move
+                    // se generara a 375ms regular → micro-gaps irregulares en la caminata.
+                    foreach (var conn in _connections.Values)
+                        await conn.FlushAsync();
                 }
-
-                // Snapshot de backup con timestamp (recuperación ante desastre) cada BackupSeconds.
-                if (now >= nextBackup)
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
                 {
-                    nextBackup = now + BackupSeconds;
-                    Game.Backup.Snapshot();
+                    // Blindaje: una excepción suelta en el tick NO debe matar el bucle. Antes la tarea
+                    // moría callada (sólo capturaba OperationCanceledException) y el server quedaba
+                    // "congelado" sin ningún error visible. Ahora se loguea y se sigue al ciclo siguiente.
+                    Console.WriteLine($"[ServidorCS][FlushLoop] excepción en el tick (se ignora y continúa): {ex}");
                 }
 
                 await Task.Delay(10, ct); // ~100 flush/seg (muestreo fino para la IA de NPCs)

@@ -10,6 +10,20 @@ public static class UserListManager
 {
     public const int MaxUsers = 1000;
 
+    /// <summary>
+    /// Candado global del estado del mundo. El server VB6 era de UN solo hilo: toda la lógica
+    /// (mover, atacar, loguear, IA de NPCs, eventos) corría secuencialmente, así que el código
+    /// migrado asume que NADIE más toca UserList[]/NPCs/HashSets de visibilidad mientras él los
+    /// modifica. En C# eso se rompió: hay un hilo de recepción POR conexión (handlers de packets),
+    /// el hilo del flush/IA (TickAI, TickRespawns, eventos) y OnClose (desconexión) mutando el mismo
+    /// estado A LA VEZ. Un HashSet de visibilidad mutado por dos hilos lanza excepción; si cae en el
+    /// hilo del flush, la tarea muere callada y el server se "congela" sin error (bug de login).
+    /// Tomar SIEMPRE este lock alrededor de cualquier mutación del mundo restaura la semántica
+    /// monohilo del VB6. Es el lock más externo: si se anida con otros (incoming/_gate de subsistemas)
+    /// va primero, para que el orden sea consistente y no haya deadlock.
+    /// </summary>
+    public static readonly object GameLock = new();
+
     // 1..MaxUsers (índice 0 ignorado).
     public static readonly User[] UserList = new User[MaxUsers + 1];
 

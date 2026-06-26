@@ -1,11 +1,9 @@
 {
   "Season": 2,
-  "Puntos": 11,
+  "Puntos": 0,
   "Nivel": 1,
   "Premium": false,
-  "ReclamadosFree": [
-    1
-  ],
+  "ReclamadosFree": [],
   "ReclamadosPrem": [],
   "Titulo": "",
   "MisionProgreso": {},

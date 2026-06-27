@@ -184,6 +184,7 @@ public static class PacketHandler
             case ClientPacketID.BankExtractGold:       HandleBankExtractGold(conn);       return true;
             case ClientPacketID.PartyCreate:           HandlePartyCreate(conn);           return true;
             case ClientPacketID.PartyJoin:             HandlePartyJoin(conn);             return true;
+            case ClientPacketID.PartyInviteByName:     HandlePartyInviteByName(conn);     return true;
             case ClientPacketID.PartyLeave:            HandlePartyLeave(conn);            return true;
             case ClientPacketID.PartyMessage:          HandlePartyMessage(conn);          return true;
             case ClientPacketID.PartyAccept:           HandlePartyAccept(conn);           return true;
@@ -210,6 +211,8 @@ public static class PacketHandler
             case ClientPacketID.DelAmigos:             HandleDelAmigos(conn);             return true;
             case ClientPacketID.MsgAmigos:             HandleMsgAmigos(conn);             return true;
             case ClientPacketID.OnAmigos:              HandleOnAmigos(conn);              return true;
+            case ClientPacketID.RequestAmigosList:     HandleRequestAmigosList(conn);     return true;
+            case ClientPacketID.AmigoReject:           HandleAmigoReject(conn);           return true;
             case ClientPacketID.RequestStats:          HandleRequestStats(conn);          return true;
             case ClientPacketID.UpTime:                HandleUpTime(conn);                return true;
             case ClientPacketID.ArenaJoin:             HandleArenaJoin(conn);             return true;
@@ -1458,6 +1461,25 @@ public static class PacketHandler
         if (u.flags.UserLogged) Game.Social.OnAmigos(conn.UserIndex);
     }
 
+    /// <summary>HandleRequestAmigosList (155, NUEVO no VB6). Cable: solo Byte(id). Devuelve AmigosList (182).</summary>
+    private static void HandleRequestAmigosList(Connection conn)
+    {
+        conn.IncomingData.ReadByte();       // id
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.Social.SendAmigosList(conn.UserIndex);
+    }
+
+    /// <summary>HandleAmigoReject (156, NUEVO no VB6). Cable: Byte(id) + ASCII(nombre del solicitante).</summary>
+    private static void HandleAmigoReject(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();                       // id
+        string nombre = b.ReadASCIIString();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.Social.RejectAmigo(conn.UserIndex, nombre);
+    }
+
     /// <summary>HandleResuscitationToggle (Protocol.bas:2393). Cable: solo Byte(id). Alterna SeguroResu (LocaleMsg 14/15).</summary>
     private static void HandleResuscitationSafeToggle(Connection conn)
     {
@@ -2146,6 +2168,17 @@ public static class PacketHandler
         b.ReadByte(); short ci = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (u.flags.UserLogged) Game.PartySystem.Join(conn.UserIndex, ci);
+    }
+
+    /// <summary>HandlePartyInviteByName (157, NUEVO no VB6). Cable: Byte(id) + ASCII(nombre).</summary>
+    private static void HandlePartyInviteByName(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();                       // id
+        string nombre = b.ReadASCIIString();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.PartySystem.JoinByName(conn.UserIndex, nombre);
     }
 
     /// <summary>HandlePartyLeave. Cable: solo Byte(id).</summary>

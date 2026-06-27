@@ -77,6 +77,20 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>WriteUpdateTagAndStatus (PrepareMessageUpdateTagAndStatus). Orden VB6:
+    /// Byte(id) Int(CharIndex) ASCIIString(Tag) Byte(Status) Byte(Donador).
+    /// El Tag es "Nombre &lt;Clan&gt;" (o solo "Nombre"); el cliente extrae el clan.</summary>
+    public static void UpdateTagAndStatus(Connection conn, short charIndex, string tag, byte status, byte donador)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.UpdateTagAndStatus);
+        p.WriteInteger(charIndex);
+        p.WriteASCIIString(tag);
+        p.WriteByte(status);
+        p.WriteByte(donador);
+        Send(conn, p);
+    }
+
     /// <summary>WriteUserIndexInServer: Byte(ID) + Integer(UserIndex).</summary>
     public static void UserIndexInServer(Connection conn, short userIndex)
     {
@@ -455,11 +469,14 @@ public static class ServerPackets
         Send(conn, p);
     }
 
-    /// <summary>WriteCommerceInit: Byte(id). Abre la ventana de comercio en el cliente.</summary>
-    public static void CommerceInit(Connection conn)
+    /// <summary>WriteCommerceInit: Byte(id) + Byte(compra). Abre la ventana de comercio.
+    /// compra=1 el NPC compra al usuario (muestra inventario y botón Vender); 0 = solo vende.</summary>
+    public static void CommerceInit(Connection conn, bool compra = true, bool esViajes = false)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.CommerceInit);
+        p.WriteByte((byte)(compra ? 1 : 0));      // 1 = el NPC compra ítems al usuario
+        p.WriteByte((byte)(esViajes ? 1 : 0));    // 1 = transportador → abrir form de Viajar
         Send(conn, p);
     }
 
@@ -1265,6 +1282,38 @@ public static class ServerPackets
             p.WriteASCIIString(e.Nombre ?? "");
             p.WriteLong(e.Total);
         }
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// WriteAmigosList (182, NUEVO no VB6): Byte(id) + Byte(count) + por amigo:
+    /// ASCII(nombre) + Byte(online 0/1) + Integer(mapa). Alimenta el panel de la solapa Amigos.
+    /// </summary>
+    public static void AmigosList(Connection conn, System.Collections.Generic.List<(string Nombre, bool Online, int Mapa)> amigos)
+    {
+        if (conn == null) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.AmigosList);
+        p.WriteByte((byte)amigos.Count);
+        foreach (var a in amigos)
+        {
+            p.WriteASCIIString(a.Nombre ?? "");
+            p.WriteByte((byte)(a.Online ? 1 : 0));
+            p.WriteInteger((short)a.Mapa);
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// WriteAmigoRequest (183, NUEVO no VB6): Byte(id) + ASCII(nombre del solicitante).
+    /// nombre="" limpia la solicitud pendiente en el panel del cliente.
+    /// </summary>
+    public static void AmigoRequest(Connection conn, string nombre)
+    {
+        if (conn == null) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.AmigoRequest);
+        p.WriteASCIIString(nombre ?? "");
         Send(conn, p);
     }
 

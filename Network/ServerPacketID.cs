@@ -163,4 +163,8 @@ public enum ServerPacketID : short
     // --- Battle Pass / Pase de Temporada (NUEVO, no VB6) ---
     BattlePassInfo = 180,   // estado completo: temporada + tabla de niveles + flags de reclamado
     BattlePassUpdate = 181, // Long puntos, Byte nivel, ASCIIString mensaje (push tras ganar puntos/acción)
+
+    // --- Lista de amigos para el panel de la solapa Amigos (NUEVO, no VB6) ---
+    AmigosList = 182,       // Byte count, count×[ASCIIString nombre, Byte online (0/1), Integer mapa]
+    AmigoRequest = 183,     // ASCIIString nombre del solicitante ("" = no hay solicitud pendiente)
 }

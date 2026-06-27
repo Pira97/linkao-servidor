@@ -45,9 +45,26 @@ public static class PartySystem
     /// <summary>HandlePartyJoin (Protocol.bas:20900): el líder invita al PJ con ese CharIndex.</summary>
     public static void Join(int userIndex, short targetCharIndex)
     {
-        var u = UserListManager.UserList[userIndex];
         int target = FindUserByCharIndex(targetCharIndex);
         if (target == 0) { Msg(userIndex, ">> El jugador no está disponible."); return; }
+        JoinTarget(userIndex, target);
+    }
+
+    /// <summary>
+    /// (NUEVO, no VB6) Invitar al grupo por NOMBRE (desde el panel de Amigos). El server resuelve
+    /// el userIndex global igual que Join por CharIndex (no requiere cercanía).
+    /// </summary>
+    public static void JoinByName(int userIndex, string name)
+    {
+        int target = UserListManager.NameIndex(name);
+        if (target == 0) { Msg(userIndex, $">> {name} no está conectado."); return; }
+        JoinTarget(userIndex, target);
+    }
+
+    /// <summary>Lógica común de invitación (1:1 HandlePartyJoin) ya resuelto el target userIndex.</summary>
+    private static void JoinTarget(int userIndex, int target)
+    {
+        var u = UserListManager.UserList[userIndex];
         var t = UserListManager.UserList[target];
         if (!t.flags.UserLogged) { Msg(userIndex, ">> El jugador no está conectado."); return; }
         if (target == userIndex) { Msg(userIndex, ">> No puedes invitarte a ti mismo al grupo."); return; }

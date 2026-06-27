@@ -168,7 +168,26 @@ public static class Commerce
     {
         var u = UserListManager.UserList[userIndex];
         u.Comerciando = true;
-        ServerPackets.CommerceInit(u.Conn);
+        u.ComercioNpcNoCompra = npc.NoCompra;   // recordar si este NPC compra (para validar la venta)
+
+        // ¿Es transportador? El cliente abre el form de Viajar (sin inventario del usuario) en vez del
+        // comercio normal. Lo decide el server porque los slots del NPC se envían DESPUÉS del CommerceInit
+        // (el cliente todavía no los tiene al elegir qué ventana abrir). Transportador = NpcType 7, o un
+        // NPC cuyo inventario es 100% Pasajes (otPasajes).
+        bool esViajes = npc.NpcType == 7;
+        if (!esViajes && npc.Inventario != null)
+        {
+            bool any = false, allPasajes = true;
+            foreach (var (objIndex, _) in npc.Inventario)
+            {
+                if (objIndex <= 0) continue;
+                any = true;
+                if (ObjData.Get(objIndex).Type != ObjType.Pasajes) { allPasajes = false; break; }
+            }
+            esViajes = any && allPasajes;
+        }
+
+        ServerPackets.CommerceInit(u.Conn, !npc.NoCompra, esViajes);
 
         if (npc.Inventario != null)
         {
@@ -321,6 +340,11 @@ public static class Commerce
     {
         var u = UserListManager.UserList[userIndex];
         if (!u.Comerciando || amount <= 0) return;
+        if (u.ComercioNpcNoCompra)   // NPC que solo vende: no compra ítems al usuario
+        {
+            ServerPackets.ConsoleMsg(u.Conn, "Este mercader no compra objetos.", 1);
+            return;
+        }
         if (slot < 1 || slot > Constants.MAX_INVENTORY_SLOTS) return;
         ref var item = ref u.Invent.Object[slot];
         if (item.ObjIndex == 0) return;

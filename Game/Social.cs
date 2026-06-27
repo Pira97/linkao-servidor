@@ -41,14 +41,34 @@ public static class Social
 
         if (caso == 1) // Mandar solicitud de amistad
         {
-            if (IntentarAgregarAmigo(userIndex, tUser, out string razon))
+            // Validaciones del lado del solicitante (NO requieren que el otro esté online).
+            if (string.Equals(u.Name, nombre, StringComparison.OrdinalIgnoreCase))
+            { ServerPackets.ConsoleMsg(u.Conn, "No puedes agregarte a tu propia lista de amigos.", FONT_INFO); return; }
+            if (NoTieneEspacioAmigos(u))
+            { ServerPackets.ConsoleMsg(u.Conn, "La lista de amigos está llena.", FONT_INFO); return; }
+            if (BuscarSlotAmigoName(u, nombre))
+            { ServerPackets.ConsoleMsg(u.Conn, nombre + " ya está en tu lista de amigos.", FONT_INFO); return; }
+
+            if (tUser > 0)
             {
+                // Destinatario ONLINE: validación extra (su lista llena) + aviso en vivo.
                 var t = UserListManager.UserList[tUser];
+                if (NoTieneEspacioAmigos(t))
+                { ServerPackets.ConsoleMsg(u.Conn, "La lista de amigos del jugador está llena.", FONT_INFO); return; }
                 ServerPackets.ConsoleMsg(u.Conn, $"{t.Name} fue agregado a tu lista de amigos, espera confirmación.", FONT_INFO);
-                ServerPackets.ConsoleMsg(t.Conn, $"{u.Name} te agregó a tu lista de amigos, para aceptarlo ingresa /FACCEPT {u.Name}.", FONT_INFO);
+                ServerPackets.ConsoleMsg(t.Conn, $"{u.Name} te envió una solicitud de amistad. Abrí la solapa Amigos para aceptarla o rechazarla.", FONT_INFO);
                 t.QuienAmigo = u.Name;
+                ServerPackets.AmigoRequest(t.Conn, u.Name);     // que aparezca en su panel
+                AmigoRequestStore.Set(t.Name, u.Name);          // persistir por si se desconecta sin aceptar
             }
-            else ServerPackets.ConsoleMsg(u.Conn, razon, FONT_INFO);
+            else
+            {
+                // Destinatario OFFLINE: si el personaje existe, persistir la solicitud (se entrega al loguear).
+                if (!CharLoader.PersonajeExiste(nombre))
+                { ServerPackets.ConsoleMsg(u.Conn, "Ese personaje no existe.", FONT_INFO); return; }
+                AmigoRequestStore.Set(nombre, u.Name);
+                ServerPackets.ConsoleMsg(u.Conn, $"{nombre} no está conectado. La solicitud le llegará cuando entre al juego.", FONT_INFO);
+            }
         }
         else if (caso == 2) // Confirmar solicitud
         {
@@ -75,7 +95,60 @@ public static class Social
             slot = ObtenerIndexLibre(t);
             if (slot > 0) t.Amigos[slot].index = userIndex;
             u.QuienAmigo = "";
+
+            // (NUEVO) refrescar el panel de la solapa Amigos de ambos jugadores y
+            // limpiar la solicitud pendiente del que aceptó (memoria + disco).
+            AmigoRequestStore.Clear(u.Name);
+            ServerPackets.AmigoRequest(u.Conn, "");
+            SendAmigosList(userIndex);
+            SendAmigosList(tUser);
         }
+    }
+
+    /// <summary>
+    /// (NUEVO, no VB6) Rechaza la solicitud de amistad pendiente recibida de 'nombre'.
+    /// Limpia QuienAmigo, avisa al solicitante (si está online) y limpia el panel del que rechaza.
+    /// </summary>
+    public static void RejectAmigo(int userIndex, string nombre)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u == null) return;
+        // Solo se puede rechazar la solicitud que efectivamente está pendiente.
+        if (string.IsNullOrEmpty(u.QuienAmigo) ||
+            !string.Equals(u.QuienAmigo, nombre, StringComparison.OrdinalIgnoreCase))
+        {
+            ServerPackets.AmigoRequest(u.Conn, ""); // sincroniza: ya no hay solicitud
+            return;
+        }
+
+        int tUser = UserListManager.NameIndex(u.QuienAmigo);
+        if (tUser > 0)
+        {
+            var t = UserListManager.UserList[tUser];
+            ServerPackets.ConsoleMsg(t.Conn, $"{u.Name} rechazó tu solicitud de amistad.", FONT_INFO);
+        }
+        u.QuienAmigo = "";
+        AmigoRequestStore.Clear(u.Name); // también del store persistente
+        ServerPackets.ConsoleMsg(u.Conn, $"Rechazaste la solicitud de amistad de {nombre}.", FONT_INFO);
+        ServerPackets.AmigoRequest(u.Conn, ""); // limpiar la solicitud del panel
+    }
+
+    /// <summary>
+    /// (NUEVO, no VB6) Al loguear, entrega la solicitud de amistad pendiente persistida (si la hay):
+    /// setea QuienAmigo, la muestra en el panel y avisa por consola. Se llama desde LoginFlow.EnterWorld.
+    /// </summary>
+    public static void DeliverPendingAmigoRequest(int userIndex)
+    {
+        if (userIndex <= 0) return;
+        var u = UserListManager.UserList[userIndex];
+        if (u == null || u.Conn == null) return;
+        string req = AmigoRequestStore.Get(u.Name);
+        if (string.IsNullOrEmpty(req) || req.Length < 3) return;
+        // Si ya son amigos (la aceptó en otra sesión por otra vía), limpiar y salir.
+        if (BuscarSlotAmigoName(u, req)) { AmigoRequestStore.Clear(u.Name); return; }
+        u.QuienAmigo = req;
+        ServerPackets.AmigoRequest(u.Conn, req);
+        ServerPackets.ConsoleMsg(u.Conn, $"{req} te envió una solicitud de amistad mientras no estabas. Abrí la solapa Amigos para aceptarla o rechazarla.", FONT_INFO);
     }
 
     /// <summary>HandleDelAmigo (Protocol.bas:19955). Quita 'nick' de la lista (mutuo si está online).</summary>
@@ -141,8 +214,10 @@ public static class Social
                         t.Amigos[looper + 1].index = 0;
                     }
                 }
+                SendAmigosList(tUser); // (NUEVO) refrescar panel del otro jugador
             }
         }
+        SendAmigosList(userIndex); // (NUEVO) refrescar panel propio
     }
 
     /// <summary>HandleMsgAmigo (Protocol.bas:19777). Mensaje a todos los amigos online + a uno mismo.</summary>
@@ -161,6 +236,31 @@ public static class Social
             }
         }
         ServerPackets.ConsoleMsg(u.Conn, $"[{u.Name}] {mensaje}", FONT_INFOBOLD4);
+    }
+
+    /// <summary>
+    /// (NUEVO, no VB6) Envía la lista de amigos estructurada para el panel de la solapa Amigos
+    /// (packet AmigosList 182). Por cada amigo: nombre + online (0/1) + mapa actual (0 si offline).
+    /// </summary>
+    public static void SendAmigosList(int userIndex)
+    {
+        if (userIndex <= 0) return;
+        var u = UserListManager.UserList[userIndex];
+        if (u == null || u.Conn == null) return;
+
+        var amigos = new System.Collections.Generic.List<(string Nombre, bool Online, int Mapa)>();
+        for (int i = 1; i <= u.flags.CantidadAmigos; i++)
+        {
+            string nombre = u.Amigos[i].Nombre;
+            if (string.IsNullOrEmpty(nombre) || nombre == VACIO) continue;
+            int tUser = UserListManager.NameIndex(nombre);
+            bool online = tUser > 0 && UserListManager.UserList[tUser].flags.UserLogged;
+            int mapa = online ? UserListManager.UserList[tUser].Pos.Map : 0;
+            amigos.Add((nombre, online, mapa));
+        }
+        ServerPackets.AmigosList(u.Conn, amigos);
+        // (NUEVO) reenviar la solicitud pendiente (si hay) para que el panel la muestre.
+        ServerPackets.AmigoRequest(u.Conn, (u.QuienAmigo != null && u.QuienAmigo.Length >= 3) ? u.QuienAmigo : "");
     }
 
     /// <summary>HandleOnAmigo (Protocol.bas:19825). Lista los amigos con su estado online/offline.</summary>

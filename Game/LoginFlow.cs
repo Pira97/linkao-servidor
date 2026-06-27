@@ -124,6 +124,9 @@ public static class LoginFlow
         // Aviso de evento de ruleta activo (montar dungeon / minería x2 / drop x2).
         Ruleta.NotificarEventoAlLogin(conn.UserIndex);
 
+        // (NUEVO) Solicitud de amistad pendiente recibida mientras estaba offline.
+        Social.DeliverPendingAmigoRequest(conn.UserIndex);
+
         // Saldo de créditos de donación (cuenta .cnt [cuenta] Creditos) → header de la tienda.
         if (!string.IsNullOrEmpty(u.Account))
         {
@@ -177,7 +180,7 @@ public static class LoginFlow
             helmet: u.Char.CascoAnim,
             fx: 0,
             fxLoops: 0,
-            name: u.Name,
+            name: GuildManager.NombreConTag(u),
             privileges: NickStatus(u),
             donador: u.Char.Donador,
             particulaFx: 0,

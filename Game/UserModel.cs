@@ -7,7 +7,7 @@ namespace ServidorCS.Game;
 public static class Constants
 {
     public const int MAX_INVENTORY_SLOTS = 25;
-    public const int MAX_BANCOINVENTORY_SLOTS = 40;
+    public const int MAX_BANCOINVENTORY_SLOTS = 80;
     public const int NUMSKILLS = 27;
     public const int NUMATRIBUTOS = 5;
     public const int MAXUSERHECHIZOS = 120;
@@ -81,10 +81,10 @@ public struct Correo
     public int Cantidad;
 }
 
-// BancoInventario (Declares.bas): 40 slots, formato objindex-amount (sin equipped).
+// BancoInventario (Declares.bas): 80 slots, formato objindex-amount (sin equipped).
 public sealed class BancoInventario
 {
-    public UserObj[] Object = new UserObj[Constants.MAX_BANCOINVENTORY_SLOTS + 1]; // 1..40
+    public UserObj[] Object = new UserObj[Constants.MAX_BANCOINVENTORY_SLOTS + 1]; // 1..80
     public short NroItems;
 }
 
@@ -339,6 +339,7 @@ public sealed class User
     // NPC seleccionado con LeftClick (CharIndex), para comerciar. 0 = ninguno.
     public short TargetNpcCharIndex;
     public bool Comerciando;
+    public bool ComercioNpcNoCompra;   // true si el NPC con el que comercia solo vende (no compra)
 
     // Mascotas (domar): CharIndex de cada mascota viva. 0 = slot vacío. Máx 3.
     public short[] MascotasCharIndex = new short[4]; // 1..3

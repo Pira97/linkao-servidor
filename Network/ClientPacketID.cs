@@ -173,4 +173,9 @@ public enum ClientPacketID : short
     BattlePassRequest = 152,      // (sin payload) pide el estado completo del pase
     BattlePassClaim = 153,        // Byte nivel, Byte carril (0=gratis, 1=premium)
     BattlePassBuy = 154,          // Byte metodo (0=créditos donador, 1=MercadoPago)
+
+    // --- Lista de amigos estructurada para el panel de la solapa Amigos (NUEVO, no VB6) ---
+    RequestAmigosList = 155,      // (sin payload) pide la lista de amigos con estado online/mapa
+    AmigoReject = 156,            // ASCIIString nombre: rechaza la solicitud de amistad recibida de ese jugador
+    PartyInviteByName = 157,      // ASCIIString nombre: invita a ese jugador al grupo por nombre (panel de Amigos)
 }

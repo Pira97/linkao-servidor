@@ -63,6 +63,7 @@ public static class NpcManager
         public string AttackedBy = "";       // usuario que lo está atacando
         public string AttackedFirstBy = "";  // primer atacante (dueño del loot/exp)
         public bool Comercia;
+        public bool NoCompra;   // 1 = solo vende, no compra al usuario
         public byte NpcType, Status;
         public byte Ciudad;         // CIUDAD_* del guardia (1=Imp,2=Rep,3=Caos,5=Rinkel)
         public byte OrigHeading;    // heading original (para restaurar al volver al spawn)
@@ -2400,7 +2401,7 @@ public static class NpcManager
             Hostil = info.Hostil, Attackable = info.Attackable, MinHIT = info.MinHIT, MaxHIT = info.MaxHIT,
             PoderAtaque = info.PoderAtaque, PoderEvasion = info.PoderEvasion,
             Movement = info.Movement, Spells = info.Spells, Domable = info.Domable,
-            Comercia = info.Comercia, Inventario = info.Inventario,
+            Comercia = info.Comercia, NoCompra = info.NoCompra, Inventario = info.Inventario,
             NpcType = info.NpcType, Status = info.Status, Ciudad = info.Ciudad,
             OrigHeading = info.Heading == 0 ? (byte)3 : info.Heading,
             Drops = info.Drops, Criaturas = info.Criaturas,
@@ -2487,6 +2488,7 @@ public static class NpcManager
                     PoderAtaque = info.PoderAtaque,
                     PoderEvasion = info.PoderEvasion,
                     Comercia = info.Comercia,
+                    NoCompra = info.NoCompra,
                     Inventario = info.Inventario,
                     NpcType = info.NpcType,
                     Status = info.Status,

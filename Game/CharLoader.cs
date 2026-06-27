@@ -184,7 +184,7 @@ public static class CharLoader
             });
         }
 
-        // [BancoInventory] ObjN = objindex-amount (40 slots)
+        // [BancoInventory] ObjN = objindex-amount (80 slots)
         u.BancoInvent.NroItems = (short)ini.GetInt("BancoInventory", "CantidadItems");
         for (int slot = 1; slot <= Constants.MAX_BANCOINVENTORY_SLOTS; slot++)
         {

@@ -72,6 +72,33 @@ public static class GuildManager
     public static Guild GetByNumber(int n) { EnsureLoaded(); return _byNumber.TryGetValue(n, out var g) ? g : null; }
     public static Guild GetByName(string name) { EnsureLoaded(); return _byName.TryGetValue(name.Trim(), out var g) ? g : null; }
 
+    /// <summary>Sufijo de clan para el nombre mostrado: " &lt;Clan&gt;" si pertenece a uno, "" si no.
+    /// 1:1 con RefreshCharStatus (Modulo_UsUaRiOs.bas): el cliente lo separa por '&lt;'.</summary>
+    public static string TagSufijo(User u)
+    {
+        if (u == null || u.GuildIndex <= 0) return "";
+        var g = GetByNumber(u.GuildIndex);
+        return g != null ? " <" + g.Name + ">" : "";
+    }
+
+    /// <summary>Nombre del personaje con el tag de clan adjunto (lo que ve el cliente sobre la cabeza).</summary>
+    public static string NombreConTag(User u) => u.Name + TagSufijo(u);
+
+    /// <summary>RefreshCharStatus (Modulo_UsUaRiOs.bas): difunde UpdateTagAndStatus con el nombre+tag
+    /// a todos los del mapa, para que el tag de clan se vea sin necesidad de reloguear.</summary>
+    public static void RefreshCharStatus(User u)
+    {
+        if (u == null || u.Char.CharIndex <= 0) return;
+        string tag = NombreConTag(u);
+        byte status = LoginFlow.NickStatus(u);
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                ServerPackets.UpdateTagAndStatus(o.Conn, u.Char.CharIndex, tag, status, u.Char.Donador);
+        }
+    }
+
     public static void EnsureLoaded()
     {
         if (_loaded) return;
@@ -257,6 +284,7 @@ public static class GuildManager
         SaveInfo();
         SetGuildIndexChar(u.Name, 0);
         u.GuildIndex = 0;
+        RefreshCharStatus(u); // quitar el tag <Clan> de su cabeza
 
         // Aviso global (VB6: "Servidor> X ha cerrado el clan llamado: N").
         for (int i = 1; i <= UserListManager.LastUser; i++)
@@ -329,6 +357,8 @@ public static class GuildManager
         ServerPackets.ConsoleMsg(u.Conn, $"Has fundado el clan {g.Name}.", 5);
         // Fanfarria al fundar el clan (sonido 3) al fundador.
         ServerPackets.PlayWave(u.Conn, Sounds.FUNDAR_CLAN, (byte)u.Pos.X, (byte)u.Pos.Y);
+        // Mostrar el tag <Clan> sobre el personaje sin necesidad de reloguear.
+        RefreshCharStatus(u);
         return true;
     }
 
@@ -362,7 +392,7 @@ public static class GuildManager
         // Persistir GUILDINDEX en el .chr del aceptado y, si está online, en memoria.
         SetGuildIndexChar(nombre, g.Number);
         var nuevo = UserListManager.GetByName(nombre);
-        if (nuevo != null) { nuevo.GuildIndex = g.Number; ServerPackets.ConsoleMsg(nuevo.Conn, $"Has sido aceptado en el clan {g.Name}.", 5); }
+        if (nuevo != null) { nuevo.GuildIndex = g.Number; ServerPackets.ConsoleMsg(nuevo.Conn, $"Has sido aceptado en el clan {g.Name}.", 5); RefreshCharStatus(nuevo); }
         ServerPackets.ConsoleMsg(lider.Conn, $"Aceptaste a {nombre} en el clan.", 5);
     }
 
@@ -406,6 +436,7 @@ public static class GuildManager
         SaveMembers(g);
         u.GuildIndex = 0;
         ServerPackets.ConsoleMsg(u.Conn, $"Has abandonado el clan {g.Name}.", 5);
+        RefreshCharStatus(u); // quitar el tag <Clan> de su cabeza
         NotificarLider(g, $"{u.Name} abandonó el clan.");
     }
 
@@ -419,7 +450,7 @@ public static class GuildManager
         SaveMembers(g);
         SetGuildIndexChar(nombre, 0);
         var ech = UserListManager.GetByName(nombre);
-        if (ech != null) { ech.GuildIndex = 0; ServerPackets.ConsoleMsg(ech.Conn, $"Has sido expulsado del clan {g.Name}.", 1); }
+        if (ech != null) { ech.GuildIndex = 0; ServerPackets.ConsoleMsg(ech.Conn, $"Has sido expulsado del clan {g.Name}.", 1); RefreshCharStatus(ech); }
         ServerPackets.ConsoleMsg(lider.Conn, $"Expulsaste a {nombre} del clan.", 5);
     }
 
@@ -428,8 +459,19 @@ public static class GuildManager
     // ============================================================
     public static void EnviarLeaderInfo(User u)
     {
+        // 1:1 SendGuildLeaderInfo (modGuilds.bas:1314): la respuesta depende de la pertenencia/rango.
         var g = GuildDe(u);
-        if (g == null) { ServerPackets.ConsoleMsg(u.Conn, "No perteneces a ningún clan.", 1); return; }
+
+        // No pertenece a ningún clan (Gi <= 0) → mandar la lista de TODOS los clanes (browser),
+        // para poder explorar y solicitar ingreso. (VB6: WriteGuildList)
+        if (g == null) { EnviarGuildList(u); return; }
+
+        // Miembro pero NO líder → info de miembro (lista de clanes + miembros del propio).
+        // (VB6: If Not m_EsGuildLeader → WriteGuildMemberInfo)
+        if (!string.Equals(g.Leader.Trim(), u.Name.Trim(), StringComparison.OrdinalIgnoreCase))
+        { EnviarMemberInfo(u); return; }
+
+        // Líder → info completa de administración. (VB6: WriteGuildLeaderInfo)
         string members = string.Join("|", g.Members);
         string aspirantes = string.Join("|", g.Aspirantes);
         ServerPackets.GuildLeaderInfo(u.Conn, members, (short)g.Members.Count,

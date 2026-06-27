@@ -26,6 +26,7 @@ ServidorCS.Game.AdminLoader.Load();
 ServidorCS.Game.MercadoPago.Init(); // donaciones: catálogo siempre; cobro/polling gateado por token
 ServidorCS.Game.ReportManager.Load(); // sistema de reportes / tickets de soporte
 ServidorCS.Game.BattlePass.Load(); // pase de temporada (battle pass): temporada + tabla de recompensas
+ServidorCS.Game.AmigoRequestStore.Load(); // solicitudes de amistad pendientes (entrega offline)
 
 var server = new GameServer(port);
 

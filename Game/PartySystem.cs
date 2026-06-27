@@ -45,9 +45,26 @@ public static class PartySystem
     /// <summary>HandlePartyJoin (Protocol.bas:20900): el líder invita al PJ con ese CharIndex.</summary>
     public static void Join(int userIndex, short targetCharIndex)
     {
-        var u = UserListManager.UserList[userIndex];
         int target = FindUserByCharIndex(targetCharIndex);
         if (target == 0) { Msg(userIndex, ">> El jugador no está disponible."); return; }
+        JoinTarget(userIndex, target);
+    }
+
+    /// <summary>
+    /// (NUEVO, no VB6) Invitar al grupo por NOMBRE (desde el panel de Amigos). El server resuelve
+    /// el userIndex global igual que Join por CharIndex (no requiere cercanía).
+    /// </summary>
+    public static void JoinByName(int userIndex, string name)
+    {
+        int target = UserListManager.NameIndex(name);
+        if (target == 0) { Msg(userIndex, $">> {name} no está conectado."); return; }
+        JoinTarget(userIndex, target);
+    }
+
+    /// <summary>Lógica común de invitación (1:1 HandlePartyJoin) ya resuelto el target userIndex.</summary>
+    private static void JoinTarget(int userIndex, int target)
+    {
+        var u = UserListManager.UserList[userIndex];
         var t = UserListManager.UserList[target];
         if (!t.flags.UserLogged) { Msg(userIndex, ">> El jugador no está conectado."); return; }
         if (target == userIndex) { Msg(userIndex, ">> No puedes invitarte a ti mismo al grupo."); return; }
@@ -111,7 +128,9 @@ public static class PartySystem
             Msg(m, m == userIndex ? ">> Te has unido al grupo." : $">> {u.Name} se ha unido al grupo.");
         }
         SendPartyUpdateToAll(pidx);
-        for (int i = 1; i <= p.MemberCount; i++) if (p.Members[i] > 0) SendPartyMemberHP(p.Members[i]);
+        for (int i = 1; i <= p.MemberCount; i++) if (p.Members[i] > 0)
+        { SendPartyMemberHP(p.Members[i]); SendPartyMemberMana(p.Members[i]); } // MEJORA-005
+        SendAllPartyPositions(pidx);
     }
 
     /// <summary>HandlePartyReject: solo informa.</summary>
@@ -176,6 +195,76 @@ public static class PartySystem
         }
     }
 
+    private const long SIGNAL_COOLDOWN_MS = 10_000; // 10s entre señales, por jugador (anti-spam)
+    private static readonly Dictionary<int, long> _lastSignalAt = new();
+
+    /// <summary>
+    /// MEJORA-005 (NUEVO, no VB6): señal de AYUDA (tipo 1). Se difunde la posición ACTUAL
+    /// del emisor a todos los miembros (incluido él mismo, para que también le quede
+    /// marcada en su propio Mapamundi) + un aviso por consola. La duración de 5 minutos la
+    /// cuenta el CLIENTE al recibir el paquete (no hay estado que mantener del lado del
+    /// server: es fire-and-forget, como PartyMemberPos). El recorrido (tipo 2) usa
+    /// EnviarRecorrido — comparte el mismo anti-spam por cooldown.
+    /// </summary>
+    public static void EnviarSenal(int userIndex, byte tipo)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u.PartyId <= 0) { Msg(userIndex, ">> No estás en ningún grupo."); return; }
+        if (tipo != 1) return;
+        if (!CheckSignalCooldown(userIndex)) return;
+
+        string aviso = $">> {u.Name} pide AYUDA — Mapa {u.Pos.Map} ({u.Pos.X}, {u.Pos.Y}). Revisá el Mapamundi para verlo marcado.";
+
+        var p = _parties[u.PartyId];
+        for (int i = 1; i <= p.MemberCount; i++)
+        {
+            int m = p.Members[i];
+            if (m <= 0 || !UserListManager.UserList[m].flags.UserLogged) continue;
+            var mu = UserListManager.UserList[m];
+            if (mu.Conn == null) continue;
+            ServerPackets.PartySignal(mu.Conn, tipo, u.Name, u.Pos.Map, (byte)u.Pos.X, (byte)u.Pos.Y);
+            ServerPackets.ConsoleMsg(mu.Conn, aviso, 28);
+        }
+    }
+
+    /// <summary>
+    /// MEJORA-005 (NUEVO, no VB6): recorrido de grupo (tipo 2) — dos puntos elegidos a mano
+    /// por el emisor en el Mapamundi, CADA UNO con su propio mapa (no hace falta que sea el
+    /// mismo: sirve para marcar, p.ej., la entrada de un dungeon en un mapa y el objetivo
+    /// adentro). Ambos mapas se validan (tienen que existir); las coordenadas dentro de cada
+    /// uno NO se validan más allá de eso porque es solo un marcador cosmético en el
+    /// Mapamundi, igual que PartyMemberPos.
+    /// </summary>
+    public static void EnviarRecorrido(int userIndex, int mapa1, byte x1, byte y1, int mapa2, byte x2, byte y2)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u.PartyId <= 0) { Msg(userIndex, ">> No estás en ningún grupo."); return; }
+        if (MapLoader.Get(mapa1) == null || MapLoader.Get(mapa2) == null) { Msg(userIndex, ">> Ese mapa no existe."); return; }
+        if (!CheckSignalCooldown(userIndex)) return;
+
+        string aviso = $">> {u.Name} marcó un recorrido: Mapa {mapa1} ({x1}, {y1}) -> Mapa {mapa2} ({x2}, {y2}) — revisá el Mapamundi.";
+
+        var p = _parties[u.PartyId];
+        for (int i = 1; i <= p.MemberCount; i++)
+        {
+            int m = p.Members[i];
+            if (m <= 0 || !UserListManager.UserList[m].flags.UserLogged) continue;
+            var mu = UserListManager.UserList[m];
+            if (mu.Conn == null) continue;
+            ServerPackets.PartyRoute(mu.Conn, u.Name, mapa1, x1, y1, mapa2, x2, y2);
+            ServerPackets.ConsoleMsg(mu.Conn, aviso, 28);
+        }
+    }
+
+    private static bool CheckSignalCooldown(int userIndex)
+    {
+        long ahora = Environment.TickCount64;
+        if (_lastSignalAt.TryGetValue(userIndex, out long last) && ahora - last < SIGNAL_COOLDOWN_MS)
+        { Msg(userIndex, ">> Esperá un poco antes de mandar otra señal."); return false; }
+        _lastSignalAt[userIndex] = ahora;
+        return true;
+    }
+
     /// <summary>HandlePartyOnline (Protocol.bas:21341): reenvía lista + HP de todos al solicitante.</summary>
     public static void Online(int userIndex)
     {
@@ -190,8 +279,10 @@ public static class PartySystem
             {
                 var mu = UserListManager.UserList[m];
                 ServerPackets.PartyMemberHP(u.Conn, mu.Char.CharIndex, mu.Stats.MinHP, mu.Stats.MaxHP);
+                ServerPackets.PartyMemberMana(u.Conn, mu.Char.CharIndex, mu.Stats.MinMAN, mu.Stats.MaxMAN); // MEJORA-005
             }
         }
+        SendAllPartyPositions(u.PartyId);
     }
 
     /// <summary>SendPartyMemberHP (Protocol.bas:21450): envía el HP del usuario al resto del grupo.</summary>
@@ -205,6 +296,50 @@ public static class PartySystem
             int m = p.Members[i];
             if (m > 0 && m != userIndex && UserListManager.UserList[m].flags.UserLogged)
                 ServerPackets.PartyMemberHP(UserListManager.UserList[m].Conn, u.Char.CharIndex, u.Stats.MinHP, u.Stats.MaxHP);
+        }
+    }
+
+    /// <summary>MEJORA-005: ídem SendPartyMemberHP pero para maná (barra de maná del grupo).</summary>
+    public static void SendPartyMemberMana(int userIndex)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u.PartyId <= 0) return;
+        var p = _parties[u.PartyId];
+        for (int i = 1; i <= p.MemberCount; i++)
+        {
+            int m = p.Members[i];
+            if (m > 0 && m != userIndex && UserListManager.UserList[m].flags.UserLogged)
+                ServerPackets.PartyMemberMana(UserListManager.UserList[m].Conn, u.Char.CharIndex, u.Stats.MinMAN, u.Stats.MaxMAN);
+        }
+    }
+
+    /// <summary>
+    /// (NUEVO, no VB6) Envía la posición (mapa/x/y) del usuario al resto de su grupo, para
+    /// marcarlo en el minimapa y el mapamundi. Se llama en cada paso/teleport: son ≤4 paquetes
+    /// de ~15 bytes, costo despreciable.
+    /// </summary>
+    public static void SendPartyMemberPos(int userIndex)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u.PartyId <= 0 || u.PartyId > MAX_PARTIES) return;
+        var p = _parties[u.PartyId];
+        for (int i = 1; i <= p.MemberCount; i++)
+        {
+            int m = p.Members[i];
+            if (m > 0 && m != userIndex && UserListManager.UserList[m].flags.UserLogged && UserListManager.UserList[m].Conn != null)
+                ServerPackets.PartyMemberPos(UserListManager.UserList[m].Conn, u.Name, (short)u.Pos.Map, (byte)u.Pos.X, (byte)u.Pos.Y);
+        }
+    }
+
+    /// <summary>(NUEVO, no VB6) Envía a cada miembro del grupo la posición de todos los demás.</summary>
+    private static void SendAllPartyPositions(int pidx)
+    {
+        if (pidx <= 0 || pidx > MAX_PARTIES) return;
+        var p = _parties[pidx];
+        for (int i = 1; i <= p.MemberCount; i++)
+        {
+            int m = p.Members[i];
+            if (m > 0 && UserListManager.UserList[m].flags.UserLogged) SendPartyMemberPos(m);
         }
     }
 

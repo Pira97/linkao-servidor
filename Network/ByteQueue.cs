@@ -12,6 +12,21 @@ namespace ServidorCS.Network;
 ///   - Boolean  = 1 byte (1 = true, 0 = false)
 ///   - ASCIIString       = Int16 LE (longitud) + N bytes CP1252
 ///   - ASCIIStringFixed  = N bytes CP1252 (sin prefijo de longitud)
+///
+/// [[b1_bytequeue_cursor]] Implementación interna con CURSOR (_start/_length) sobre un único
+/// buffer, en vez de "leer a un array temporal + desplazar TODO el resto" en cada campo (versión
+/// pre-B1). Cada ReadXxx ahora:
+///   - Chequea que haya bytes suficientes ANTES de tocar nada (si falta algo, lanza
+///     NotEnoughDataException sin mutar _start/_length — invariante preservado 1:1 respecto a la
+///     versión anterior, verificado con tests de fuzz comparando ambas implementaciones).
+///   - Lee directo del buffer interno (BitConverter.ToXxx(_data, _start) / Encoding.GetString con
+///     offset) sin alocar un array temporal por campo.
+///   - Avanza el cursor (_start += N; _length -= N) en vez de mover en memoria los bytes que
+///     quedan atrás.
+/// La compactación (mover los bytes válidos a partir de 0) sólo ocurre en EnsureSpace, y sólo
+/// cuando hace falta lugar para escribir — no en cada lectura. El formato de bytes en el cable
+/// (lo que ESCRIBE al array subyacente y lo que DEVUELVEN los Read) es exactamente el mismo que
+/// antes: no cambia ni un bit del protocolo, sólo cómo se mueve la memoria internamente.
 /// </summary>
 public sealed class ByteQueue
 {
@@ -21,12 +36,14 @@ public sealed class ByteQueue
 
     private byte[] _data;
     private int _capacity;
-    private int _length;
+    private int _start;   // offset del primer byte válido dentro de _data
+    private int _length;  // cantidad de bytes válidos a partir de _start
 
     public ByteQueue(int capacity = DATA_BUFFER)
     {
         _capacity = capacity < 1 ? DATA_BUFFER : capacity;
         _data = new byte[_capacity];
+        _start = 0;
         _length = 0;
     }
 
@@ -39,36 +56,44 @@ public sealed class ByteQueue
 
     private void EnsureSpace(int extra)
     {
-        // VB6 lanzaba NOT_ENOUGH_SPACE; acá crecemos automáticamente (más robusto,
-        // mismo formato de bytes en la salida).
-        int needed = _length + extra;
-        if (needed <= _capacity) return;
+        // ¿Ya entra al final del buffer tal cual está? Caso común: no hace falta tocar nada.
+        if (_start + _length + extra <= _capacity) return;
+
+        // Compactar primero: mover los bytes válidos al principio libera el espacio ya leído
+        // (_start) sin alocar memoria nueva. Es la ÚNICA forma de "shift" que sobrevive de la
+        // versión anterior, y sólo se paga cuando una escritura realmente lo necesita — no en
+        // cada Read (que es el patrón que se estaba pagando antes, por cada campo).
+        if (_start > 0)
+        {
+            if (_length > 0) Buffer.BlockCopy(_data, _start, _data, 0, _length);
+            _start = 0;
+        }
+        if (_length + extra <= _capacity) return;
+
+        // Ni compactando entra: crecer el buffer (mismo criterio de duplicar que antes).
         int newCap = _capacity;
-        while (newCap < needed) newCap *= 2;
-        Array.Resize(ref _data, newCap);
+        while (newCap < _length + extra) newCap *= 2;
+        var newData = new byte[newCap];
+        if (_length > 0) Buffer.BlockCopy(_data, _start, newData, 0, _length);
+        _data = newData;
         _capacity = newCap;
+        _start = 0;
     }
 
     private void WriteData(byte[] buf, int dataLength)
     {
         EnsureSpace(dataLength);
-        Buffer.BlockCopy(buf, 0, _data, _length, dataLength);
+        Buffer.BlockCopy(buf, 0, _data, _start + _length, dataLength);
         _length += dataLength;
     }
 
-    private void ReadData(byte[] buf, int dataLength)
-    {
-        if (dataLength > _length)
-            throw new NotEnoughDataException();
-        Buffer.BlockCopy(_data, 0, buf, 0, dataLength);
-    }
-
-    /// <summary>Elimina dataLength bytes del frente (equivale a RemoveData de VB6).</summary>
+    /// <summary>Elimina dataLength bytes del frente (equivale a RemoveData de VB6). Ya no mueve
+    /// memoria: solo avanza el cursor. Sigue pública por compatibilidad de API, aunque hoy no la
+    /// llama nada fuera de esta clase (los ReadXxx la reemplazaron por el avance de cursor inline).</summary>
     public int RemoveData(int dataLength)
     {
         int removed = Math.Min(dataLength, _length);
-        if (removed != _capacity)
-            Buffer.BlockCopy(_data, removed, _data, 0, _length - removed);
+        _start += removed;
         _length -= removed;
         return removed;
     }
@@ -78,20 +103,37 @@ public sealed class ByteQueue
     public void WriteByte(byte value)
     {
         EnsureSpace(1);
-        _data[_length++] = value;
+        _data[_start + _length] = value;
+        _length++;
     }
 
     public void WriteInteger(short value)
-        => WriteData(BitConverter.GetBytes(value), 2);
+    {
+        EnsureSpace(2);
+        BitConverter.TryWriteBytes(_data.AsSpan(_start + _length, 2), value);
+        _length += 2;
+    }
 
     public void WriteLong(int value)
-        => WriteData(BitConverter.GetBytes(value), 4);
+    {
+        EnsureSpace(4);
+        BitConverter.TryWriteBytes(_data.AsSpan(_start + _length, 4), value);
+        _length += 4;
+    }
 
     public void WriteSingle(float value)
-        => WriteData(BitConverter.GetBytes(value), 4);
+    {
+        EnsureSpace(4);
+        BitConverter.TryWriteBytes(_data.AsSpan(_start + _length, 4), value);
+        _length += 4;
+    }
 
     public void WriteDouble(double value)
-        => WriteData(BitConverter.GetBytes(value), 8);
+    {
+        EnsureSpace(8);
+        BitConverter.TryWriteBytes(_data.AsSpan(_start + _length, 8), value);
+        _length += 8;
+    }
 
     public void WriteBoolean(bool value)
         => WriteByte(value ? (byte)1 : (byte)0);
@@ -109,7 +151,7 @@ public sealed class ByteQueue
         byte[] str = Cp1252.GetBytes(value);
         short nLen = (short)str.Length;
         EnsureSpace(2 + str.Length);
-        WriteData(BitConverter.GetBytes(nLen), 2);
+        WriteInteger(nLen);
         if (str.Length > 0) WriteData(str, str.Length);
     }
 
@@ -120,41 +162,49 @@ public sealed class ByteQueue
     }
 
     // ----------------------------------------------------------------- lectura
+    //
+    // Cada Read valida PRIMERO que haya bytes suficientes (si no, NotEnoughDataException sin
+    // mutar _start/_length — mismo comportamiento que la versión pre-B1) y recién después lee
+    // directo del buffer y avanza el cursor. Cero allocations, cero BlockCopy por campo.
 
     public byte ReadByte()
     {
-        var buf = new byte[1];
-        ReadData(buf, 1);
-        RemoveData(1);
-        return buf[0];
+        if (_length < 1) throw new NotEnoughDataException();
+        byte v = _data[_start];
+        _start += 1; _length -= 1;
+        return v;
     }
 
     public short ReadInteger()
     {
-        var buf = new byte[2];
-        ReadData(buf, 2); RemoveData(2);
-        return BitConverter.ToInt16(buf, 0);
+        if (_length < 2) throw new NotEnoughDataException();
+        short v = BitConverter.ToInt16(_data, _start);
+        _start += 2; _length -= 2;
+        return v;
     }
 
     public int ReadLong()
     {
-        var buf = new byte[4];
-        ReadData(buf, 4); RemoveData(4);
-        return BitConverter.ToInt32(buf, 0);
+        if (_length < 4) throw new NotEnoughDataException();
+        int v = BitConverter.ToInt32(_data, _start);
+        _start += 4; _length -= 4;
+        return v;
     }
 
     public float ReadSingle()
     {
-        var buf = new byte[4];
-        ReadData(buf, 4); RemoveData(4);
-        return BitConverter.ToSingle(buf, 0);
+        if (_length < 4) throw new NotEnoughDataException();
+        float v = BitConverter.ToSingle(_data, _start);
+        _start += 4; _length -= 4;
+        return v;
     }
 
     public double ReadDouble()
     {
-        var buf = new byte[8];
-        ReadData(buf, 8); RemoveData(8);
-        return BitConverter.ToDouble(buf, 0);
+        if (_length < 8) throw new NotEnoughDataException();
+        double v = BitConverter.ToDouble(_data, _start);
+        _start += 8; _length -= 8;
+        return v;
     }
 
     public bool ReadBoolean() => ReadByte() == 1;
@@ -163,23 +213,21 @@ public sealed class ByteQueue
     {
         if (length <= 0) return string.Empty;
         if (_length < length) throw new NotEnoughDataException();
-        var buf = new byte[length];
-        ReadData(buf, length); RemoveData(length);
-        return Cp1252.GetString(buf);
+        string s = Cp1252.GetString(_data, _start, length);
+        _start += length; _length -= length;
+        return s;
     }
 
     public string ReadASCIIString()
     {
         if (_length <= 1) throw new NotEnoughDataException();
-        var lenBuf = new byte[2];
-        ReadData(lenBuf, 2);
-        short length = BitConverter.ToInt16(lenBuf, 0);
+        short length = BitConverter.ToInt16(_data, _start); // peek del prefijo: no avanza todavía
         if (_length < (long)length + 2) throw new NotEnoughDataException();
-        RemoveData(2);
+        _start += 2; _length -= 2; // recién ahora se consume el prefijo (equivale al RemoveData(2) de antes)
         if (length <= 0) return string.Empty;
-        var buf = new byte[length];
-        ReadData(buf, length); RemoveData(length);
-        return Cp1252.GetString(buf);
+        string s = Cp1252.GetString(_data, _start, length);
+        _start += length; _length -= length;
+        return s;
     }
 
     /// <summary>
@@ -190,14 +238,13 @@ public sealed class ByteQueue
     public byte[] ReadBlockBytes()
     {
         if (_length <= 1) throw new NotEnoughDataException();
-        var lenBuf = new byte[2];
-        ReadData(lenBuf, 2);
-        short length = BitConverter.ToInt16(lenBuf, 0);
+        short length = BitConverter.ToInt16(_data, _start);
         if (_length < (long)length + 2) throw new NotEnoughDataException();
-        RemoveData(2);
+        _start += 2; _length -= 2;
         if (length <= 0) return Array.Empty<byte>();
-        var buf = new byte[length];
-        ReadData(buf, length); RemoveData(length);
+        var buf = new byte[length]; // alloc real: es el valor de retorno, no un temporal descartable
+        Buffer.BlockCopy(_data, _start, buf, 0, length);
+        _start += length; _length -= length;
         return buf;
     }
 
@@ -205,16 +252,14 @@ public sealed class ByteQueue
     public string ReadUnicodeString()
     {
         if (_length <= 1) throw new NotEnoughDataException();
-        var lenBuf = new byte[2];
-        ReadData(lenBuf, 2);
-        short length = BitConverter.ToInt16(lenBuf, 0);
+        short length = BitConverter.ToInt16(_data, _start);
         int bytes = length * 2;
         if (_length < (long)bytes + 2) throw new NotEnoughDataException();
-        RemoveData(2);
+        _start += 2; _length -= 2;
         if (length <= 0) return string.Empty;
-        var buf = new byte[bytes];
-        ReadData(buf, bytes); RemoveData(bytes);
-        return System.Text.Encoding.Unicode.GetString(buf);
+        string s = System.Text.Encoding.Unicode.GetString(_data, _start, bytes);
+        _start += bytes; _length -= bytes;
+        return s;
     }
 
     /// <summary>WriteUnicodeString: Int16(len) + len*2 bytes UTF-16LE.</summary>
@@ -222,7 +267,8 @@ public sealed class ByteQueue
     {
         value ??= string.Empty;
         var bytes = System.Text.Encoding.Unicode.GetBytes(value);
-        WriteData(BitConverter.GetBytes((short)value.Length), 2);
+        EnsureSpace(2 + bytes.Length);
+        WriteInteger((short)value.Length);
         if (bytes.Length > 0) WriteData(bytes, bytes.Length);
     }
 
@@ -230,9 +276,8 @@ public sealed class ByteQueue
 
     public byte PeekByte()
     {
-        var buf = new byte[1];
-        ReadData(buf, 1);
-        return buf[0];
+        if (_length < 1) throw new NotEnoughDataException();
+        return _data[_start];
     }
 
     // --------------------------------------------------------------- utilidades
@@ -241,7 +286,7 @@ public sealed class ByteQueue
     public byte[] ToArray()
     {
         var outBuf = new byte[_length];
-        Buffer.BlockCopy(_data, 0, outBuf, 0, _length);
+        if (_length > 0) Buffer.BlockCopy(_data, _start, outBuf, 0, _length);
         return outBuf;
     }
 
@@ -249,7 +294,7 @@ public sealed class ByteQueue
     public void AppendRaw(byte[] src, int count)
         => WriteData(src, count);
 
-    public void Clear() => _length = 0;
+    public void Clear() { _start = 0; _length = 0; }
 }
 
 /// <summary>Equivale al error NOT_ENOUGH_DATA del VB6: faltan bytes para completar la lectura.</summary>

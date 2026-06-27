@@ -1,0 +1,86 @@
+============================================================
+  GUIA RAPIDA - SERVER LINKAO EN VPS LINUX (baires.host)
+============================================================
+
+DATOS DEL SERVER
+  IP:        23.175.40.101
+  SSH:       puerto 2222   (NO el 22 - tu ISP lo bloquea)
+  Usuario:   root
+  Password:  (la que pusiste vos al configurar - NO la del mail)
+  Juego:     puerto 7666
+  Carpeta:   /root/linkao-servidor
+  Panel/consola web: https://billing.baires.host  (si el SSH se cae)
+
+
+------------------------------------------------------------
+1) CONECTARSE AL SERVER (desde PowerShell en tu PC)
+------------------------------------------------------------
+  ssh root@23.175.40.101 -p 2222 -o ServerAliveInterval=30
+
+  - Te pide la contraseña (al tipear NO se ve nada, es normal).
+  - El "-o ServerAliveInterval=30" evita que se corte la conexion.
+  - Para pegar en PowerShell: clic derecho.
+  - Para SALIR del server:  exit
+
+
+------------------------------------------------------------
+2) ACTUALIZAR EL SERVER   ( ¿es automatico?  NO - son 2 pasos )
+------------------------------------------------------------
+  PASO A - En tu PC (Windows):
+     Doble clic en:   SUBIR_A_VM.bat
+     (compila y sube el codigo a GitHub)
+
+  PASO B - En el server (ventana SSH):
+     bash /root/linkao-servidor/deploy.sh
+     (baja el codigo, compila y reinicia el server)
+
+  >> Las CUENTAS y PERSONAJES de los jugadores NO se tocan NUNCA
+     en un deploy (estan fuera de git).
+
+
+------------------------------------------------------------
+3) COMANDOS UTILES (en la ventana SSH)
+------------------------------------------------------------
+  Ver el server en vivo (logs):   journalctl -u linkao -f
+        (para salir de los logs:  Ctrl + C)
+  Reiniciar el server:            systemctl restart linkao
+  Frenar el server:               systemctl stop linkao
+  Arrancar el server:             systemctl start linkao
+  Estado del server:              systemctl status linkao
+  Ver si escucha el puerto 7666:  ss -tlnp | grep 7666
+
+
+------------------------------------------------------------
+4) SUBIR UN ARCHIVO SUELTO A MANO (ej: Server.ini, mapas)
+------------------------------------------------------------
+  Estos archivos NO van por git. Si los cambias, subilos asi
+  (en PowerShell de tu PC, NO dentro del SSH):
+
+  Server.ini:
+    scp -P 2222 "C:\Users\Marke\OneDrive\Escritorio\clientes y servidor para trabajar\migracion a cliente godot\ServidorCS\Server.ini" root@23.175.40.101:/root/linkao-servidor/
+
+  (Ojo: en scp el puerto es con -P MAYUSCULA)
+
+  Despues, en el SSH, reinicia para que tome el cambio:
+    systemctl restart linkao
+
+
+------------------------------------------------------------
+5) SUBIR CUENTAS / PERSONAJES (Cuentas y Charfile)
+------------------------------------------------------------
+  Tambien van a mano (no por git). Se comprimen y se suben:
+   - Comprimir en tu PC: Cuentas\ y Charfile\  ->  un .zip
+   - scp -P 2222 "...\ese.zip" root@23.175.40.101:/root/linkao-servidor/
+   - En SSH:  cd /root/linkao-servidor && unzip -o ese.zip && rm -f ese.zip
+  (los nombres de archivo deben ir en MAYUSCULA: CREXU.cnt, etc.)
+
+
+------------------------------------------------------------
+NOTAS
+------------------------------------------------------------
+  - El cliente apunta al server en:
+      LinkAO-Godot/scripts/autoload/constants.gd   (CUR_SERVER_IP)
+      OJO: sin espacios de mas en el IP (rompen la conexion).
+  - crexu es Dios/GM (Dios1 en Server.ini).
+  - El server arranca solo si se reinicia el VPS (systemd).
+============================================================

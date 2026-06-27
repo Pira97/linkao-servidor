@@ -43,12 +43,13 @@
 '  4 Caótico
 
 [INIT]
-NumNPCs=624
+NumNPCs=640
 
 
 '**************************** NPCS COMUNES VENDEDORES ****************************
 '--------------> Ventas generales <--------------
 [NPC80]
+Compra=1
 Name=Vendedor General
 PosOrig=1
 Head=9
@@ -91,7 +92,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=44
-NROITEMS=10
+NROITEMS=11
 'Montura (Altos)
 Obj1=1342-100
 'Montura (Bajos)
@@ -112,6 +113,8 @@ Obj8=1349-100
 Obj9=1350-100
 'Montura de Nigromante (Bajos)
 Obj10=1359-100
+'Jinete del Dragón Rojo
+Obj11=2087-100
 LocaleID=133
 MinHP=10000
 MaxHP=10000
@@ -977,7 +980,7 @@ HP=10000
 Attackable=0
 RespawnTime=1
 TipoItems=3
-NROITEMS=24
+NROITEMS=35
 'Vestimentas de Hombre
 Obj1=32-100
 'Vestimentas de Mujer
@@ -1113,7 +1116,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=22
+NROITEMS=34
 'Vestimentas de Hombre
 Obj1=35-100
 'Vestimentas de Mujer
@@ -5334,7 +5337,7 @@ Heading=3
 Movement=1
 Comercia=1
 TipoItems=1000
-NROITEMS=30
+NROITEMS=42
 'Poción Roja
 Obj1=38-100
 'Poción Azul
@@ -5395,6 +5398,30 @@ Obj28=1847-100
 Obj29=1081-100
 'Manual Maestro de Habilidades (Scroll del Maestro)
 Obj30=2032-100
+'Lingote de Hierro
+Obj31=386-100
+'Lingote de Plata
+Obj32=387-100
+'Lingote de Oro
+Obj33=388-100
+'Gema Lunar
+Obj34=406-100
+'Gema Azul
+Obj35=407-100
+'Gema Naranja
+Obj36=408-100
+'Gema Gris
+Obj37=409-100
+'Gema Dorada
+Obj38=410-100
+'Flecha Explosiva
+Obj39=1082-100
+'Flecha Envenenante
+Obj40=1083-100
+'Flecha Electrica
+Obj41=1086-100
+'Alas de Angel
+Obj42=2035-100
 HP=10000
 RespawnTime=1
 LocaleID=269
@@ -5412,7 +5439,7 @@ Heading=3
 Movement=1
 Comercia=1
 TipoItems=1000
-NROITEMS=22
+NROITEMS=34
 'Armadura de Asesino
 Obj1=237-100
 'Armadura de Asesino (Bajos)
@@ -5457,6 +5484,30 @@ Obj20=1078-100
 Obj21=661-100
 'Casco Legendario
 Obj22=1276-100
+'Lingote de Hierro
+Obj23=386-100
+'Lingote de Plata
+Obj24=387-100
+'Lingote de Oro
+Obj25=388-100
+'Gema Lunar
+Obj26=406-100
+'Gema Azul
+Obj27=407-100
+'Gema Naranja
+Obj28=408-100
+'Gema Gris
+Obj29=409-100
+'Gema Dorada
+Obj30=410-100
+'Flecha Explosiva
+Obj31=1082-100
+'Flecha Envenenante
+Obj32=1083-100
+'Flecha Electrica
+Obj33=1086-100
+'Alas de Angel
+Obj34=2035-100
 HP=10000
 RespawnTime=1
 LocaleID=270
@@ -5475,7 +5526,7 @@ Movement=1
 Comercia=1
 weaponanim=1
 TipoItems=1000
-NROITEMS=24
+NROITEMS=35
 'Escudo Arcano
 Obj1=1358-100
 'Escudo de León +1
@@ -5524,6 +5575,28 @@ Obj22=1333-100
 Obj23=480-10000
 'Flecha Explosiva
 Obj24=1082-10000
+'Lingote de Hierro
+Obj25=386-100
+'Lingote de Plata
+Obj26=387-100
+'Lingote de Oro
+Obj27=388-100
+'Gema Lunar
+Obj28=406-100
+'Gema Azul
+Obj29=407-100
+'Gema Naranja
+Obj30=408-100
+'Gema Gris
+Obj31=409-100
+'Gema Dorada
+Obj32=410-100
+'Flecha Envenenante
+Obj33=1083-100
+'Flecha Electrica
+Obj34=1086-100
+'Alas de Angel
+Obj35=2035-100
 HP=10000
 RespawnTime=1
 LocaleID=271
@@ -8820,3 +8893,189 @@ MinHP=10000
 MaxHP=10000
 LocaleID=145
  
+
+
+'**************************** NPCS DADORES DE MISIONES (Quests.dat) ****************************
+'NUEVOS, no VB6. Se spawnean al arrancar el server según [NPCSPAWNS] de Quests.dat.
+'No comercian ni son atacables: su única función es dar/recibir misiones (doble click).
+
+[NPC630]
+Name=Sargento Vulko <Instructor>
+PosOrig=1
+Head=307
+Body=339
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC631]
+Name=Dario Cazamayor <Veterano>
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC632]
+Name=Padre Anselmo <Quest>
+PosOrig=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC633]
+Name=Capitana Iselda <Guardia de los Caminos>
+PosOrig=1
+Head=307
+Body=339
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC634]
+Name=Golrik Vetahierro <Capataz Minero>
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC635]
+Name=Ordelio el Sabio <Archimago>
+PosOrig=1
+Head=116
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC636]
+Name=Silvano Raizvieja <Guardabosques>
+PosOrig=1
+Head=101
+Body=56
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC637]
+Name=Doctora Miralem <Investigadora>
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC638]
+Name=Teo Salmuera <Pescador>
+PosOrig=1
+Head=2
+Body=3
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC639]
+Name=Brenda Escamas <Cazadora de Dragones>
+PosOrig=1
+Head=101
+Body=56
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+[NPC640]
+Name=Eirik Manofría <Superviviente>
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+
+
+'Custodio del Abismo - mercader que cobra en Moneda Abisal (OBJ1012) y da la quest 41.
+[NPC641]
+Name=Custodio del Abismo <Mercader Prohibido>
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+HP=30000
+RespawnTime=1
+MinHP=30000
+MaxHP=30000
+Hostile=0
+Attackable=0
+NpcType=0
+Comercia=1
+Compra=0
+Moneda=1012
+NroItems=6
+Obj1=402-1000-40
+Obj2=1211-1000-60
+Obj3=481-1000-45
+Obj4=1093-1000-50
+Obj5=1148-1000-35
+Obj6=1265-1000-30

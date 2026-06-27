@@ -7,7 +7,12 @@ namespace ServidorCS.Game;
 public static class Constants
 {
     public const int MAX_INVENTORY_SLOTS = 25;
-    public const int MAX_BANCOINVENTORY_SLOTS = 40;
+    public const int MAX_BANCOINVENTORY_SLOTS = 80;
+
+    // Mochila de la mascota compañera (NUEVO, no VB6): la mascota es una mula que carga ítems y
+    // puede mandarlos al banco. Chica a propósito — es una ayuda de acarreo, no una segunda
+    // bóveda: la bóveda real tiene 80 slots.
+    public const int MAX_PETINVENTORY_SLOTS = 12;
     public const int NUMSKILLS = 27;
     public const int NUMATRIBUTOS = 5;
     public const int MAXUSERHECHIZOS = 120;
@@ -81,10 +86,18 @@ public struct Correo
     public int Cantidad;
 }
 
-// BancoInventario (Declares.bas): 40 slots, formato objindex-amount (sin equipped).
+// Mochila de la mascota compañera. Misma forma que el resto de los contenedores (UserObj[] con
+// el índice 0 sin usar) para poder reusar tal cual la lógica de apilado del banco/inventario.
+public sealed class MascotaInventario
+{
+    public UserObj[] Object = new UserObj[Constants.MAX_PETINVENTORY_SLOTS + 1]; // 1..12
+    public short NroItems;
+}
+
+// BancoInventario (Declares.bas): 80 slots, formato objindex-amount (sin equipped).
 public sealed class BancoInventario
 {
-    public UserObj[] Object = new UserObj[Constants.MAX_BANCOINVENTORY_SLOTS + 1]; // 1..40
+    public UserObj[] Object = new UserObj[Constants.MAX_BANCOINVENTORY_SLOTS + 1]; // 1..80
     public short NroItems;
 }
 
@@ -142,6 +155,11 @@ public sealed class UserStats
     public int[] ExpSkills = new int[Constants.NUMSKILLS + 1];
     public int[] EluSkills = new int[Constants.NUMSKILLS + 1];
     public int ArenaPoints;
+    // Pociones mágicas de vida (obj.dat SubTipo 16): cuántas tomó el personaje y cuánta vida
+    // máxima le sumaron en total. La poción de nacimiento (SubTipo 17) devuelve ese bonus y
+    // pone el contador en cero para que pueda volver a tirar. Persisten en [STATS] del .chr.
+    public int PocionesVida;
+    public int BonusVidaPociones;
 }
 
 // UserFlags — sólo los flags usados por el núcleo jugable (se ampliará al portar más lógica).
@@ -191,10 +209,17 @@ public sealed class UserFlags
     public short MetamorfosisExtraHIT, MetamorfosisExtraDEF;
     public short OrigBody, OrigHead;
     public double MetamorfosisExpira;
+    // Scroll del Trueno (obj.dat SubTipo 12): bonus temporal de daño. Mismo mecanismo que el
+    // bonus de la metamorfosis (suma a Stats.ExtraHIT y se resta al vencer/desloguear/morir).
+    public short ScrollHitBonus;
+    public double ScrollHitExpira;
     // Buff/debuff de atributos (SubeFU/SubeAG): TomoPocion marca que hay un efecto activo;
     // al expirar AtributoEfectoExpira se restauran los UserAtributos desde UserAtributosBackUP.
     public bool TomoPocion;
     public double AtributoEfectoExpira;
+    // Aviso visual "la dopa está por vencer": partícula reloj de arena sobre el char en los
+    // últimos segundos del efecto; true = ya se mandó (evita repetir el broadcast cada tick).
+    public bool AtributoEfectoAvisado;
     // Hechizos especiales de guerrero (116-120): Sacrificio Impío (próximo golpe certero) y
     // Furor Ígneo (velocidad de ataque, dura unos segundos). Timers/cooldowns en segundos (TickCount64/1000).
     public bool SacrificioImpio;
@@ -202,6 +227,13 @@ public sealed class UserFlags
     public double FurorIgneoExpira;
     public double FurorIgneoCooldownExpira;
     public double TempleCooldownExpira;
+    // Scrolls de EXP/Oro (pociones SubTipo 10/11, OBJ509/OBJ516): multiplican la exp/oro que
+    // gana el usuario mientras dure DuracionEfecto. Mult=0/1 = sin efecto. Persisten en el .chr
+    // como segundos restantes (ScrollExpSeg/ScrollOroSeg) para sobrevivir al relog.
+    public int ScrollExpMult;
+    public double ScrollExpExpira;   // TickCount64/1000 en que vence; 0 = sin efecto
+    public int ScrollOroMult;
+    public double ScrollOroExpira;
     // Lista de amigos (Declares.bas flags): CantidadAmigos = cuántos tiene; CheckAmigos = 1 si tiene ≥1.
     public byte CantidadAmigos;
     public byte CheckAmigos;
@@ -287,11 +319,43 @@ public sealed class User
 
     public Inventario Invent = new();
     public BancoInventario BancoInvent = new();
+    public MascotaInventario PetInvent = new();   // mochila de la mascota (ver MAX_PETINVENTORY_SLOTS)
+    // Bóvedas premium (NUEVO, no VB6): 2 bóvedas extra de 80 slots cada una, por personaje,
+    // que se desbloquean gastando CreditoDonador (ver Bank.ComprarBovedaPremium). Sin oro
+    // propio: el oro de bóveda sigue viviendo solo en Stats.Banco / BancoInvent.
+    public BancoInventario BancoPremium1 = new();
+    public BancoInventario BancoPremium2 = new();
+    public bool BovedaPremiumDesbloqueada;
     public List<Correo> Correos = new();   // bandeja de correos del jugador
     public AmigoSlot[] Amigos = NuevaListaAmigos(); // 1..MAXAMIGOS; Nombre="Vacio" = libre
     public string QuienAmigo = ""; // nombre de quien envió la última solicitud de amistad pendiente
     public AntiClickState AntiClick = new(); // estado anti-autoclicker
     public int CreditoDonador; // saldo de créditos de donación (cuenta .cnt [cuenta] Creditos)
+    // Partículas premium de meditación (NUEVO, no VB6): de cuenta, no de personaje.
+    // Owned = streamIds comprados con CreditoDonador (cuenta .cnt [Particulas] Owned).
+    // Equipped = streamId activo (0 = ninguno, usar Facciones.ParticleToLevel normal).
+    public HashSet<int> PremiumParticlesOwned = new();
+    public int EquippedPremiumParticle;
+    // Tag personal que se muestra pegado al nombre, además del de clan (poción de Tag, SubTipo 19).
+    // "" = sin tag. Se guarda en [FLAGS] Tag del .chr.
+    public string TagPersonal = "";
+    // Poción mágica de cambio de nombre (SubTipo 23): habilita UN /nombre <nuevo>. Persiste
+    // en [FLAGS] PuedeRenombrar para que no se pierda si el jugador la usa y se desconecta.
+    public bool PuedeRenombrar;
+    // Última mascota que tuvo (índice de NPCs.dat): la usa la poción de resucitar mascotas
+    // (SubTipo 21) para volver a invocar la que se le murió. 0 = nunca tuvo.
+    public int UltimaMascotaNpc;
+
+    // --- Mascota compañera persistente (Mago/Nigromante/Cazador, NUEVO) ---
+    // Distinta de MascotasCharIndex (invocación descartable) y de las mascotas de Entrenador.
+    // PetTipo=0 = sin mascota elegida todavía. PetCharIndex = CharIndex del NpcInstance vivo en el
+    // mapa (0 = no invocada ahora mismo; se guarda solo Tipo/Nivel/Exp, no CharIndex, ver CharSaver).
+    public byte PetTipo;
+    public byte PetNivel = 1;
+    public int PetExp;
+    public short PetCharIndex;
+    public string PetNombre = ""; // elegido en la creación del PJ, para siempre (ver CharCreator).
+    public bool PetDead; // true = murió en combate y sigue sin revivir (ver Veterinaria, Accion.cs)
 
     // --- Battle Pass (NUEVO, no VB6) — boosts personales temporales otorgados por el pase. ---
     // Multiplicador y vencimiento (TickCount64 en segundos) de exp/oro EXTRA personal, encima del
@@ -302,6 +366,8 @@ public sealed class User
     public long OroBoostUntil;
 
     public BattlePass.Progress BattlePass; // progreso del pase de temporada (cargado al login)
+    public Achievements.Progress Logros;   // progreso de logros (cargado al login)
+    public QuestSystem.Progress Quests;    // progreso de misiones (cargado al login)
 
     /// <summary>Lista de amigos inicializada con todos los slots en "Vacio" (1:1 VB6 .chr nuevo).</summary>
     public static AmigoSlot[] NuevaListaAmigos()
@@ -339,6 +405,7 @@ public sealed class User
     // NPC seleccionado con LeftClick (CharIndex), para comerciar. 0 = ninguno.
     public short TargetNpcCharIndex;
     public bool Comerciando;
+    public bool ComercioNpcNoCompra;   // true si el NPC con el que comercia solo vende (no compra)
 
     // Mascotas (domar): CharIndex de cada mascota viva. 0 = slot vacío. Máx 3.
     public short[] MascotasCharIndex = new short[4]; // 1..3
@@ -363,6 +430,16 @@ public sealed class User
     public int ResucitandoTarget;
     public bool ResucitandoFull;
     public byte ResucitandoX, ResucitandoY; // posición al iniciar el casteo (si se mueve, se cancela)
+    // Casteo de la invocación de la mascota compañera (mismo patrón que resucitar): el hechizo no
+    // la trae al instante, hay un conjuro de PET_SEGUNDOS_CASTEO durante el cual el jugador tiene
+    // que quedarse quieto. InvocandoPetHasta = segundos hasta completar (0 = no está invocando).
+    public double InvocandoPetHasta;
+    public byte InvocandoPetTipo;              // PetLeveling.PetTipo pedido
+    public byte InvocandoPetX, InvocandoPetY;  // posición al iniciar (si se mueve, se cancela)
+    public short InvocandoPetMap;
+    // Mandada al hogar: no se puede reinvocar hasta este momento (segundos, reloj del server).
+    // Es el costo de usarla como mula — ver PetInventory.LlegoAlHogar.
+    public double PetHogarHasta;
     // Portal de teletransporte (hechizo 53, uCreateTelep): casteo por segundos. PortalTime 0 = inactivo;
     // a los 5s aparece el objeto 672 (TileExit→Intermundia) en (PortalX,PortalY); a los 15s desaparece.
     public byte PortalTime;
@@ -373,6 +450,12 @@ public sealed class User
     // evita que entrar a un dungeon caminando caiga sobre el teleport de retorno y rebote afuera.
     // El cruce normal de mapas sigue fluido (el primer paso casi nunca cae sobre otro teleport).
     public bool RecienTeleportado;
+    // …pero SOLO por una ventana corta. El flag no distingue el rebote automático (venías con
+    // la tecla apretada y el paso siguiente sale a los ~238ms) de que el jugador quiera volver
+    // a entrar a propósito — y en ese segundo caso se comía el paso, con el síntoma de "piso el
+    // teleport y no entra, tengo que caminar al costado primero". Con la ventana, el rebote
+    // sigue cubierto y el regreso deliberado (que siempre tarda más) funciona al primer paso.
+    public DateTime RecienTeleportadoAt;
 
     // Último personaje (usuario) apuntado con LeftClick (CharIndex). Para iniciar trade.
     public short TargetUserCharIndex;
@@ -417,6 +500,10 @@ public sealed class User
         OrigChar = new CharData();
         Invent = new Inventario();
         BancoInvent = new BancoInventario();
+        PetInvent = new MascotaInventario();
+        BancoPremium1 = new BancoInventario();
+        BancoPremium2 = new BancoInventario();
+        BovedaPremiumDesbloqueada = false;
         Stats = new UserStats();
         flags = new UserFlags();
         Faccion = new Faccion();
@@ -430,8 +517,12 @@ public sealed class User
         Pos = default;
         GuildIndex = 0; PartyId = 0; FundandoGuildAlineacion = 0;
         CreditoDonador = 0;
+        PremiumParticlesOwned = new HashSet<int>();
+        EquippedPremiumParticle = 0;
         ExpBoostMult = 1.0; ExpBoostUntil = 0; OroBoostMult = 1.0; OroBoostUntil = 0;
         BattlePass = null;
+        Logros = null;
+        Quests = null;
         SpellPendiente = 0;
         TargetNpcCharIndex = 0; TargetUserCharIndex = 0; Comerciando = false; Trade = null;
         TargetObj = 0; TargetMap = 0; TargetX = 0; TargetY = 0;

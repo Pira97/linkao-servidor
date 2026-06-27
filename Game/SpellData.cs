@@ -59,6 +59,13 @@ public static class SpellData
         public bool ResucitaFamiliar;  // uFamiliar: en VB6 solo da la animación
         public int Body;               // body al que se transforma (Metamorfosis)
         public int ExtraHIT, ExtraDEF; // bonus de daño/defensa mientras dura la metamorfosis
+        // --- Overrides de balance por hechizo (0 = usar el default global de Balance.dat [COMBATE]) ---
+        public int EscalaNivelPvP;     // reemplaza EscalaMagiaPvP para ESTE hechizo (daño a usuario)
+        public int EscalaNivelPvE;     // reemplaza EscalaMagiaPvE para ESTE hechizo (daño a NPC)
+        public int EscalaINT;          // reemplaza EscalaMagiaINT para ESTE hechizo (% por punto de Inteligencia)
+        public bool SinEscalaINT;      // si true, este hechizo NO escala con Inteligencia (p.ej. curvas de leveo fijas)
+        public int DanoMagicoMin;      // piso de daño propio del hechizo (0 = usar el piso global PvP/PvE)
+        public int DanoMagicoMax;      // techo de daño propio del hechizo (0 = usar el techo global PvP/PvE)
     }
 
     // Parsea "1-2-3-..." → int[]{1,2,3,...}. Vacío/null → null.
@@ -73,6 +80,9 @@ public static class SpellData
 
     private static Dictionary<int, Spell> _spells;
     public static void Reload() { _spells = null; EnsureLoaded(); Console.WriteLine($"[SpellData] Recargado: {_spells?.Count ?? 0} hechizos."); }
+
+    /// <summary>Ruta de Hechizos.dat en disco (usado por SpellEditor para leer/escribir en vivo).</summary>
+    public static string FilePath => FindFile();
 
     public static string GetName(int spellIndex) => Get(spellIndex).Nombre ?? "";
 
@@ -163,6 +173,12 @@ public static class SpellData
                 Body = ini.GetInt("HECHIZO" + i, "Body"),
                 ExtraHIT = ini.GetInt("HECHIZO" + i, "ExtraHIT"),
                 ExtraDEF = ini.GetInt("HECHIZO" + i, "ExtraDEF"),
+                EscalaNivelPvP = ini.GetInt("HECHIZO" + i, "EscalaNivelPvP"),
+                EscalaNivelPvE = ini.GetInt("HECHIZO" + i, "EscalaNivelPvE"),
+                EscalaINT = ini.GetInt("HECHIZO" + i, "EscalaINT"),
+                SinEscalaINT = ini.GetInt("HECHIZO" + i, "SinEscalaINT") == 1,
+                DanoMagicoMin = ini.GetInt("HECHIZO" + i, "DanoMagicoMin"),
+                DanoMagicoMax = ini.GetInt("HECHIZO" + i, "DanoMagicoMax"),
             };
         }
     }

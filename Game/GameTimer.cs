@@ -29,7 +29,44 @@ public static class GameTimer
     public const short AFK_PARTICULA = 238;
     private static readonly Random _rngTimer = new();
 
-    /// <summary>Procesa regen/hambre/sed de todos los usuarios logueados. Llamado ~1/seg.</summary>
+    /// <summary>
+    /// Registra actividad del usuario y, si tenía la partícula de AFK puesta, la quita y la
+    /// difunde como removida. Llamado desde CUALQUIER acción real del jugador (moverse, atacar,
+    /// lanzar hechizo, usar/equipar ítem, etc.) — antes solo Movement.cs lo hacía, así que la
+    /// partícula seguía puesta mientras el usuario abría el inventario o casteaba sin moverse.
+    /// </summary>
+    public static void ClearAfk(int userIndex)
+    {
+        var u = UserListManager.UserList[userIndex];
+        if (u == null) return;
+        u.flags.LastActivityAt = Environment.TickCount64;
+        if (!u.flags.AfkParticula) return;
+        u.flags.AfkParticula = false;
+        for (int k = 1; k <= UserListManager.LastUser; k++)
+        {
+            var o = UserListManager.UserList[k];
+            if (o?.flags.UserLogged == true && o.Conn != null
+                && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
+                ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, AFK_PARTICULA, 0f, true);
+        }
+    }
+
+    /// <summary>
+    /// Procesa regen/hambre/sed de todos los usuarios logueados. Llamado ~1/seg.
+    /// [[b4_usersbymap]] Analizado en B4.9c — NO se migra a UsersByMapIndex, ninguno de los dos loops:
+    ///   - Loop EXTERNO (abajo): cada usuario tiene que revisar SUS PROPIOS timers (runa, portal,
+    ///     resurrección, logros, frío, hambre/sed, y el resto del archivo) sin importar en qué mapa
+    ///     esté — no hay ningún mapa por el cual acotar de antemano, hace falta recorrer a TODOS los
+    ///     logueados igual que antes. Conceptualmente esto no es una búsqueda por mapa.
+    ///   - Loop INTERNO de la rama AFK (más abajo): difunde la partícula usando AreaVisibility.VeChar,
+    ///     que en mundo continuo (Server.ini MundoContinuo=1, ACTIVO en este deployment) también
+    ///     entrega a observadores de un mapa VECINO — igual que BroadcastFX en Combat.cs (ver B4.8),
+    ///     UsersByMapIndex.Get(map) no cubre ese caso y migrarlo rompería la partícula de AFK cerca
+    ///     de un borde entre mapas. Mismo motivo, misma decisión: no migrar sin soporte multi-mapa
+    ///     verificado. Además, en la práctica dispara pocas veces por tick (un usuario cruza el
+    ///     umbral de 60s de inactividad a la vez, no todos simultáneamente), así que el impacto real
+    ///     de dejarlo así es bajo.
+    /// </summary>
     public static void Tick()
     {
         long now = Environment.TickCount64;
@@ -47,6 +84,12 @@ public static class GameTimer
             // Casteo de resucitar/resurrección: al completarse revive al objetivo.
             if (u.ResucitandoHasta > 0) Combat.TickResucitar(i, u);
 
+            // Conjuro de invocación de la mascota compañera: al completarse la trae.
+            if (u.InvocandoPetHasta > 0) Combat.TickInvocarMascota(i, u);
+
+            // Logros: tiempo conectado (cuenta también estando muerto).
+            Achievements.TickOnline(i, now);
+
             if (u.flags.Muerto == 1) continue;
 
             // --- AFK: si pasó AFK_TIMEOUT sin moverse y aún no tiene la partícula, difundirla ---
@@ -57,7 +100,8 @@ public static class GameTimer
                 for (int k = 1; k <= UserListManager.LastUser; k++)
                 {
                     var o = UserListManager.UserList[k];
-                    if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                    if (o?.flags.UserLogged == true && o.Conn != null
+                        && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                         ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, AFK_PARTICULA, -1f, false);
                 }
             }
@@ -149,6 +193,9 @@ public static class GameTimer
 
             // --- Meditación: regen de maná (DoMeditar, Trabajo.bas:2369) ---
             DoMeditar(u, now);
+
+            // --- Arma oculta mientras trabaja: se esconde al empezar y reaparece al terminar ---
+            Work.SyncArmaTrabajo(u);
 
             // --- Trabajo: pesca/minería/talar (DoTrabajar, Trabajo.bas:2899) ---
             if (u.flags.Trabajando) Work.DoTrabajar(i);
@@ -251,6 +298,7 @@ public static class GameTimer
             map.FloorObj[x, y] = Combat.PortalObjIndex;
             map.FloorAmount[x, y] = 1;
             map.Exits[x, y] = new TileExit { DestMap = inter.Map, DestX = inter.X, DestY = inter.Y };
+            map.DynamicTeleports.Add(x * 101 + y);
             AreaVisibility.ObjectAppeared(u.PortalMap, x, y, Combat.PortalObjIndex, 1);
             // La partícula del teleport la maneja el CLIENTE por el objeto (obj 672, tipo 19):
             // handle_object_create borra la del cast (remove_map_particle) y crea la 34; handle_object_delete
@@ -274,6 +322,7 @@ public static class GameTimer
             {
                 int x = u.PortalX, y = u.PortalY;
                 map.FloorObj[x, y] = 0; map.FloorAmount[x, y] = 0; map.Exits[x, y] = null;
+                map.DynamicTeleports.Remove(x * 101 + y);
                 AreaVisibility.ObjectRemoved(u.PortalMap, x, y);
             }
             if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "El portal de teletransporte se ha cerrado.", 1);

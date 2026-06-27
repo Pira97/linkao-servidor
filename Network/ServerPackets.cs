@@ -12,7 +12,22 @@ namespace ServidorCS.Network;
 /// </summary>
 public static class ServerPackets
 {
-    private static void Send(Connection conn, ByteQueue p) => conn.EnqueueOutgoing(p);
+    // conn puede ser null durante el cierre (CloseUser desequipa montura/ítem mágico y eso
+    // intenta notificar al propio usuario que ya se desconectó): en ese caso se descarta.
+    // TODOS los paquetes S->C pasan por acá (119 llamadas), y de eso se aprovecha el modo
+    // espía (ver Espia.cs), que necesita las dos mitades:
+    //   • si un Dios está mirando a este usuario, se le encola la MISMA copia de bytes;
+    //   • si este usuario ES un Dios espiando, sus propios paquetes se DESCARTAN (salvo los
+    //     de texto) para que su HP/hambre/área no le pisen la pantalla del espiado.
+    // Es seguro mandar el mismo ByteQueue dos veces porque EnqueueOutgoing hace ToArray().
+    // Sin ningún espejo activo, Rutear() sale por un bool volátil: cero costo por paquete.
+    private static void Send(Connection conn, ByteQueue p)
+    {
+        if (conn == null) return;
+        bool silenciar = Game.Espia.Rutear(conn, p, out var espia);
+        if (!silenciar) conn.EnqueueOutgoing(p);
+        espia?.EnqueueOutgoing(p);
+    }
 
     /// <summary>WriteLoggedSuccessful: Byte(LoggedSuccessful). Primer packet del login OK.</summary>
     public static void LoggedSuccessful(Connection conn)
@@ -44,7 +59,7 @@ public static class ServerPackets
     /// Boolean(IsTopGold) Int(weaponObjIndex).
     /// </summary>
     public static void CharacterCreate(Connection conn, short charIndex, short body, short head,
-        byte heading, byte x, byte y, short weapon, short shield, short helmet, short fx, short fxLoops,
+        byte heading, int x, int y, short weapon, short shield, short helmet, short fx, short fxLoops,
         string name, byte privileges, byte donador, byte particulaFx,
         byte armaAura, byte bodyAura, byte escudoAura, byte headAura, byte otraAura, byte anilloAura,
         bool isTopGold, short weaponObjIndex)
@@ -55,8 +70,8 @@ public static class ServerPackets
         p.WriteInteger(body);
         p.WriteInteger(head);
         p.WriteByte(heading);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         p.WriteInteger(weapon);
         p.WriteInteger(shield);
         p.WriteInteger(helmet);
@@ -74,6 +89,20 @@ public static class ServerPackets
         p.WriteByte(anilloAura);
         p.WriteBoolean(isTopGold);
         p.WriteInteger(weaponObjIndex);
+        Send(conn, p);
+    }
+
+    /// <summary>WriteUpdateTagAndStatus (PrepareMessageUpdateTagAndStatus). Orden VB6:
+    /// Byte(id) Int(CharIndex) ASCIIString(Tag) Byte(Status) Byte(Donador).
+    /// El Tag es "Nombre &lt;Clan&gt;" (o solo "Nombre"); el cliente extrae el clan.</summary>
+    public static void UpdateTagAndStatus(Connection conn, short charIndex, string tag, byte status, byte donador)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.UpdateTagAndStatus);
+        p.WriteInteger(charIndex);
+        p.WriteASCIIString(tag);
+        p.WriteByte(status);
+        p.WriteByte(donador);
         Send(conn, p);
     }
 
@@ -102,6 +131,22 @@ public static class ServerPackets
         p.WriteByte((byte)ServerPacketID.ChangeMap);
         p.WriteInteger(map);
         p.WriteInteger(mapVersion);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// SeamlessCross (mundo continuo): Byte(ID) + Integer(nuevoMapa) + Integer(globalX) + Integer(globalY).
+    /// Cruce de borde SIN teardown: el cliente actualiza current_map y su posición pero NO limpia el
+    /// char_list ni recarga desde cero (a diferencia de ChangeMap). La continuidad la sostiene el
+    /// re-anclado de coords globales (4a). Solo se envía con el mundo continuo activo.
+    /// </summary>
+    public static void SeamlessCross(Connection conn, short map, int gx, int gy)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.SeamlessCross);
+        p.WriteInteger(map);
+        p.WriteInteger((short)gx);
+        p.WriteInteger((short)gy);
         Send(conn, p);
     }
 
@@ -158,6 +203,17 @@ public static class ServerPackets
     /// </summary>
     public static void ShowMessageBoxCode(Connection conn, int codigo)
         => ShowMessageBox(conn, codigo.ToString());
+
+    /// <summary>Respuesta al chequeo de nombre libre de la pantalla Crear Personaje (NUEVO, no VB6).
+    /// Cable: Byte(id) + Byte(disponible 1/0) + ASCIIString(msg).</summary>
+    public static void NombreCheckResult(Connection conn, byte disponible, string msg)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.NombreCheckResult);
+        p.WriteByte(disponible);
+        p.WriteASCIIString(msg);
+        Send(conn, p);
+    }
 
     /// <summary>Datos resumidos de un personaje para la pantalla de selección (AddPj).</summary>
     public struct AccountChar
@@ -302,12 +358,12 @@ public static class ServerPackets
     /// PrepareMessageObjectCreate: Byte(id) + Byte(X) + Byte(Y) + Integer(ObjIndex)
     /// + Integer(Amount). Crea un objeto en el suelo.
     /// </summary>
-    public static void ObjectCreate(Connection conn, byte x, byte y, short objIndex, short amount)
+    public static void ObjectCreate(Connection conn, int x, int y, short objIndex, short amount)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.ObjectCreate);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         p.WriteInteger(objIndex);
         p.WriteInteger(amount);
         Send(conn, p);
@@ -347,6 +403,26 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>
+    /// SpellBeam (NUEVO, no VB6): Byte(id) + Int(CharOrigen) + Int(CharDestino) + Int(XOrigen) +
+    /// Int(YOrigen) + Int(XDestino) + Int(YDestino) + Byte(Tipo). El cliente dibuja un arco
+    /// eléctrico procedural del lanzador al objetivo al castear. Tipo = paleta (ver ServerPacketID).
+    /// </summary>
+    public static void SpellBeam(Connection conn, short charOrigen, short charDestino,
+        short xOrigen, short yOrigen, short xDestino, short yDestino, byte tipo)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.SpellBeam);
+        p.WriteInteger(charOrigen);
+        p.WriteInteger(charDestino);
+        p.WriteInteger(xOrigen);
+        p.WriteInteger(yOrigen);
+        p.WriteInteger(xDestino);
+        p.WriteInteger(yDestino);
+        p.WriteByte(tipo);
+        Send(conn, p);
+    }
+
     /// <summary>WriteUpdateExp: Byte(id) + Long(Exp). Refresca la experiencia en el HUD.</summary>
     public static void UpdateExp(Connection conn, int exp)
     {
@@ -362,6 +438,18 @@ public static class ServerPackets
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.UpdateGold);
         p.WriteLong(gld);
+        Send(conn, p);
+    }
+
+    /// <summary>ScrollBuff: Byte(tipo 1=exp/2=oro) + Byte(mult) + Long(segundos restantes; 0 = terminó).
+    /// El cliente lo usa para el chip con cuenta regresiva del HUD.</summary>
+    public static void ScrollBuff(Connection conn, byte tipo, byte mult, int segundos)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.ScrollBuff);
+        p.WriteByte(tipo);
+        p.WriteByte(mult);
+        p.WriteLong(segundos);
         Send(conn, p);
     }
 
@@ -412,6 +500,36 @@ public static class ServerPackets
     }
 
     /// <summary>
+    /// Mismo paquete que UpdateUserStats pero armado desde un NpcInstance (bot espectado por el
+    /// panel, ver Espia.cs): sin esto, el HUD de vida/maná del espectador quedaba con lo último
+    /// que tenía SU PROPIO personaje (o en cero) en vez del máximo real del bot que está mirando.
+    /// Los campos que un bot no tiene (stamina/oro/nivel/exp/atributos) van con un placeholder
+    /// razonable — el hambre/sed se manda lleno para que esas barras no aparezcan en rojo.
+    /// </summary>
+    public static void UpdateUserStatsNpc(Connection conn, Game.NpcManager.NpcInstance n)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.UpdateUserStats);
+        p.WriteInteger((short)n.MaxHP);
+        p.WriteInteger((short)n.MinHP);
+        p.WriteInteger((short)n.MaxMana);
+        p.WriteInteger((short)n.MinMana);
+        p.WriteInteger(0);   // MaxSta: los bots no tienen stamina
+        p.WriteInteger(0);   // MinSta
+        p.WriteLong(0);      // GLD
+        p.WriteInteger(1);   // ELV: placeholder, los bots no tienen nivel propio
+        p.WriteLong(0);      // ELU
+        p.WriteLong(0);      // Exp
+        p.WriteByte(0);      // Agilidad
+        p.WriteByte(0);      // Fuerza
+        p.WriteByte(100);    // MinHam
+        p.WriteByte(100);    // MaxHam
+        p.WriteByte(100);    // MinAGU
+        p.WriteByte(100);    // MaxAGU
+        Send(conn, p);
+    }
+
+    /// <summary>
     /// PrepareMessageCharacterChange: Byte(id) + Int(CharIndex) + Int(body) + Int(Head)
     /// + Byte(heading) + Int(weapon) + Int(shield) + Int(helmet) + Int(FX) + Int(FXLoops)
     /// + Int(weaponObjIndex). Actualiza la apariencia de un personaje ya visible.
@@ -435,31 +553,35 @@ public static class ServerPackets
     }
 
     /// <summary>PrepareMessagePlayWave: Byte(id) + Integer(wave) + Byte(X) + Byte(Y). Reproduce un sonido.</summary>
-    public static void PlayWave(Connection conn, short wave, byte x, byte y)
+    public static void PlayWave(Connection conn, short wave, int x, int y)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.PlayWave);
         p.WriteInteger(wave);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         Send(conn, p);
     }
 
     /// <summary>PrepareMessageObjectDelete: Byte(id) + Byte(X) + Byte(Y). Quita un objeto del suelo.</summary>
-    public static void ObjectDelete(Connection conn, byte x, byte y)
+    public static void ObjectDelete(Connection conn, int x, int y)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.ObjectDelete);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         Send(conn, p);
     }
 
-    /// <summary>WriteCommerceInit: Byte(id). Abre la ventana de comercio en el cliente.</summary>
-    public static void CommerceInit(Connection conn)
+    /// <summary>WriteCommerceInit: Byte(id) + Byte(compra). Abre la ventana de comercio.
+    /// compra=1 el NPC compra al usuario (muestra inventario y botón Vender); 0 = solo vende.</summary>
+    public static void CommerceInit(Connection conn, bool compra = true, bool esViajes = false, short moneda = 0)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.CommerceInit);
+        p.WriteByte((byte)(compra ? 1 : 0));      // 1 = el NPC compra ítems al usuario
+        p.WriteByte((byte)(esViajes ? 1 : 0));    // 1 = transportador → abrir form de Viajar
+        p.WriteInteger(moneda);                    // 0 = oro; >0 = ObjIndex de la divisa propia del NPC
         Send(conn, p);
     }
 
@@ -516,6 +638,38 @@ public static class ServerPackets
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.ChangeBankSlot);
+        p.WriteByte(slot);
+        p.WriteInteger(objIndex);
+        p.WriteInteger((short)amount);
+        p.WriteLong(valor);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// BankInitPremium (203): Byte(id) + Boolean(desbloqueada). Estado de las 2 bóvedas
+    /// premium al abrir la bóveda o justo tras comprarlas. Sale SOLO a clientes con
+    /// SoportaBovedaPremium (bit2 de ClientCaps) — al resto no le llega nunca.
+    /// </summary>
+    public static void BankInitPremium(Connection conn, bool desbloqueada)
+    {
+        if (conn == null || !conn.SoportaBovedaPremium) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.BankInitPremium);
+        p.WriteBoolean(desbloqueada);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// ChangeBankSlotPremium (204): Byte(id) + Byte(vaultId 1|2) + Byte(Slot) + Integer(ObjIndex)
+    /// + Integer(Amount) + Long(Valor). Mismo formato que ChangeBankSlot + el byte de vaultId.
+    /// Sale SOLO a clientes con SoportaBovedaPremium.
+    /// </summary>
+    public static void ChangeBankSlotPremium(Connection conn, byte vaultId, byte slot, short objIndex, int amount, int valor)
+    {
+        if (conn == null || !conn.SoportaBovedaPremium) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.ChangeBankSlotPremium);
+        p.WriteByte(vaultId);
         p.WriteByte(slot);
         p.WriteInteger(objIndex);
         p.WriteInteger((short)amount);
@@ -793,6 +947,180 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>MEJORA-005: PartyMemberMana, mismo formato que PartyMemberHP pero para maná.</summary>
+    public static void PartyMemberMana(Connection conn, short charIndex, short minMana, short maxMana)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PartyMemberMana);
+        p.WriteInteger(charIndex);
+        p.WriteInteger(minMana);
+        p.WriteInteger(maxMana);
+        Send(conn, p);
+    }
+
+    /// <summary>GmWatchHP: Byte(id) + Int(charIndex) + Int(minHP) + Int(maxHP). Ver GmWatch.cs.</summary>
+    public static void GmWatchHP(Connection conn, short charIndex, short minHP, short maxHP)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.GmWatchHP);
+        p.WriteInteger(charIndex);
+        p.WriteInteger(minHP);
+        p.WriteInteger(maxHP);
+        Send(conn, p);
+    }
+
+    /// <summary>GmWatchMana: mismo formato que GmWatchHP pero para maná. Ver GmWatch.cs.</summary>
+    public static void GmWatchMana(Connection conn, short charIndex, short minMana, short maxMana)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.GmWatchMana);
+        p.WriteInteger(charIndex);
+        p.WriteInteger(minMana);
+        p.WriteInteger(maxMana);
+        Send(conn, p);
+    }
+
+    /// <summary>PetInfo: estado de la mascota compañera para el panel del dueño — se manda esté o
+    /// no invocada AHORA MISMO (para poder previsualizarla con los datos guardados), ver
+    /// 'invocada' y 'muerta'. Ver ServerPacketID.PetInfo y Combat.EnviarPetInfo.</summary>
+    public static void PetInfo(Connection conn, byte tipo, byte nivel, int exp, int expSiguiente,
+        int hpActual, int hpMax, string nombre, short[] hechizosConocidos, bool invocada, bool muerta,
+        int minHit = 0, int maxHit = 0, int spellMin = 0, int spellMax = 0, byte[] opcionesElegibles = null,
+        int charIndex = 0)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PetInfo);
+        p.WriteByte(tipo);
+        p.WriteByte(nivel);
+        p.WriteLong(exp);
+        p.WriteLong(expSiguiente);
+        p.WriteLong(hpActual);
+        p.WriteLong(hpMax);
+        p.WriteASCIIString(nombre ?? "");
+        hechizosConocidos ??= Array.Empty<short>();
+        p.WriteByte((byte)hechizosConocidos.Length);
+        foreach (var h in hechizosConocidos) p.WriteLong(h);
+        p.WriteByte((byte)(invocada ? 1 : 0));
+        p.WriteByte((byte)(muerta ? 1 : 0));
+        // Daño cuerpo a cuerpo de su nivel actual (PetLeveling.DanoPorNivel): el panel muestra
+        // cuánto pega y cómo mejora al subir de nivel.
+        p.WriteLong(minHit);
+        p.WriteLong(maxHit);
+        // Daño del HECHIZO que lanza hoy (Hechizos.dat MinHP/MaxHP del spell activo), 0 = no castea.
+        // Va aparte del golpe porque una mascota casteadora (Ely) hace casi todo su daño con el
+        // hechizo y el panel no puede llamar "daño por golpe" a lo único que muestra.
+        p.WriteLong(spellMin);
+        p.WriteLong(spellMax);
+        // Tipos que este personaje PODRÍA elegir todavía (vacío = ya tiene mascota, o su clase no
+        // lleva). Existe para los personajes creados antes de que la mascota fuera parte de la
+        // creación: el panel les muestra el elegidor con estas opciones y el cliente no necesita
+        // saber nada de clases ni repetir la tabla de PetLeveling.
+        opcionesElegibles ??= Array.Empty<byte>();
+        p.WriteByte((byte)opcionesElegibles.Length);
+        foreach (var t in opcionesElegibles) p.WriteByte(t);
+        // CharIndex de la instancia viva (0 = no invocada): con esto el cliente sabe CUÁL de los
+        // personajes del mapa es su mascota y puede ofrecer "regresar al hogar" al hacerle clic.
+        p.WriteInteger((short)charIndex);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// PetInv: mochila de la mascota compañera, COMPLETA (los 12 slots, vacíos incluidos: así el
+    /// cliente pinta la grilla sin tener que recordar el estado anterior). Se manda sólo al dueño.
+    /// Cada slot viaja con nombre y GrhIndex resueltos del lado del server, igual que hace el
+    /// comercio: el cliente no tiene el obj.dat completo.
+    /// </summary>
+    public static void PetInv(Connection conn, Game.MascotaInventario inv)
+    {
+        if (conn == null || inv == null) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PetInv);
+        p.WriteByte((byte)Game.Constants.MAX_PETINVENTORY_SLOTS);
+        for (int i = 1; i <= Game.Constants.MAX_PETINVENTORY_SLOTS; i++)
+        {
+            var o = inv.Object[i];
+            p.WriteInteger(o.ObjIndex);
+            p.WriteLong(o.ObjIndex > 0 ? o.Amount : 0);
+            if (o.ObjIndex > 0)
+            {
+                var od = Game.ObjData.Get(o.ObjIndex);
+                p.WriteASCIIString(od.Name ?? "");
+                p.WriteInteger((short)od.GrhIndex);
+            }
+            else { p.WriteASCIIString(""); p.WriteInteger(0); }
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>MEJORA-005: PartySignal — señal de ayuda difundida al grupo (tipo 1).</summary>
+    public static void PartySignal(Connection conn, byte tipo, string remitente, int mapa, byte x, byte y)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PartySignal);
+        p.WriteByte(tipo);
+        p.WriteASCIIString(remitente);
+        p.WriteInteger((short)mapa);
+        p.WriteByte(x);
+        p.WriteByte(y);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// MEJORA-005: PartyRoute — recorrido de grupo (tipo 2): dos puntos elegidos a mano en
+    /// el Mapamundi por quien lo manda, CADA UNO con su propio mapa (no tienen que ser el
+    /// mismo — sirve para marcar p.ej. la entrada de un dungeon en un mapa y el objetivo en
+    /// otro). Mismo cable que PartySignal + un segundo (mapa,x,y) al final, así que el
+    /// cliente lo sigue leyendo por [S.PARTY_SIGNAL] con tipo==2 ramificando el resto.
+    /// </summary>
+    public static void PartyRoute(Connection conn, string remitente, int mapa1, byte x1, byte y1, int mapa2, byte x2, byte y2)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PartySignal);
+        p.WriteByte(2);
+        p.WriteASCIIString(remitente);
+        p.WriteInteger((short)mapa1);
+        p.WriteByte(x1);
+        p.WriteByte(y1);
+        p.WriteInteger((short)mapa2);
+        p.WriteByte(x2);
+        p.WriteByte(y2);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// PartyMemberPos (116, NUEVO no VB6): Byte(id) + ASCIIString(nombre) + Integer(mapa) +
+    /// Byte(x) + Byte(y). Posición de un compañero de grupo, para marcarlo en el minimapa
+    /// (mismo mapa) y en el mapamundi (cualquier mapa).
+    /// </summary>
+    public static void PartyMemberPos(Connection conn, string memberName, short map, byte x, byte y)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PartyMemberPos);
+        p.WriteASCIIString(memberName);
+        p.WriteInteger(map);
+        p.WriteByte(x);
+        p.WriteByte(y);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// GuerraBots (199, NUEVO no VB6): Integer(count) + count×[Integer(mapa), Byte(x), Byte(y),
+    /// Byte(faccion)]. Foto de dónde está cada bot de la guerra de facciones, para dibujarlos en
+    /// vivo en el Mapamundi. Va en UN solo paquete (150 bots ≈ 1 KB) en vez de uno por bot.
+    /// </summary>
+    public static void GuerraBots(Connection conn, IReadOnlyList<(int map, byte x, byte y, byte faccion)> bots)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.GuerraBots);
+        p.WriteInteger((short)bots.Count);
+        foreach (var (map, x, y, faccion) in bots)
+        {
+            p.WriteInteger((short)map);
+            p.WriteByte(x); p.WriteByte(y); p.WriteByte(faccion);
+        }
+        Send(conn, p);
+    }
+
     /// <summary>WriteGuildChat: Byte(id) + ASCIIString(chat). Mensaje del clan.</summary>
     public static void GuildChat(Connection conn, string chat)
     {
@@ -834,6 +1162,22 @@ public static class ServerPackets
     /// NOTA: SalePrice y PuedeUsar dependen de ObjData (obj.dat, aún no portado).
     ///       Se envían 0 / 1 por ahora SIN alterar el formato de bytes.
     /// </summary>
+    /// <summary>
+    /// Sobrecarga 1:1 con el VB6 (Protocol.bas:15280 WriteChangeInventorySlot): lee el slot del
+    /// inventario del usuario y calcula PuedeUsar acá (clase/raza/nivel/sexo/facción; GM todo).
+    /// Usar SIEMPRE esta versión para slots del inventario propio: la cruda con default
+    /// puedeUsar=1 hacía que los ítems no usables nunca se pintaran en rojo en el cliente.
+    /// </summary>
+    public static void ChangeInventorySlot(Connection conn, Game.User u, byte slot)
+    {
+        if (conn == null || slot < 1 || slot > Game.Constants.MAX_INVENTORY_SLOTS) return;
+        var o = u.Invent.Object[slot];
+        byte puedeUsar = 1;
+        if (o.ObjIndex > 0)
+            puedeUsar = Game.Inventory.PuedeUsarObjeto(u, Game.ObjData.Get(o.ObjIndex), out _) ? (byte)1 : (byte)0;
+        ChangeInventorySlot(conn, slot, o.ObjIndex, o.Amount, o.Equipped, 0f, puedeUsar);
+    }
+
     public static void ChangeInventorySlot(Connection conn, byte slot, short objIndex,
         int amount, bool equipped, float salePrice = 0f, byte puedeUsar = 1)
     {
@@ -927,13 +1271,13 @@ public static class ServerPackets
     /// EfectoTerrenoParticula: Byte(id) + Integer(ParticulaFx) + Byte(X) + Byte(Y) + Long(Time).
     /// Partícula sobre un tile. Time=0 → quitar; Time=1 → infinita (partículas de mapa); otro → duración.
     /// </summary>
-    public static void EfectoTerrenoParticula(Connection conn, short particula, byte x, byte y, int time)
+    public static void EfectoTerrenoParticula(Connection conn, short particula, int x, int y, int time)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.EfectoTerrenoParticula);
         p.WriteInteger(particula);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         p.WriteLong(time);
         Send(conn, p);
     }
@@ -944,13 +1288,13 @@ public static class ServerPackets
     /// queda en la posición donde se lanzó. Loops controla cuántos ciclos de animación dura
     /// (0 = una animación completa; -1 = infinito).
     /// </summary>
-    public static void EfectoTerrenoFX(Connection conn, short fx, byte x, byte y, int loops)
+    public static void EfectoTerrenoFX(Connection conn, short fx, int x, int y, int loops)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.EfectoTerrenoFX);
         p.WriteInteger(fx);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         p.WriteInteger((short)loops);
         Send(conn, p);
     }
@@ -1027,12 +1371,12 @@ public static class ServerPackets
     }
 
     /// <summary>WritePosUpdate: Byte(id) + Byte(X) + Byte(Y). Reposiciona al propio cliente.</summary>
-    public static void PosUpdate(Connection conn, byte x, byte y)
+    public static void PosUpdate(Connection conn, int x, int y)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.PosUpdate);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         Send(conn, p);
     }
 
@@ -1049,13 +1393,110 @@ public static class ServerPackets
     /// PrepareMessageCharacterMove: Byte(id) + Integer(CharIndex) + Byte(X) + Byte(Y).
     /// Notifica a los demás que un personaje se movió a (X,Y).
     /// </summary>
-    public static void CharacterMove(Connection conn, short charIndex, byte x, byte y)
+    public static void CharacterMove(Connection conn, short charIndex, int x, int y)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.CharacterMove);
         p.WriteInteger(charIndex);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// LevelUpFx (117): Integer(charIndex) + Byte(nivel). "Este personaje ACABA de subir de
+    /// nivel" → el cliente le dibuja el efecto encima. Se difunde a todo el que lo vea (no
+    /// solo al que sube, a diferencia de LevelUp(63), que es el contador de puntos de skill).
+    /// Sale únicamente a clientes que declararon el bit1 de ClientCaps.
+    /// </summary>
+    public static void LevelUpFx(Connection conn, short charIndex, int nivel)
+    {
+        if (conn == null || !conn.SoportaEfectosNuevos) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.LevelUpFx);
+        p.WriteInteger(charIndex);
+        p.WriteByte((byte)Math.Clamp(nivel, 0, 255));
+        Send(conn, p);
+    }
+
+    // ======================= MODO ESPÍA (paquetes nuevos) =======================
+    // Los tres salen SOLO si el cliente declaró que los entiende (ClientCaps). Al Godot
+    // viejo no le llegan nunca: no sabe saltear ids desconocidos y se desincronizaría.
+
+    /// <summary>
+    /// EspiaVista (190) → AL ESPÍA: Byte(activo) + Integer(charIndex espiado) + ASCIIString(nombre).
+    /// Le avisa al cliente del Dios que está en modo espectador. Con eso el cliente sabe que
+    /// el personaje que le dijeron que es "suyo" en realidad es de otro: bloquea el input
+    /// (si no, la predicción local le movería el muñeco del espiado) y camina los pasos que
+    /// llegan en vez de descartarlos como eco propio.
+    /// </summary>
+    public static void EspiaVista(Connection conn, bool activo, short charIndex, string nombre)
+    {
+        if (conn == null || !conn.SoportaEspia) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EspiaVista);
+        p.WriteBoolean(activo);
+        p.WriteInteger(charIndex);
+        p.WriteASCIIString(nombre ?? "");
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// EspiaReportar (191) → AL ESPIADO: Byte(activo). Le pide al cliente que empiece (o
+    /// deje) de reportar lo que NO viaja en el protocolo normal: dónde tiene el mouse y qué
+    /// tiene abierto en la interfaz. No muestra NADA en pantalla.
+    /// Se manda con Espia.SinEspejo para que la copia del espejo no se la lleve el espía
+    /// (si no, el Dios empezaría a reportar su propia pantalla al vacío).
+    /// </summary>
+    public static void EspiaReportar(Connection conn, bool activo)
+    {
+        if (conn == null || !conn.SoportaEspia) return;
+        // Se manda SIEMPRE, aunque ya estuviera reportando: el cliente usa este paquete para
+        // olvidar el último estado de interfaz que reportó y mandarlo entero de nuevo. Sin
+        // eso, un espía que engancha a alguien que YA estaba siendo reportado no ve qué
+        // tiene abierto hasta que el otro toque algo. Es un paquete de 2 bytes.
+        conn.ReportaAlEspia = activo;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EspiaReportar);
+        p.WriteBoolean(activo);
+        Game.Espia.SinEspejo(() => Send(conn, p));
+    }
+
+    /// <summary>
+    /// EspiaUi (193) → AL ESPÍA: ASCIIString(estado). Qué tiene abierto el espiado en su
+    /// interfaz (solapa del panel lateral, ventanas, slots seleccionados). El server no
+    /// interpreta el contenido: lo arma el cliente del espiado y lo aplica el del Dios.
+    /// </summary>
+    public static void EspiaUi(Connection conn, string estado)
+    {
+        if (conn == null || !conn.SoportaEspia) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EspiaUi);
+        p.WriteASCIIString(estado ?? "");
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// EspiaMousePos (192) → AL ESPÍA: Long(xPx) + Long(yPx) + Integer(nx) + Integer(ny) + Byte(botones).
+    /// El mouse del espiado tal cual lo mandó su cliente, en DOS sistemas de coordenadas:
+    ///   • xPx/yPx = píxeles de MUNDO (tile global * 32) — valen cuando está sobre el mapa,
+    ///     y caen en el mismo tile aunque las dos pantallas tengan distinto tamaño.
+    ///   • nx/ny = posición en PANTALLA normalizada a 0..10000 — es la que vale cuando el
+    ///     mouse está sobre el HUD (inventario, hechizos, consola), donde no hay ningún
+    ///     tile debajo. El HUD está maquetado en porcentajes, así que normalizado cae en
+    ///     el mismo botón en las dos pantallas.
+    /// botones: bit0 izquierdo, bit1 derecho, bit6 = está sobre el mundo, bit7 = recién clickeó.
+    /// </summary>
+    public static void EspiaMousePos(Connection conn, int xPx, int yPx, short nx, short ny, byte botones)
+    {
+        if (conn == null || !conn.SoportaEspia) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EspiaMousePos);
+        p.WriteLong(xPx);
+        p.WriteLong(yPx);
+        p.WriteInteger(nx);
+        p.WriteInteger(ny);
+        p.WriteByte(botones);
         Send(conn, p);
     }
 
@@ -1120,12 +1561,12 @@ public static class ServerPackets
     /// Actualiza el estado de bloqueo de un tile (puerta abierta/cerrada, etc).
     /// Portado 1:1 desde Protocol.bas:14857 (WriteBlockPosition).
     /// </summary>
-    public static void BlockPosition(Connection conn, byte x, byte y, bool blocked)
+    public static void BlockPosition(Connection conn, int x, int y, bool blocked)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.BlockPosition);
-        p.WriteByte(x);
-        p.WriteByte(y);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
         p.WriteBoolean(blocked);
         Send(conn, p);
     }
@@ -1188,14 +1629,16 @@ public static class ServerPackets
         Send(conn, p);
     }
 
-    /// <summary>NpcParalysisProgress (114): Byte(id) + Integer(charIndex) + Byte(segundos).
-    /// El cliente dibuja la barra de parálisis bajo el personaje (NPC o usuario).</summary>
-    public static void NpcParalysisProgress(Connection conn, short charIndex, byte seconds)
+    /// <summary>NpcParalysisProgress (114): Byte(id) + Integer(charIndex) + Byte(segundos) + Byte(tipo).
+    /// El cliente dibuja la barra de parálisis bajo el personaje (NPC o usuario) y el efecto
+    /// sobre el body: tipo 1 = parálisis (petrificado), tipo 2 = inmovilización (enredaderas).</summary>
+    public static void NpcParalysisProgress(Connection conn, short charIndex, byte seconds, byte tipo = 1)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.NpcParalysisProgress);
         p.WriteInteger(charIndex);
         p.WriteByte(seconds);
+        p.WriteByte(tipo);
         Send(conn, p);
     }
 
@@ -1268,6 +1711,38 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>
+    /// WriteAmigosList (182, NUEVO no VB6): Byte(id) + Byte(count) + por amigo:
+    /// ASCII(nombre) + Byte(online 0/1) + Integer(mapa). Alimenta el panel de la solapa Amigos.
+    /// </summary>
+    public static void AmigosList(Connection conn, System.Collections.Generic.List<(string Nombre, bool Online, int Mapa)> amigos)
+    {
+        if (conn == null) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.AmigosList);
+        p.WriteByte((byte)amigos.Count);
+        foreach (var a in amigos)
+        {
+            p.WriteASCIIString(a.Nombre ?? "");
+            p.WriteByte((byte)(a.Online ? 1 : 0));
+            p.WriteInteger((short)a.Mapa);
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// WriteAmigoRequest (183, NUEVO no VB6): Byte(id) + ASCII(nombre del solicitante).
+    /// nombre="" limpia la solicitud pendiente en el panel del cliente.
+    /// </summary>
+    public static void AmigoRequest(Connection conn, string nombre)
+    {
+        if (conn == null) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.AmigoRequest);
+        p.WriteASCIIString(nombre ?? "");
+        Send(conn, p);
+    }
+
     /// <summary>WriteShopPaymentURL (160): Byte(id) + ASCII(url). El cliente abre la URL de pago.</summary>
     public static void ShopPaymentURL(Connection conn, string url)
     {
@@ -1283,6 +1758,81 @@ public static class ServerPackets
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.ShopItemGranted);
         p.WriteInteger((short)itemId);
+        p.WriteASCIIString(nombre ?? "");
+        Send(conn, p);
+    }
+
+    public struct PremiumParticleItem { public int Id; public int StreamId; public int PrecioCreditos; public string Nombre; }
+
+    /// <summary>WritePremiumParticlesCatalog (200): Byte(id) + Byte(count) + [Int(itemId)+Int(streamId)+Long(precioCreditos)+ASCII(nombre)].</summary>
+    public static void PremiumParticlesCatalog(Connection conn, System.Collections.Generic.List<PremiumParticleItem> items)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PremiumParticlesCatalog);
+        p.WriteByte((byte)items.Count);
+        foreach (var it in items)
+        {
+            p.WriteInteger((short)it.Id);
+            p.WriteInteger((short)it.StreamId);
+            p.WriteLong(it.PrecioCreditos);
+            p.WriteASCIIString(it.Nombre ?? "");
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>WritePremiumParticlesOwned (201): Byte(id) + Byte(count) + count×Int(streamId) + Int(equipado, 0=ninguno).</summary>
+    public static void PremiumParticlesOwned(Connection conn, System.Collections.Generic.IEnumerable<int> owned, int equipado)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PremiumParticlesOwned);
+        var list = new System.Collections.Generic.List<int>(owned);
+        p.WriteByte((byte)list.Count);
+        foreach (var streamId in list) p.WriteInteger((short)streamId);
+        p.WriteInteger((short)equipado);
+        Send(conn, p);
+    }
+
+    /// <summary>WritePremiumParticleGranted (202): Byte(id) + Int(streamId) + ASCII(nombre).</summary>
+    public static void PremiumParticleGranted(Connection conn, int streamId, string nombre)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PremiumParticleGranted);
+        p.WriteInteger((short)streamId);
+        p.WriteASCIIString(nombre ?? "");
+        Send(conn, p);
+    }
+
+    public struct CreditShopItem { public int Id; public int ObjIndex; public int PrecioCreditos; public int VisualId; public int AuraId; public string Nombre; }
+
+    /// <summary>WriteCreditItemsCatalog (215): Byte(id) + Byte(count) + [Int(itemId)+Int(objIndex)+Long(precioCreditos)+Int(visualId)+Int(auraId)+ASCII(nombre)].
+    /// VisualId = Anim (cascos/escudos) o NumRopaje (monturas) — lo usa el cliente para
+    /// previsualizar el personaje completo con el cosmético puesto (credit_items_ui.js).
+    /// AuraId (0 = sin partícula) = id de assets/particles.json — mismo catálogo que
+    /// PremiumParticles, para que si un cosmético trae efecto/partícula propia se vea
+    /// también en la previsualización.</summary>
+    public static void CreditItemsCatalog(Connection conn, System.Collections.Generic.List<CreditShopItem> items)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.CreditItemsCatalog);
+        p.WriteByte((byte)items.Count);
+        foreach (var it in items)
+        {
+            p.WriteInteger((short)it.Id);
+            p.WriteInteger((short)it.ObjIndex);
+            p.WriteLong(it.PrecioCreditos);
+            p.WriteInteger((short)it.VisualId);
+            p.WriteInteger((short)it.AuraId);
+            p.WriteASCIIString(it.Nombre ?? "");
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>WriteCreditItemGranted (216): Byte(id) + Int(objIndex) + ASCII(nombre).</summary>
+    public static void CreditItemGranted(Connection conn, int objIndex, string nombre)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.CreditItemGranted);
+        p.WriteInteger((short)objIndex);
         p.WriteASCIIString(nombre ?? "");
         Send(conn, p);
     }
@@ -1486,6 +2036,128 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>
+    /// LogrosInfo (185): listado de logros con progreso para pintar la ventana de Logros.
+    /// Byte count, count×[ASCIIString cat, ASCIIString desc, ASCIIString reward,
+    /// Long actual, Long objetivo, Byte completado, Byte repetible, Integer veces, Integer body, Long grh].
+    /// body = Body del NPC objetivo (sprite del NPC); grh = GrhIndex de un objeto representativo
+    /// (mineral / recompensa) para el ícono. 0 = sin sprite.
+    /// </summary>
+    public static void LogrosInfo(Connection conn,
+        List<(string cat, string desc, string reward, long actual, long objetivo, bool completado, bool repetible, int veces, int body, int grh)> logros)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.LogrosInfo);
+        byte n = (byte)System.Math.Min(logros.Count, 255);
+        p.WriteByte(n);
+        for (int i = 0; i < n; i++)
+        {
+            var l = logros[i];
+            p.WriteASCIIString(l.cat ?? "");
+            p.WriteASCIIString(l.desc ?? "");
+            p.WriteASCIIString(l.reward ?? "");
+            p.WriteLong((int)System.Math.Min(l.actual, int.MaxValue));
+            p.WriteLong((int)System.Math.Min(l.objetivo, int.MaxValue));
+            p.WriteByte((byte)(l.completado ? 1 : 0));
+            p.WriteByte((byte)(l.repetible ? 1 : 0));
+            p.WriteInteger((short)System.Math.Min(l.veces, short.MaxValue));
+            p.WriteInteger((short)System.Math.Max(0, System.Math.Min(l.body, short.MaxValue)));
+            p.WriteLong(System.Math.Max(0, l.grh));
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>Un objetivo de misión para QuestInfo. tipo: 0=matar (body = sprite del NPC),
+    /// 1=juntar (grh = GrhIndex del objeto). DestMap/X/Y = zona de ESTE objetivo (0 = sin zona);
+    /// EntMap/X/Y = entrada al dungeon de esa zona si no figura en el mapamundi.</summary>
+    public readonly record struct QuestObjetivo(byte Tipo, string TargetName, int Actual, int Requerido, int Body, int Grh,
+        int DestMap, byte DestX, byte DestY, int EntMap, byte EntX, byte EntY);
+
+    /// <summary>Una misión para QuestInfo. estado: 0=disponible, 1=en curso, 2=lista para entregar,
+    /// 3=completada, 4=nivel insuficiente, 5=bloqueada por requisito, 6=en cooldown.
+    /// GiverMap/X/Y = posición del NPC dador (0 = sin posición conocida);
+    /// DestMap/X/Y = zona objetivo (flecha del minimapa / marcador del mapamundi, 0 = sin destino).</summary>
+    public readonly record struct QuestEntry(int Id, string Nombre, string Historia, string Reward,
+        byte Estado, byte NivelMin, bool Repetible, string Extra,
+        int GiverMap, byte GiverX, byte GiverY, int DestMap, byte DestX, byte DestY,
+        int EntMap, byte EntX, byte EntY, List<QuestObjetivo> Objetivos);
+
+    /// <summary>Un NPC dador para los marcadores del mapamundi (catálogo fijo de [NPCSPAWNS]).
+    /// NpcIndex = índice de NPCs.dat (el cliente marca "!" sobre la cabeza de esos NPCs).
+    /// EntMap/X/Y = entrada al dungeon si el dador está en un mapa fuera del mapamundi.</summary>
+    public readonly record struct QuestGiver(int NpcIndex, string Nombre, int Map, byte X, byte Y, bool Disponible,
+        int EntMap, byte EntX, byte EntY);
+
+    /// <summary>
+    /// QuestInfo (189): misiones de un NPC dador (origen=1), log del jugador (origen=0 abre la
+    /// ventana, origen=2 silencioso: solo actualiza marcadores). Ver layout en ServerPacketID.
+    /// </summary>
+    public static void QuestInfo(Connection conn, byte origen, string npcName, List<QuestEntry> quests, List<QuestGiver> givers)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.QuestInfo);
+        p.WriteByte(origen);
+        p.WriteASCIIString(npcName ?? "");
+        byte n = (byte)System.Math.Min(quests.Count, 255);
+        p.WriteByte(n);
+        for (int i = 0; i < n; i++)
+        {
+            var q = quests[i];
+            p.WriteInteger((short)q.Id);
+            p.WriteASCIIString(q.Nombre ?? "");
+            p.WriteASCIIString(q.Historia ?? "");
+            p.WriteASCIIString(q.Reward ?? "");
+            p.WriteByte(q.Estado);
+            p.WriteByte(q.NivelMin);
+            p.WriteByte((byte)(q.Repetible ? 1 : 0));
+            p.WriteASCIIString(q.Extra ?? "");
+            p.WriteInteger((short)q.GiverMap);
+            p.WriteByte(q.GiverX);
+            p.WriteByte(q.GiverY);
+            p.WriteInteger((short)q.DestMap);
+            p.WriteByte(q.DestX);
+            p.WriteByte(q.DestY);
+            p.WriteInteger((short)q.EntMap);
+            p.WriteByte(q.EntX);
+            p.WriteByte(q.EntY);
+            byte no = (byte)System.Math.Min(q.Objetivos.Count, 255);
+            p.WriteByte(no);
+            for (int o = 0; o < no; o++)
+            {
+                var ob = q.Objetivos[o];
+                p.WriteByte(ob.Tipo);
+                p.WriteASCIIString(ob.TargetName ?? "");
+                p.WriteInteger((short)System.Math.Min(ob.Actual, short.MaxValue));
+                p.WriteInteger((short)System.Math.Min(ob.Requerido, short.MaxValue));
+                p.WriteInteger((short)System.Math.Max(0, System.Math.Min(ob.Body, short.MaxValue)));
+                p.WriteLong(System.Math.Max(0, ob.Grh));
+                p.WriteInteger((short)ob.DestMap);
+                p.WriteByte(ob.DestX);
+                p.WriteByte(ob.DestY);
+                p.WriteInteger((short)ob.EntMap);
+                p.WriteByte(ob.EntX);
+                p.WriteByte(ob.EntY);
+            }
+        }
+        // Catálogo de dadores ([NPCSPAWNS]) para el mapamundi (0 entradas cuando origen=1).
+        byte ng = (byte)System.Math.Min(givers.Count, 255);
+        p.WriteByte(ng);
+        for (int g = 0; g < ng; g++)
+        {
+            var gv = givers[g];
+            p.WriteInteger((short)gv.NpcIndex);
+            p.WriteASCIIString(gv.Nombre ?? "");
+            p.WriteInteger((short)gv.Map);
+            p.WriteByte(gv.X);
+            p.WriteByte(gv.Y);
+            p.WriteByte((byte)(gv.Disponible ? 1 : 0));
+            p.WriteInteger((short)gv.EntMap);
+            p.WriteByte(gv.EntX);
+            p.WriteByte(gv.EntY);
+        }
+        Send(conn, p);
+    }
+
     // ============================================================
     //  Editor de objetos en vivo para GMs (NUEVO, no VB6)
     // ============================================================
@@ -1557,10 +2229,11 @@ public static class ServerPackets
     }
 
     /// <summary>
-    /// NpcCatalog: Integer(count) + count×[Integer(npcIndex) Byte(npcType) ASCIIString(name)].
-    /// Catálogo resumido de NPCs para el buscador de "Crear NPC" del panel GM.
+    /// NpcCatalog: Integer(count) + count×[Integer(npcIndex) Byte(npcType) Byte(hostil)
+    /// Integer(body) Integer(head) ASCIIString(name)]. Catálogo resumido de NPCs para el
+    /// buscador de "Crear NPC" del panel GM (body/head: vista previa del cuerpo en el cliente).
     /// </summary>
-    public static void NpcCatalog(Connection conn, List<(int Index, string Name, byte NpcType)> npcs)
+    public static void NpcCatalog(Connection conn, List<(int Index, string Name, byte NpcType, bool Hostil, short Body, short Head)> npcs)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.NpcCatalog);
@@ -1569,7 +2242,32 @@ public static class ServerPackets
         {
             p.WriteInteger((short)n.Index);
             p.WriteByte(n.NpcType);
+            p.WriteByte((byte)(n.Hostil ? 1 : 0));
+            p.WriteInteger(n.Body);
+            p.WriteInteger(n.Head);
             p.WriteASCIIString(n.Name ?? "");
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// BotClasesCatalog: Byte(count) + count×[Byte(clase) Byte(razaDefault) ASCIIString(nombre)].
+    /// Catálogo de clases de bot invocables (Bots.Clases) para el panel GM de invocar bots — así
+    /// la lista del cliente queda sincronizada con Dat/BotClases.dat sin tocar el JS.
+    /// </summary>
+    public static void BotClasesCatalog(Connection conn, IEnumerable<Game.Bots.BotClase> clases)
+    {
+        var list = new List<Game.Bots.BotClase>();
+        foreach (var c in clases) list.Add(c);
+
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.BotClasesCatalog);
+        p.WriteByte((byte)list.Count);
+        foreach (var c in list)
+        {
+            p.WriteByte(c.Clase);
+            p.WriteByte(c.RazaDefault);
+            p.WriteASCIIString(c.Nombre ?? "");
         }
         Send(conn, p);
     }
@@ -1619,6 +2317,26 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>
+    /// ObjInfoUpdate: Integer(objIndex) + Byte(count) + count×[ASCIIString(clave) ASCIIString(valor)].
+    /// Stats ya resueltos de un objeto que acaba de cambiar en caliente, para que el catálogo
+    /// del cliente (assets/items.json, horneado) se actualice sin recargar la página.
+    /// </summary>
+    public static void ObjInfoUpdate(Connection conn, int objIndex, List<(string Key, string Value)> fields)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.ObjInfoUpdate);
+        p.WriteInteger((short)objIndex);
+        byte count = (byte)System.Math.Min(fields.Count, 255);
+        p.WriteByte(count);
+        for (int i = 0; i < count; i++)
+        {
+            p.WriteASCIIString(fields[i].Key ?? "");
+            p.WriteASCIIString(fields[i].Value ?? "");
+        }
+        Send(conn, p);
+    }
+
     /// <summary>ObjEditorResult: Byte(ok) Integer(objIndex) ASCIIString(message).</summary>
     public static void ObjEditorResult(Connection conn, bool ok, int objIndex, string message)
     {
@@ -1626,6 +2344,109 @@ public static class ServerPackets
         p.WriteByte((byte)ServerPacketID.ObjEditorResult);
         p.WriteByte((byte)(ok ? 1 : 0));
         p.WriteInteger((short)objIndex);
+        p.WriteASCIIString(message ?? "");
+        Send(conn, p);
+    }
+
+    /// <summary>BalanceEditorDetail: Byte(count) + count×[ASCIIString(clave) ASCIIString(valor)]. Valores actuales de Golpe/Hechizo.</summary>
+    public static void BalanceEditorDetail(Connection conn, List<(string Key, string Value)> fields)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.BalanceEditorDetail);
+        byte count = (byte)System.Math.Min(fields.Count, 255);
+        p.WriteByte(count);
+        for (int i = 0; i < count; i++)
+        {
+            p.WriteASCIIString(fields[i].Key ?? "");
+            p.WriteASCIIString(fields[i].Value ?? "");
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>BalanceEditorResult: Byte(ok) ASCIIString(message).</summary>
+    public static void BalanceEditorResult(Connection conn, bool ok, string message)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.BalanceEditorResult);
+        p.WriteByte((byte)(ok ? 1 : 0));
+        p.WriteASCIIString(message ?? "");
+        Send(conn, p);
+    }
+
+    /// <summary>DamageEditorPreviewResult: desglose de daño calculado por Combat.PreviewSpellDamage.</summary>
+    public static void DamageEditorPreviewResult(Connection conn, Game.Combat.DamageBreakdown b)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.DamageEditorPreviewResult);
+        p.WriteInteger((short)b.BaseMagnitud);
+        p.WriteInteger((short)b.LevelScaling);
+        p.WriteInteger((short)b.IntBonus);
+        p.WriteInteger((short)b.StaffBonus);
+        p.WriteLong((int)(b.RazaMult * 1000));
+        p.WriteInteger((short)b.Resistencia);
+        p.WriteInteger((short)b.ReduccionAnillo);
+        p.WriteInteger((short)b.Final);
+        Send(conn, p);
+    }
+
+    /// <summary>IntervalConfig: Integer(atacarMs) Integer(lanzarSpellMs). Sincroniza el gate local del cliente.</summary>
+    public static void IntervalConfig(Connection conn, long atacarMs, long lanzarSpellMs)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.IntervalConfig);
+        p.WriteInteger((short)atacarMs);
+        p.WriteInteger((short)lanzarSpellMs);
+        Send(conn, p);
+    }
+
+    // ============================================================
+    //  Editor de hechizos en vivo para GMs (NUEVO, no VB6) — mismo patrón que ObjEditor*
+    // ============================================================
+
+    /// <summary>
+    /// SpellEditorList: Integer(count) + count×[Integer(spellIndex) Integer(tipo) ASCIIString(name)].
+    /// Catálogo resumido para la lista del editor.
+    /// </summary>
+    public static void SpellEditorList(Connection conn, List<(int Index, int Tipo, string Name)> spells)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.SpellEditorList);
+        p.WriteInteger((short)spells.Count);
+        foreach (var s in spells)
+        {
+            p.WriteInteger((short)s.Index);
+            p.WriteInteger((short)s.Tipo);
+            p.WriteASCIIString(s.Name ?? "");
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// SpellEditorDetail: Integer(spellIndex) + Byte(count) + count×[ASCIIString(clave) ASCIIString(valor)].
+    /// Todos los campos del hechizo tal cual están en Hechizos.dat (vacío si el índice no existe todavía).
+    /// </summary>
+    public static void SpellEditorDetail(Connection conn, int spellIndex, List<(string Key, string Value)> fields)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.SpellEditorDetail);
+        p.WriteInteger((short)spellIndex);
+        byte count = (byte)System.Math.Min(fields.Count, 255);
+        p.WriteByte(count);
+        for (int i = 0; i < count; i++)
+        {
+            p.WriteASCIIString(fields[i].Key ?? "");
+            p.WriteASCIIString(fields[i].Value ?? "");
+        }
+        Send(conn, p);
+    }
+
+    /// <summary>SpellEditorResult: Byte(ok) Integer(spellIndex) ASCIIString(message).</summary>
+    public static void SpellEditorResult(Connection conn, bool ok, int spellIndex, string message)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.SpellEditorResult);
+        p.WriteByte((byte)(ok ? 1 : 0));
+        p.WriteInteger((short)spellIndex);
         p.WriteASCIIString(message ?? "");
         Send(conn, p);
     }

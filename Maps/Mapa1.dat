@@ -1,0 +1,12 @@
+[MAPA1]
+Name=Mapa 1
+MusicNum=0
+Pk=1
+BackUp=1
+Terreno=TIERRA
+Zona=CAMPO
+RestringirNavegar=0
+NoEncriptarMP=0
+R=180
+G=180
+B=180

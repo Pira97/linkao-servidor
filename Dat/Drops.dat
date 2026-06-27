@@ -547,14 +547,13 @@ NumDrops=1
 Drop1=57,1,0.5
 
 [NPC511] ; Dragón Legendario
-NumDrops=7
+NumDrops=6
 Drop1=406,1,100
-Drop2=1081,1,10
-Drop3=1081,1,5
-Drop4=1180,1,5
-Drop5=993,1,5
-Drop6=1147,1,5
-Drop7=402,1,5
+Drop2=1081,1,12
+Drop3=1180,1,5
+Drop4=993,1,5
+Drop5=1147,1,5
+Drop6=402,1,5
 
 [NPC512] ; Hechicero de Fuego
 NumDrops=0
@@ -571,12 +570,12 @@ NumDrops=0
 [NPC516] ; Hechicero de Agua
 NumDrops=2
 Drop1=869,1,100
-Drop2=1081,1,100
+Drop2=1081,1,25
 
 [NPC517] ; Hechicero de Aire
 NumDrops=2
 Drop1=1147,1,100
-Drop2=993,1,100
+Drop2=993,1,35
 
 
 [NPC518] ; Hechicero de Tierra
@@ -790,8 +789,8 @@ NumDrops=0
 
 [NPC567] ; Arquero Pirata
 NumDrops=3
-Drop1=479,1,100
-Drop2=480,100,100
+Drop1=479,1,20
+Drop2=480,25,50
 Drop3=738,1,1
 
 [NPC568] ; Guerrero Pirata
@@ -899,15 +898,15 @@ Drop1=708,1,5
 
 [NPC590] ; Rey Dragón
 NumDrops=9
-Drop1=406,1,95
-Drop2=1180,1,20
-Drop3=993,1,20
-Drop4=1147,1,20
-Drop5=869,1,20
-Drop6=707,1,20
-Drop7=868,1,20
-Drop8=1081,1,20
-Drop9=586,1,75
+Drop1=406,1,65
+Drop2=1180,1,8
+Drop3=993,1,8
+Drop4=1147,1,8
+Drop5=869,1,8
+Drop6=707,1,8
+Drop7=868,1,8
+Drop8=1081,1,8
+Drop9=586,1,55
 
 [NPC591] ; Fuego elemental '(marrón)
 NumDrops=0
@@ -974,18 +973,15 @@ NumDrops=1
 Drop1=1139,1,0.9
 
 [NPC607] ; El Abominable Grinch
-NumDrops=11
-Drop1=406,1,100
-Drop2=1081,1,100
-Drop3=1081,1,100
-Drop4=1180,1,100
-Drop5=993,1,100
-Drop6=1147,1,100
-Drop7=402,1,100
-Drop8=662,1,100
-Drop9=669,1,100
-Drop10=662,1,100
-Drop11=669,1,100
+NumDrops=8
+Drop1=662,1,100
+Drop2=669,1,100
+Drop3=406,1,40
+Drop4=1081,1,15
+Drop5=1180,1,10
+Drop6=993,1,10
+Drop7=1147,1,10
+Drop8=402,1,8
 
 [NPC608] ; Vampiro Transformado
 NumDrops=0

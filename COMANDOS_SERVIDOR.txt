@@ -32,9 +32,35 @@
 
 === EVENTOS =========================================================
 
+/eventos
+    (Cualquier usuario) Lista los eventos globales en curso (EXP/ORO
+    multiplicados con tiempo restante, Barrido, Caceria, Inframundo).
+    Al conectarse tambien se avisa si hay eventos activos.
+
 /eventoexp [multiplicador] [segundos]
-    Activa evento de experiencia multiplicada. Por defecto x2 durante
-    300 segundos.
+    (Requiere SemiDios) Activa evento de experiencia multiplicada.
+    Por defecto x2 durante 300 segundos. Con 0 segundos queda activo
+    sin limite hasta apagarlo. Tambien desde el panel GM (pestania
+    Mensajes > Eventos).
+
+/eventooro [multiplicador] [segundos]
+    (Requiere SemiDios) Igual que /eventoexp pero para el oro que
+    sueltan los NPCs al morir.
+
+/eventoexpoff
+    (Requiere SemiDios) Termina el evento de experiencia ya mismo.
+
+/eventoorooff
+    (Requiere SemiDios) Termina el evento de oro ya mismo.
+
+/expx2
+    (Requiere SemiDios) Activa/desactiva EXP x2 global sin limite de
+    tiempo (toggle: usarlo de nuevo lo apaga).
+
+/orox2
+    (Requiere SemiDios) Activa/desactiva ORO x2 global sin limite de
+    tiempo (toggle: usarlo de nuevo lo apaga). Multiplica el oro que
+    sueltan los NPCs al morir.
 
 /invasion <mapa> <cantidad>
     (Requiere SemiDios) Dispara la invasion de cofres en un mapa.
@@ -410,8 +436,18 @@
 NOTAS:
 - Los comandos llegan al servidor por chat normal (TalkToMap) o por
   el packet GMCommands (ID 94); ambos pasan por Chat.HandleCommand.
-- La mayoria requiere privilegios de GM; algunos chequean nivel
-  exacto (SemiDios / Dios) via AdminLoader.STATUS_*.
+- PRIVILEGIOS (Chat.PuedeUsarComando, chequeo central y fail-closed):
+  TODO comando exige ser GM (FaccionStatus >= 7 Consejero) salvo los
+  de la lista Chat.ComandosDeJugador (/eventos, /logros, /misiones,
+  /quests, /torneo, /hora, /time, /pos, /donde, /rem). Los de la tabla
+  Chat.NivelExtra exigen Dios (9): apagar/recargar el server, editar
+  personajes o contraseñas ajenas, IPs, bans, clanes, /ci y editar
+  mapas. Un comando que no este en ninguna tabla queda como GM: un
+  comando nuevo nace privado aunque nadie toque las listas.
+- Ademas varios handlers chequean nivel exacto adentro (SemiDios/Dios)
+  via AdminLoader.STATUS_*; ese chequeo propio se mantiene.
+- Los GM del servidor se listan en Server.ini ([Dioses], [SemiDioses],
+  [Consejeros], ...) y AdminLoader fija u.FaccionStatus al loguear.
 - Comandos de jugador como /hogar, /enlistar, /meditar, /salir NO
   estan aca: el cliente los convierte en packets dedicados.
 =====================================================================

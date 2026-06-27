@@ -91,39 +91,109 @@ public static class ServerConfig
     private static readonly System.Net.Http.HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(5) };
     private static string _ultimaVersion;
     private static DateTime _ultimaVersionAt = DateTime.MinValue;
+    private static bool _refrescoEnVuelo;
     private static readonly object _verLock = new();
 
+    /// <summary>
+    /// Versión de cliente exigida AHORA. Nunca hace red en el camino del login (ver abajo):
+    /// devuelve el último valor bueno y, si venció el TTL, dispara el refresco en SEGUNDO PLANO.
+    ///
+    /// Dos bugs de producción que arregla, los dos vistos el 3-ago-2026 (cuenta 'class' rechazada
+    /// ~100 veces seguidas con "Servidor: 9, Cliente: 28", y entrando bien 2 minutos después):
+    ///
+    /// 1. UN fallo transitorio de GitHub dejaba a TODOS afuera 2 minutos. El fallback local
+    ///    (Server.ini/version.txt) se cacheaba como si fuera un valor bueno, y en la VM ese
+    ///    archivo tenía un número VIEJO (VersionCliente=9 contra la 28 real) → "cliente
+    ///    desactualizado" para todo el mundo hasta que vencía el TTL. Peor: el portal muestra
+    ///    CUALQUIER rechazo como "Cuenta o contraseña incorrectas", así que el jugador ve un
+    ///    problema de contraseña que no existe. Ahora el valor local es SEMILLA, no reemplazo:
+    ///    una vez que se conoce un número remoto bueno, un fallo de red conserva ESE.
+    /// 2. La llamada HTTP (hasta 5s de timeout) salía desde el handler de ConnectAccount, o sea
+    ///    con el GameLock TOMADO: GitHub lento = servidor entero congelado. Ahora el refresco
+    ///    corre en su propia tarea y el login contesta con lo que ya tiene.
+    /// </summary>
     public static string UltimaVersion
     {
         get
         {
             lock (_verLock)
             {
-                if (_ultimaVersion != null && DateTime.UtcNow - _ultimaVersionAt < VERSION_TTL)
-                    return _ultimaVersion;
-                string nueva = LeerVersionRequerida();
-                // Solo refrescamos timestamp y valor si conseguimos algo válido; si falla todo,
-                // conservamos el último bueno (no dejamos pasar a todos por un corte de red).
-                if (nueva != null) { _ultimaVersion = nueva; _ultimaVersionAt = DateTime.UtcNow; }
-                return _ultimaVersion ?? "1";
+                bool vencido = DateTime.UtcNow - _ultimaVersionAt >= VERSION_TTL;
+                if (_ultimaVersion != null && !vencido) return _ultimaVersion;
+
+                if (!_refrescoEnVuelo)
+                {
+                    _refrescoEnVuelo = true;
+                    Task.Run(RefrescarVersionRemota);
+                }
+
+                // Todavía sin número remoto (arranque con GitHub caído): semilla local. Es el
+                // único caso en que manda Server.ini/version.txt.
+                return _ultimaVersion ?? LeerVersionLocal();
             }
         }
     }
 
-    /// <summary>Versión de cliente requerida. Orden: GitHub (client_version.txt) → Server.ini "VersionCliente"
-    /// → version.txt local → "1". El cliente manda su número; si no coincide exacto, se lo rechaza con
-    /// "Ejecuta el LAUNCHER para actualizar el juego."</summary>
-    private static string LeerVersionRequerida()
+    /// <summary>
+    /// Trae el número de GitHub y lo cachea. Si falla, NO toca el valor vigente ni el timestamp:
+    /// el próximo login vuelve a intentar y mientras tanto se sigue usando el último bueno.
+    /// </summary>
+    private static void RefrescarVersionRemota()
     {
-        // 1) GitHub: misma fuente que publica el launcher al exportar el cliente.
+        string remoto = LeerVersionRemota();
+        lock (_verLock)
+        {
+            _refrescoEnVuelo = false;
+            if (remoto == null)
+            {
+                // Log una sola vez por ventana, no por intento: si GitHub está caído esto se
+                // llama en cada login y llenaría la consola.
+                if (_ultimaVersion == null)
+                    Console.WriteLine("[ServidorCS] No se pudo leer la versión de cliente desde GitHub; " +
+                                      $"usando la local ({LeerVersionLocal()}). Revisá Server.ini si rechaza logins.");
+                return;
+            }
+            if (remoto != _ultimaVersion)
+                Console.WriteLine($"[ServidorCS] Versión de cliente requerida: {remoto}");
+            _ultimaVersion = remoto;
+            _ultimaVersionAt = DateTime.UtcNow;
+        }
+    }
+
+    /// <summary>
+    /// Primer valor, ANTES de aceptar conexiones (Program.cs). Acá sí conviene esperar la red:
+    /// no hay nadie jugando, no hay ningún lock tomado, y evita que los primeros logins tras un
+    /// reinicio se coman el número local por llegar antes que el refresco.
+    /// </summary>
+    public static void PrecargarVersion()
+    {
+        string remoto = LeerVersionRemota();
+        lock (_verLock)
+        {
+            if (remoto != null) { _ultimaVersion = remoto; _ultimaVersionAt = DateTime.UtcNow; }
+        }
+        Console.WriteLine(remoto != null
+            ? $"[ServidorCS] Versión de cliente requerida: {remoto} (GitHub)"
+            : $"[ServidorCS] GitHub no respondió: versión de cliente {LeerVersionLocal()} (local). " +
+              "Si Server.ini está viejo, se rechazan TODOS los logins por 'cliente desactualizado'.");
+    }
+
+    /// <summary>GitHub (client_version.txt), misma fuente que publica el launcher al exportar el
+    /// cliente. null si no hay red, GitHub falla o el contenido no es un número.</summary>
+    private static string LeerVersionRemota()
+    {
         try
         {
             string remoto = _http.GetStringAsync(CLIENT_VERSION_URL).GetAwaiter().GetResult()?.Trim();
             if (!string.IsNullOrEmpty(remoto) && int.TryParse(remoto, out _)) return remoto;
         }
-        catch { /* sin internet o GitHub caído → fallbacks */ }
+        catch { /* sin internet o GitHub caído */ }
+        return null;
+    }
 
-        // 2) Server.ini (fallback offline).
+    /// <summary>Fallback offline: Server.ini "VersionCliente" → version.txt → "1".</summary>
+    private static string LeerVersionLocal()
+    {
         string v = ReadString("VersionCliente", "");
         if (v.Length > 0 && int.TryParse(v, out _)) return v;
         return LeerVersionDesdeArchivo();

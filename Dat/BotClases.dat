@@ -1,0 +1,191 @@
+; BotClases.dat - definicion de las clases de bot invocables (Bots.cs).
+; Formato INI [BOTCLASEn], n=1..N secuencial (no tiene que coincidir con Clase).
+; Editar y reiniciar el server (o llamar Bots.Reload() desde un comando GM) para aplicar.
+;
+; Clase (eClass): Clerigo=1, Mago=2, Guerrero=3, Asesino=4, Ladron=5, Bardo=6, Druida=7,
+;                 Gladiador=8, Paladin=9, Cazador=10, Mercenario=17, Nigromante=18.
+; WeaponObj: ObjIndex de obj.dat SOLO como arquetipo de arma (se lee su Proyectil: 0=melee,
+;            1=arco, 2=arpon) para que Bots.MejorEquipoParaNivel busque el tipo correcto.
+;            NUNCA se equipa directo: el equipo real (armadura/arma/escudo/casco) SIEMPRE sale
+;            de MejorEquipoParaNivel segun clase+raza+nivel del bot invocado, para que respete
+;            ClasesProhibidas/RazasProhibidas de cada item (nunca le queda algo ilegal para su
+;            raza, a diferencia de un set fijo). 0 = arquetipo melee (Guerrero a mano limpia).
+; MinHit/MaxHit: fallback a mano limpia si MejorEquipoParaNivel no encuentra ningun arma
+;                craftable para ese nivel/clase/raza (raro, pero posible en niveles muy bajos).
+; Agilidad: atributo base del bot (VB6 [STATS] Agilidad), junto con el nivel pedido al invocar
+;           alimenta PoderAtaque/PoderEvasion con la MISMA formula que un jugador real
+;           (BalanceData + Leveling), ver Bots.PoderDeBot. Valores placeholder por arquetipo,
+;           ajustar jugando: casters ~22-24, marciales ~24-26, Asesino/Cazador ~30-32.
+; LanzaSpells=N + Sp1..SpN: hechizos que castea (indices de Hechizos.dat). Omitir si no castea.
+; Sp{k}Nivel: nivel MINIMO DEL BOT para conocer Sp{k} (solo lo usan los bots "progresivos",
+;             ver Bots.SpellsHastaNivel; los bots normales conocen TODO el set siempre, sin
+;             importar nivel). Si falta la clave, ese hechizo se considera nivel 1.
+;             No hay dato real de "nivel para aprender" en Hechizos.dat (casi ningun hechizo
+;             tiene MinLevel poblado) asi que esta tabla es una calibracion propia usando
+;             MinSkill de cada hechizo como referencia de fuerza, ajustable sin recompilar.
+; HealSpell: hechizo de cura a aliados (0 = no cura, SIEMPRE disponible, no tiene nivel).
+; AtaqueParticula: particula al golpear (0 = ninguna).
+
+[BOTCLASE1]
+Clase=2
+Nombre=Mago
+RazaDefault=4
+WeaponObj=1147
+MinHit=1
+MaxHit=5
+Agilidad=24
+HealSpell=0
+AtaqueParticula=0
+LanzaSpells=6
+Sp1=2
+Sp1Nivel=1
+Sp2=121
+Sp2Nivel=15
+Sp3=122
+Sp3Nivel=22
+Sp4=25
+Sp4Nivel=36
+Sp5=34
+Sp5Nivel=42
+Sp6=52
+Sp6Nivel=48
+
+[BOTCLASE2]
+Clase=18
+Nombre=Nigromante
+RazaDefault=3
+WeaponObj=1181
+MinHit=60
+MaxHit=90
+Agilidad=22
+HealSpell=0
+AtaqueParticula=0
+LanzaSpells=4
+Sp1=2
+Sp1Nivel=1
+Sp2=121
+Sp2Nivel=15
+Sp3=24
+Sp3Nivel=20
+Sp4=34
+Sp4Nivel=36
+
+[BOTCLASE3]
+Clase=1
+Nombre=Clerigo
+RazaDefault=1
+WeaponObj=747
+MinHit=60
+MaxHit=95
+Agilidad=22
+HealSpell=71
+AtaqueParticula=0
+LanzaSpells=4
+Sp1=2
+Sp1Nivel=1
+Sp2=9
+Sp2Nivel=18
+Sp3=24
+Sp3Nivel=22
+Sp4=69
+Sp4Nivel=32
+
+[BOTCLASE4]
+Clase=7
+Nombre=Druida
+RazaDefault=1
+WeaponObj=1252
+MinHit=55
+MaxHit=85
+Agilidad=22
+HealSpell=0
+AtaqueParticula=0
+LanzaSpells=3
+Sp1=2
+Sp1Nivel=1
+Sp2=121
+Sp2Nivel=15
+Sp3=24
+Sp3Nivel=22
+
+[BOTCLASE5]
+Clase=3
+Nombre=Guerrero
+RazaDefault=6
+WeaponObj=0
+MinHit=80
+MaxHit=120
+Agilidad=24
+HealSpell=0
+AtaqueParticula=0
+
+[BOTCLASE6]
+Clase=4
+Nombre=Asesino
+RazaDefault=3
+WeaponObj=740
+MinHit=70
+MaxHit=110
+Agilidad=32
+HealSpell=0
+AtaqueParticula=0
+
+[BOTCLASE7]
+Clase=6
+Nombre=Bardo
+RazaDefault=1
+WeaponObj=1333
+MinHit=65
+MaxHit=100
+Agilidad=26
+HealSpell=0
+AtaqueParticula=0
+LanzaSpells=3
+Sp1=2
+Sp1Nivel=1
+Sp2=121
+Sp2Nivel=15
+Sp3=24
+Sp3Nivel=22
+
+[BOTCLASE8]
+Clase=9
+Nombre=Paladin
+RazaDefault=1
+WeaponObj=1257
+MinHit=75
+MaxHit=115
+Agilidad=24
+HealSpell=0
+AtaqueParticula=0
+LanzaSpells=4
+Sp1=2
+Sp1Nivel=1
+Sp2=24
+Sp2Nivel=18
+Sp3=93
+Sp3Nivel=26
+Sp4=87
+Sp4Nivel=36
+
+[BOTCLASE9]
+Clase=10
+Nombre=Cazador
+RazaDefault=2
+WeaponObj=899
+MinHit=80
+MaxHit=120
+Agilidad=30
+HealSpell=0
+AtaqueParticula=173
+
+[BOTCLASE10]
+Clase=17
+Nombre=Mercenario
+RazaDefault=5
+WeaponObj=1257
+MinHit=75
+MaxHit=115
+Agilidad=26
+HealSpell=0
+AtaqueParticula=0

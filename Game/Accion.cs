@@ -60,8 +60,13 @@ public static class Accion
             var u = UserListManager.UserList[userIndex];
             if (u == null) return;
 
-            // VALIDACIÓN 1: Rango de visión (Acciones.bas:23-26 - ToxicWaste comment)
-            if (Math.Abs(u.Pos.Y - y) > RANGO_VISION_Y || Math.Abs(u.Pos.X - x) > RANGO_VISION_X)
+            // VALIDACIÓN 1: Rango de visión (Acciones.bas:23-26). Mismo mapa = distancia local (1:1);
+            // cross-map (mundo continuo, map = mapa vecino) = distancia GLOBAL.
+            int dvx, dvy;
+            if (map == u.Pos.Map) { dvx = Math.Abs(u.Pos.X - x); dvy = Math.Abs(u.Pos.Y - y); }
+            else if (RegionLayout.TryGlobalDelta(u.Pos.Map, u.Pos.X, u.Pos.Y, map, x, y, out int gdx, out int gdy)) { dvx = Math.Abs(gdx); dvy = Math.Abs(gdy); }
+            else return;
+            if (dvy > RANGO_VISION_Y || dvx > RANGO_VISION_X)
                 return;
 
             // VALIDACIÓN 2: Si estaba trabajando, detener trabajo (Acciones.bas:28-32)
@@ -201,6 +206,18 @@ public static class Accion
 
         // Check distance
         int dist = Math.Abs(npc.X - u.Pos.X) + Math.Abs(npc.Y - u.Pos.Y);
+
+        // === Misiones (NUEVO, no VB6): NPC dador de quests ===
+        // Los dadores dedicados (no comercian) siempre abren la ventana de misiones.
+        // Si el dador además comercia, solo intercepta el doble click cuando hay una quest
+        // disponible o lista para entregar; si no, cae a su función normal (comercio, etc.).
+        if (u.flags.Muerto != 1 && QuestSystem.NpcHasQuests(npc.NpcIndex)
+            && (!npc.Comercia || QuestSystem.TieneAccionable(userIndex, npc.NpcIndex)))
+        {
+            if (dist > 3) { MensajeLejos(u); return; }
+            QuestSystem.SendNpcQuests(userIndex, npc.NpcIndex);
+            return;
+        }
 
         // === Subastadores (Acciones.bas:193-202) ===
         if (npc.NpcType == NT_Subastador)
@@ -363,6 +380,31 @@ public static class Accion
             return;
         }
 
+        // === Veterinaria (NUEVO, no VB6 original — el .dat ya traía el NPC121 con esta descripción
+        // ["Si tu familiar o mascota se encuentra en mal estado, acércamelo..."] pero sin implementar):
+        // solo LEVANTA el bloqueo de "mascota muerta" (PetDead) para que el hechizo de invocar
+        // vuelva a funcionar — NO la invoca ella misma. La mascota sigue sin estar en el mundo
+        // hasta que el jugador la invoque con su hechizo, como cualquier otra invocación. ===
+        if (npc.NpcType == NT_Veterinaria)
+        {
+            if (dist > 3) { MensajeLejos(u); return; }
+            if (u.PetTipo == 0)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "No tenés ninguna mascota.", FONT_INFO);
+                return;
+            }
+            if (!u.PetDead)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "Tu mascota está sana, no necesita mis cuidados.", FONT_INFO);
+                return;
+            }
+            u.PetDead = false;
+            ServerPackets.PlayWave(u.Conn, Sounds.SANAR_HERIDAS, npc.X, npc.Y);
+            ServerPackets.ConsoleMsg(u.Conn, "Tu mascota está lista. Invocala cuando quieras.", FONT_INFO);
+            Combat.EnviarPetInfo(u); // refresca el panel (deja de mostrar "Muerta")
+            return;
+        }
+
         // NPC común sin interacción especial
     }
 
@@ -436,6 +478,25 @@ public static class Accion
             if (u.Invent.AnilloEqpObjIndex == Crafting.MARTILLO_HERRERO)
                 Crafting.AbrirCrafteo(userIndex, Crafting.MARTILLO_HERRERO);
         }
+        else if (od.Type == ObjType.Fragua)
+        {
+            // MEJORA-003 (no 1:1, a pedido): el flujo original exige USAR un mineral desde el
+            // inventario primero (eso es lo que marca u.flags.Lingoteando, ver Inventory.cs)
+            // y RECIÉN AHÍ clickear la fragua para fundir (Work.FundirMetal). Un doble-click
+            // directo sobre la fragua ahora arranca el proceso solo: busca el primer mineral
+            // del inventario y funde ESE, sin pasos previos. Si no hay ninguno, FundirMetal ya
+            // manda el mismo "¡No tienes más minerales!" de siempre.
+            if (u.flags.Lingoteando <= 0)
+            {
+                for (int s = 1; s <= Constants.MAX_INVENTORY_SLOTS; s++)
+                {
+                    var it = u.Invent.Object[s];
+                    if (it.ObjIndex > 0 && ObjData.Get(it.ObjIndex).Type == ObjType.Minerales)
+                    { u.flags.Lingoteando = s; break; }
+                }
+            }
+            Work.FundirMetal(userIndex, x, y);
+        }
     }
 
     /// <summary>
@@ -497,6 +558,12 @@ public static class Accion
         map_data.FloorObj[x, y] = nuevoIndex;
         map_data.Blocked[x, y] = !abrir;
         if (x - 1 >= 1) map_data.Blocked[x - 1, y] = !abrir;
+
+        // El pathfinding de la guerra de facciones (BotPathing) cachea el mapa como estaba al
+        // calcularlo la primera vez. Sin esto, una puerta que se abre queda "bloqueada" para
+        // siempre en esos cachés — los bots la abrirían una y otra vez sin que el camino rápido
+        // se entere nunca de que ya no hace falta.
+        BotPathing.InvalidarMapa(map);
 
         // Difundir cambio (Acciones.bas:606-617). El gráfico de la puerta va por área (AOI); el bloqueo
         // y el sonido se mandan al mapa (inofensivo: bloqueo de tile lejano no afecta, sonido posicional).

@@ -1,0 +1,654 @@
+'LinkAO - Sistema de Misiones (Quests.dat)
+'
+'Formato por seccion [QUESTn] (n consecutivo desde 1, corta al primer hueco):
+'  Nombre=texto                  Nombre de la mision (se muestra en la ventana)
+'  Historia=texto                Relato del NPC (rol) que se muestra al abrir la ventana
+'  NpcDador=idx                  NpcIndex del NPC que la da (NPCs.dat)
+'  NivelMin=n                    Nivel minimo para aceptarla
+'  Requiere=id                   Id de quest previa obligatoria (0 = ninguna)
+'  Repetible=0/1                 1 = se puede repetir tras el cooldown
+'  CooldownHoras=n               Horas de espera entre entregas (solo repetibles)
+'  NumMatar=n  MatarN=ids-cant   Objetivos de caza. ids acepta varios NpcIndex separados
+'                                por coma (variantes del mismo bicho): Matar1=506,594-8
+'  NumJuntar=n JuntarN=obj-cant  Objetivos de recoleccion (ObjIndex de obj.dat;
+'                                se validan y descuentan del inventario al entregar)
+'  Reward=token;token            EXP:n  ORO:n  OBJ:idx:cant
+'  Destino=mapa-x-y              Zona objetivo (flecha del minimapa y marcador del
+'                                mapamundi). 0-0-0 = sin destino marcado.
+'  DestinoN=mapa-x-y             Zona del lote MatarN (opcional): la guia avanza al
+'                                siguiente objetivo incompleto. Sin DestinoN usa Destino.
+'
+'Balance de recompensas (calibrado contra Niveles.dat y GiveEXP/GiveGLD de NPCs.dat):
+'  EXP ~ 1.5-3x la exp que dan los bichos de la quest, ~15-60% del nivel en NivelMin.
+'  ORO ~ 60-120% del oro que dropean los bichos durante la quest.
+'
+[ENTRADAS]
+'Entrada desde el mundo visible a cada dungeon (para mapamundi y flecha):
+'  En=dungeon-mapaEntrada-x-y  (calculadas del grafo de TileExits de los .csm)
+NumEntradas=21
+E1=37-185-55-72
+E2=48-139-60-58
+E3=115-76-46-47
+E4=140-139-60-58
+E5=144-139-60-58
+E6=205-203-51-46
+E7=230-227-36-25
+E8=232-227-36-25
+E9=233-225-51-52
+E10=250-227-36-25
+E11=753-36-46-48
+E12=756-650-50-50
+E13=211-201-46-51
+E14=209-201-45-50
+E15=210-201-45-50
+E16=828-457-50-50
+E17=810-457-50-50
+E18=830-650-50-36
+E19=832-650-50-36
+E20=833-650-50-36
+E21=760-650-49-50
+
+'[NPCSPAWNS]: NPCs dadores dedicados que el server spawnea al arrancar.
+'  SpawnN=npcIndex-mapa-x-y  (los NPC 630-640 estan definidos en NPCs.dat)
+
+[INIT]
+NumQuests=41
+
+[NPCSPAWNS]
+NumSpawns=12
+'Sargento Vulko - Dungeon Newbie
+Spawn1=630-37-55-74
+'Dario Cazamayor - Ullathorpe
+Spawn2=631-1-44-42
+'Padre Anselmo - Nix
+Spawn3=632-34-43-86
+'Capitana Iselda - Banderbill
+Spawn4=633-59-47-43
+'Golrik Vetahierro - Arghal
+Spawn5=634-151-25-78
+'Ordelio el Sabio - Illiandor
+Spawn6=635-194-50-77
+'Silvano Raizvieja - Ullathorpe
+Spawn7=636-1-50-47
+'Doctora Miralem - Nix
+Spawn8=637-34-38-86
+'Teo Salmuera - Nix
+Spawn9=638-34-42-90
+'Brenda Escamas - Banderbill
+Spawn10=639-59-53-47
+'Eirik Manofria - Tiama
+Spawn11=640-218-44-33
+'Custodio del Abismo - Ullathorpe
+Spawn12=641-1-51-47
+
+'==================== SARGENTO VULKO <Instructor> (NPC 630, Dungeon Newbie) ====================
+
+[QUEST1]
+Destino=37-52-43
+Destino1=37-52-43
+Destino2=37-58-52
+Nombre=Recluta a prueba I
+Historia=¿Otro recluta? Ja. Yo entrené a media guardia de Ullathorpe y todos empezaron igual: acero temblando y rodillas flojas. Los murciélagos y esos gallos rabiosos del primer piso son tu examen de ingreso. Volvé cuando el filo de tu arma sepa a qué sabe la sangre.
+NpcDador=630
+NivelMin=1
+Requiere=0
+NumMatar=2
+Matar1=500,566-10
+Matar2=506,594-8
+Reward=EXP:800;ORO:500
+
+[QUEST2]
+Destino=37-58-62
+Destino1=37-39-72
+Destino2=37-77-51
+Nombre=Recluta a prueba II
+Historia=Nada mal. Ahora escuchá: las serpientes de este pozo matan más reclutas que cualquier espada, y los escorpiones anidan en las grietas donde apoyás la mano sin mirar. Bajá con los ojos abiertos y limpialos. Si te pican, no vengas llorando: el antídoto lo vende el alquimista.
+NpcDador=630
+NivelMin=3
+Requiere=1
+NumMatar=2
+Matar1=504,565-10
+Matar2=529,564-8
+Reward=EXP:1500;ORO:800
+
+[QUEST3]
+Destino=37-37-38
+Nombre=Recluta a prueba III
+Historia=Último examen, recluta. Una manada de lobos bajó al nivel más profundo y ya probaron carne de aventurero. Diez lobos, vos solo, sin excusas. Cuando vuelvas — si volvés — te firmo el pase: este dungeon te va a quedar chico y el mundo de afuera te espera.
+NpcDador=630
+NivelMin=5
+Requiere=2
+NumMatar=1
+Matar1=501,545-10
+Reward=EXP:3000;ORO:1500
+
+'==================== DARIO CAZAMAYOR <Veterano> (NPC 631, Ullathorpe) ====================
+
+[QUEST4]
+Destino=263-42-66
+Destino1=263-41-65
+Destino2=263-42-67
+Nombre=Cosecha en peligro
+Historia=Los granjeros del norte me traen pan y yo les debo más favores de los que puedo contar. Ahora las ratas y las hormigas les están vaciando los silos, y mis rodillas ya no están para andar pisando bichos. Hacelo vos y el oro que juntaron entre todos es tuyo. Volvé cada tanto: esas plagas no se rinden nunca.
+NpcDador=631
+NivelMin=5
+Repetible=1
+CooldownHoras=4
+NumMatar=2
+Matar1=536-10
+Matar2=535-10
+Reward=EXP:1200;ORO:800
+
+[QUEST5]
+Destino=46-51-48
+Nombre=Encargo del tabernero
+Historia=El tabernero prometió guiso de gallina para toda la posada y las únicas gallinas que quedan andan salvajes por el norte, picoteando entre los árboles. Traeme la carne y te pago del bolsillo del tabernero... él ni se va a enterar del recargo, ¿eh?
+NpcDador=631
+NivelMin=5
+NumMatar=1
+Matar1=594,506-10
+NumJuntar=1
+Juntar1=26-5
+Reward=EXP:900;ORO:1500
+
+[QUEST6]
+Destino=24-51-48
+Nombre=Pieles para el invierno
+Historia=Cuando el frío baja de las montañas, en Ullathorpe se siente en los huesos. El mesón necesita pieles de lobo para las camas de arriba y yo ya cacé suficientes lobos para tres vidas. Te toca: la manada merodea el bosque del este. Traeme seis pieles en buen estado, sin agujeros de más.
+NpcDador=631
+NivelMin=8
+NumMatar=1
+Matar1=501,545-10
+NumJuntar=1
+Juntar1=414-6
+Reward=EXP:4000;ORO:2000
+
+[QUEST7]
+Destino=74-36-59
+Nombre=El pardo del bosque viejo
+Historia=Hay un mercader que paga fortunas por piel de oso pardo, y yo conozco el bosque donde los osos son grandes como carretas. Te voy a ser honesto: el último cazador que mandé volvió sin el brazo izquierdo. Vos, parece que sabés lo que hacés. Ocho osos, cuatro pieles enteras, y repartimos la ganancia.
+NpcDador=631
+NivelMin=12
+Requiere=6
+NumMatar=1
+Matar1=538-8
+NumJuntar=1
+Juntar1=415-4
+Reward=EXP:10000;ORO:4000
+
+'==================== PADRE ANSELMO <Quest> (NPC 632, Nix) ====================
+
+[QUEST8]
+Destino=13-50-45
+Destino1=13-50-53
+Destino2=13-50-38
+Nombre=Descanso eterno I
+Historia=Hijo, hace treinta años que cuido este camposanto y nunca vi algo así: la tierra devuelve lo que le dimos. Esqueletos y zombies caminan entre las lápidas de gente que yo mismo enterré. Mis oraciones ya no alcanzan. Devolvelos a sus tumbas... y no mires sus caras, que a algunos los vas a reconocer.
+NpcDador=632
+NivelMin=8
+NumMatar=2
+Matar1=503-15
+Matar2=502,546-10
+Reward=EXP:5000;ORO:2000
+
+[QUEST9]
+Destino=262-49-44
+Destino1=262-49-44
+Destino2=260-51-43
+Nombre=Descanso eterno II
+Historia=Esto es peor de lo que temía. Los muertos comunes se levantan solos, pero ¿esqueletos con armadura? ¿Lores zombies dando órdenes? Alguien los está organizando desde las criptas viejas. Entrá, purificá lo que encuentres, y fijate si hay marcas de nigromancia en las paredes. Que los dioses te acompañen.
+NpcDador=632
+NivelMin=12
+Requiere=8
+NumMatar=2
+Matar1=508-10
+Matar2=507-4
+Reward=EXP:9000;ORO:3500
+
+[QUEST10]
+Destino=140-53-58
+Nombre=Descanso eterno III
+Historia=Tenías razón con lo de las marcas: son liches, hijo. Magos que le escupieron a la muerte en la cara. Ellos son los titiriteros de esta plaga, y las brujas que rondan sus criptas les sirven de ojos y manos. Destruilos a todos. Cuando el último caiga, las almas de mi camposanto van a poder descansar... y yo también.
+NpcDador=632
+NivelMin=18
+Requiere=9
+NumMatar=2
+Matar1=550-6
+Matar2=554-4
+Reward=EXP:40000;ORO:15000
+
+'==================== CAPITANA ISELDA <Guardia de los Caminos> (NPC 633, Banderbill) ====================
+
+[QUEST11]
+Destino=268-41-52
+Destino1=268-41-52
+Destino2=268-42-55
+Nombre=Peaje de sangre
+Historia=Soy la capitana Iselda y tengo tres hombres para cubrir veinte leguas de camino: hacé las cuentas. Los bandidos asaltan las caravanas a plena luz y los asesinos cobran contratos en la mismísima puerta de Banderbill. La corona paga recompensa por cabeza, sin preguntas. Volvé cuando quieras: trabajo, lamentablemente, siempre hay.
+NpcDador=633
+NivelMin=12
+Repetible=1
+CooldownHoras=4
+NumMatar=2
+Matar1=530-12
+Matar2=531-6
+Reward=EXP:14000;ORO:5000
+
+'==================== GOLRIK VETAHIERRO <Capataz Minero> (NPC 634, Arghal) ====================
+
+[QUEST12]
+Destino=205-46-58
+Nombre=La mina tomada
+Historia=Veinte años picando piedra en Arghal y jamás vi a la cuadrilla tan asustada. Unos saqueadores armados hasta los dientes se metieron en los túneles y echaron a mis muchachos a punta de espada. Ahí abajo quedaron las herramientas, las lámparas y el sueldo de un mes en mineral. Echalos y la cuadrilla entera te va a deber una.
+NpcDador=634
+NivelMin=20
+NumMatar=1
+Matar1=561-8
+Reward=EXP:70000;ORO:18000
+
+[QUEST13]
+Destino=0-0-0
+Nombre=La veta no espera
+Historia=La herrería de Arghal me pide más hierro del que puedo sacar con media cuadrilla de baja. Si sabés agarrar un piquete, traeme doscientas unidades de mineral y te pago mejor que el mercado, palabra de capataz. Volvé mañana si querés repetir: la veta no espera a nadie.
+NpcDador=634
+NivelMin=10
+Repetible=1
+CooldownHoras=24
+NumJuntar=1
+Juntar1=192-200
+Reward=EXP:6000;ORO:8000
+
+'==================== ORDELIO EL SABIO <Archimago> (NPC 635, Illiandor) ====================
+
+[QUEST14]
+Destino=753-45-52
+Destino1=753-45-52
+Destino2=753-46-70
+Nombre=Tambores de guerra I
+Historia=Los vientos me traen malas noticias: los clanes orcos dejaron de pelearse entre ellos. ¿Sabés qué significa eso? Que encontraron líderes. Los lores orcos están uniendo a la horda y, cuando terminen, marcharán sobre las ciudades. Golpeá ahora, mientras todavía cuentan sus lanzas.
+NpcDador=635
+NivelMin=14
+NumMatar=2
+Matar1=523-12
+Matar2=555-5
+Reward=EXP:18000;ORO:7000
+
+[QUEST15]
+Destino=115-52-78
+Destino1=753-66-39
+Destino2=115-52-78
+Nombre=Tambores de guerra II
+Historia=Debilitaste a la horda, pero le queda el colmillo más venenoso: sus brujos. Anoche sentí cómo desgarraban el velo invocando cosas que no tienen nombre en ningún idioma decente, y los ogros les sirven de muralla de carne. Cortá la cabeza de la serpiente y el cuerpo caerá solo.
+NpcDador=635
+NivelMin=18
+Requiere=14
+NumMatar=2
+Matar1=549-6
+Matar2=541-4
+Reward=EXP:35000;ORO:8000
+
+[QUEST16]
+Destino=144-22-66
+Destino1=144-22-66
+Destino2=144-21-64
+Nombre=El corazón de las ruinas
+Historia=Con la horda dispersa puedo volver a mi verdadera obsesión: las ruinas del sur. Hay magia antigua ahí, anterior a Illiandor, anterior a todo. Pero los golems de piedra no dejan pasar a nadie y las medusas convirtieron en estatua al último aprendiz que mandé... todavía me duele verlo en el jardín. Despejame el camino.
+NpcDador=635
+NivelMin=25
+Requiere=15
+NumMatar=2
+Matar1=552-2
+Matar2=553-4
+Reward=EXP:180000;ORO:45000
+
+'==================== SILVANO RAIZVIEJA <Guardabosques> (NPC 636, Ullathorpe) ====================
+
+[QUEST17]
+Destino=158-53-34
+Nombre=El precio del colmillo
+Historia=Yo no cazo por gusto: cazo cuando el bosque pierde el equilibrio, y lo perdió. Los tigres están matando el triple de lo que comen, dejan las presas pudriéndose y los cachorros de todo el valle se mueren de hambre. Ocho tigres, y traeme tres garras como prueba. El bosque lo va a entender, aunque duela.
+NpcDador=636
+NivelMin=15
+NumMatar=1
+Matar1=599-8
+NumJuntar=1
+Juntar1=584-3
+Reward=EXP:12000;ORO:4000
+
+[QUEST18]
+Destino=279-45-56
+Nombre=Savia corrupta
+Historia=Los ents eran los pastores de estos árboles, ¿sabías? Yo hablaba con ellos cuando era joven. Ahora algo les pudrió la savia y devoran el bosque que juraron proteger. Su corteza onodrim es lo único que puede sanar a los brotes jóvenes. Terminalos rápido y sin odio: ellos ya no están ahí adentro.
+NpcDador=636
+NivelMin=15
+NumMatar=1
+Matar1=592-6
+NumJuntar=1
+Juntar1=583-4
+Reward=EXP:11000;ORO:3500
+
+'==================== DOCTORA MIRALEM <Investigadora> (NPC 637, Nix) ====================
+
+[QUEST19]
+Destino=140-52-24
+Nombre=Reactivos prohibidos
+Historia=Le voy a ser franca: mi investigación puede salvar cientos de vidas, pero la academia me cortó los fondos por "métodos cuestionables". Las brujas del bosque destilan reactivos que no se consiguen en ningún mercado honesto. Tráigame lo que carguen encima y no me pregunte para qué los necesito. Le pago bien y en efectivo.
+NpcDador=637
+NivelMin=22
+NumMatar=1
+Matar1=550-5
+Reward=EXP:60000;ORO:15000
+
+'==================== TEO SALMUERA <Pescador> (NPC 638, Nix) ====================
+
+[QUEST20]
+Destino=139-53-86
+Nombre=El canto que ahoga
+Historia=Tres pescadores no volvieron este mes. Tres. El viejo Ramiro, su hijo, y el muchacho nuevo que ni sabía nadar mar adentro. Los que volvieron hablan de un canto dulce que te agarra el timón de las manos. Sirenas, muchacho. Yo les taparía los oídos a todos, pero es más fácil terminar con las cantoras. Que el mar te guarde.
+NpcDador=638
+NivelMin=25
+NumMatar=1
+Matar1=595-5
+Reward=EXP:140000;ORO:18000
+
+[QUEST21]
+Destino=113-47-48
+Nombre=La bestia bajo el casco
+Historia=Lo del barco del viejo Tomás no fue tormenta, por más que el puerto diga lo contrario. Yo vi la sombra debajo del casco antes de que el agua se lo tragara entero: un leviatán, grande como la iglesia de Nix. Nadie va a volver a pescar tranquilo hasta que esa cosa flote panza arriba. Tres hay, dicen los que saben. Matalos.
+NpcDador=638
+NivelMin=28
+Requiere=20
+NumMatar=1
+Matar1=548-3
+Reward=EXP:280000;ORO:35000
+
+'==================== BRENDA ESCAMAS <Cazadora de Dragones> (NPC 639, Banderbill) ====================
+
+[QUEST22]
+Destino=48-38-49
+Nombre=Fuego en el cielo I
+Historia=Veinte años estudiando dragones y todos me decían loca... hasta que el verde anidó en las montañas del norte. Cada día que pasa come más ganado y vuela más cerca de Banderbill. Yo conozco el punto blando bajo el ala izquierda; a mí ya no me dan las piernas para esquivar su fuego. A vos, parece que sí.
+NpcDador=639
+NivelMin=30
+NumMatar=1
+Matar1=570-1
+Reward=EXP:250000;ORO:40000
+
+[QUEST23]
+Destino=201-48-48
+Destino1=211-20-52
+Destino2=201-48-48
+Nombre=Fuego en el cielo II
+Historia=Mataste al verde y te creíste héroe, ¿no? Mala noticia: el negro y el azul eran sus hermanos de nidada, y los dragones no perdonan. Ya los vieron volando en círculos, buscando el olor del que mató a su hermano. Ese olor es el tuyo. Cazalos antes de que te cacen ellos... y llevate amigos, si te quedan.
+NpcDador=639
+NivelMin=35
+Requiere=22
+NumMatar=2
+Matar1=542-1
+Matar2=582-1
+Reward=EXP:900000;ORO:120000
+
+[QUEST24]
+Destino=250-54-61
+Nombre=El azote de las eras
+Historia=Queda uno. El padre de todos, el que quemó Banderbill cuando tu abuelo era niño: el Rey Dragón. Toda mi vida junté mapas, escamas y cicatrices para este momento, y ahora que lo tengo ubicado, mi cuerpo ya no me acompaña. Terminá lo que empecé. Si lo derrotás, tu nombre va a quedar escrito donde el mío no llegó.
+NpcDador=639
+NivelMin=40
+Requiere=23
+NumMatar=1
+Matar1=590-1
+Reward=EXP:2500000;ORO:300000
+
+'==================== EIRIK MANOFRIA <Superviviente> (NPC 640, Tiama) ====================
+
+[QUEST25]
+Destino=226-48-50
+Destino1=226-48-50
+Destino2=227-42-50
+Nombre=Lo que dejó la ventisca
+Historia=¿Ves esta mano? La perdí al hielo hace dos inviernos, cuando la expedición Albarrón subió al glaciar y solo bajé yo. Todavía tengo que comer, y el frío no perdona a nadie: los lobos invernales y los huargos bajan cada noche más cerca de Tiama. Cazalos y traeme cuatro pieles de lobo invernal. Abrigan más que cualquier lana, creeme.
+NpcDador=640
+NivelMin=20
+NumMatar=2
+Matar1=580-10
+Matar2=605-6
+NumJuntar=1
+Juntar1=1145-4
+Reward=EXP:48000;ORO:10000
+
+[QUEST26]
+Destino=230-53-59
+Nombre=Los tambores del glaciar
+Historia=Anoche los escuché de nuevo: tambores en el glaciar. Los chamanes árticos están haciendo el mismo ritual que vi la noche que murió mi expedición. Ellos llaman a la ventisca, ¿entendés? No es clima, es brujería. Subí y callales los tambores para siempre. Yo... yo todavía no puedo volver ahí arriba.
+NpcDador=640
+NivelMin=24
+Requiere=25
+NumMatar=1
+Matar1=603-8
+Reward=EXP:110000;ORO:20000
+
+[QUEST27]
+Destino=232-49-64
+Nombre=El gigante blanco
+Historia=Te voy a contar lo que nunca conté: a la expedición Albarrón no la mató la tormenta. Fue el yeti. Lo vi arrancar la carpa con Albarrón adentro como quien pela una fruta. Dicen que ahora son tres, criando en las cuevas altas. Matá a esos monstruos, por los quince nombres que llevo tallados en mi bastón.
+NpcDador=640
+NivelMin=32
+Requiere=26
+NumMatar=1
+Matar1=585-3
+Reward=EXP:500000;ORO:80000
+
+[QUEST28]
+Destino=233-65-73
+Destino1=233-65-73
+Destino2=232-49-64
+Nombre=Corazón de escarcha
+Historia=Ahora entiendo todo: los chamanes, los yetis, el invierno que no termina... En lo más hondo del glaciar despertaron los golems de hielo, y el frío que respiran es el que baja a Tiama cada noche. Destruí esos corazones de escarcha y a los yetis que los custodian. Hacelo, y esta ciudad va a volver a ver el pasto. Yo voy a poder dormir sin escuchar la ventisca.
+NpcDador=640
+NivelMin=36
+Requiere=27
+NumMatar=2
+Matar1=587-3
+Matar2=585-2
+Reward=EXP:1200000;ORO:250000
+
+
+'==================== EXPANSION Nv15-50 (brackets de 5 niveles) ====================
+
+'--- Bracket 15-20 ---
+
+[QUEST29]
+Destino=39-30-42
+Nombre=Telarañas en el sendero
+Historia=Los senderos al sur están cubiertos de telarañas gruesas como sogas. Las arañas gigantes bajaron del monte y ya se llevaron dos mulas de un arriero. Limpialas antes de que se lleven algo que camine en dos patas.
+NpcDador=636
+NivelMin=16
+Requiere=0
+NumMatar=1
+Matar1=510-10
+Reward=EXP:17000;ORO:3000
+
+'--- Bracket 20-25 ---
+
+[QUEST30]
+Destino=650-13-11
+Destino1=650-13-11
+Destino2=650-50-44
+Nombre=Sables en la costa
+Historia=Los piratas desembarcaron en la costa y armaron campamento como si fueran dueños del lugar. Asaltan los botes pesqueros y cobran "peaje" en la playa. La corona no negocia con piratas: mandales mis saludos, con el filo.
+NpcDador=633
+NivelMin=21
+Requiere=0
+NumMatar=2
+Matar1=567-8
+Matar2=568-4
+Reward=EXP:62000;ORO:9000
+
+[QUEST31]
+Destino=209-28-69
+Destino1=209-28-69
+Destino2=209-63-70
+Nombre=Las galerías olvidadas
+Historia=Detrás de la veta que despejaste hay galerías viejas, de antes del pueblo. Mis muchachos escucharon arrastrarse algo envuelto en vendas y vieron una mujer con serpientes por cabello. Nadie quiere bajar. Te pago yo, y bien.
+NpcDador=634
+NivelMin=23
+Requiere=12
+NumMatar=2
+Matar1=576-3
+Matar2=578-3
+Reward=EXP:105000;ORO:15000
+
+'--- Bracket 25-30 ---
+
+[QUEST32]
+Destino=207-57-33
+Destino1=207-57-33
+Destino2=237-42-15
+Nombre=Sangre impía
+Historia=Creí que con los liches se terminaba, pero hay males más viejos que la nigromancia. En las galerías viejas las apariciones ya no esperan a la noche, y hay brujas que las llaman por su nombre. Mientras ellas sigan rezando, mis muertos no descansan. Llevá agua bendita... y no vuelvas después del anochecer.
+NpcDador=632
+NivelMin=26
+Requiere=10
+NumMatar=2
+Matar1=586-6
+Matar2=550-4
+Reward=EXP:200000;ORO:25000
+
+[QUEST33]
+Destino=209-27-86
+Destino1=209-27-86
+Destino2=209-60-78
+Nombre=Los centinelas de la galería
+Historia=Los reactivos que me trajiste revelaron algo: la galería profunda no está abandonada, está custodiada. Colosos de bronce que nadie forjó en esta era, y matriarcas que petrifican al que las mira de frente. Necesito esa galería en silencio para seguir investigando.
+NpcDador=637
+NivelMin=29
+Requiere=19
+NumMatar=2
+Matar1=577-2
+Matar2=578-2
+Reward=EXP:340000;ORO:42000
+
+'--- Bracket 30-35 ---
+
+[QUEST34]
+Destino=210-43-49
+Destino1=210-43-49
+Destino2=210-47-40
+Nombre=Ecos del abismo
+Historia=Las ruinas que limpiaste eran la puerta, no la casa. Debajo de las minas viejas algo respira fuego y azufre: demonios, de los que los libros nombran en voz baja. Si no los frenamos ahora, van a subir ellos.
+NpcDador=635
+NivelMin=31
+Requiere=16
+NumMatar=2
+Matar1=543-2
+Matar2=572-1
+Reward=EXP:490000;ORO:60000
+
+[QUEST35]
+Destino=210-45-55
+Destino1=210-45-55
+Destino2=205-42-26
+Nombre=Fuego de las profundidades
+Historia=Los demonios no vinieron solos: alguien forjó guardianes de piedra viva y fuego para custodiar el paso. Un golem infernal en la boca del túnel y colosos de plata que no duermen más adentro. Destruilos y el abismo pierde sus perros.
+NpcDador=635
+NivelMin=33
+Requiere=34
+NumMatar=2
+Matar1=581-1
+Matar2=579-3
+Reward=EXP:700000;ORO:85000
+
+'--- Bracket 35-40 ---
+
+[QUEST36]
+Destino=205-70-60
+Destino1=205-70-60
+Destino2=207-57-33
+Nombre=El coloso de oro
+Historia=Hay una figura que aparece en cada texto prohibido que conseguí: un coloso de oro que no fue hecho para trabajar, sino para guardar algo. Las apariciones que lo rodean son de los que ya intentaron pasar. Terminalo, o todo lo que hicimos hasta acá no sirvió de nada.
+NpcDador=637
+NivelMin=38
+Requiere=33
+NumMatar=2
+Matar1=575-1
+Matar2=586-3
+Reward=EXP:1750000;ORO:200000
+
+'--- Bracket 40-45 ---
+
+[QUEST37]
+Destino=140-53-26
+Nombre=Los cuatro colosos
+Historia=Cuatro colosos custodian las minas profundas, uno por cada material que la tierra da: piedra, bronce, plata y oro. Cada uno guarda una veta y un secreto. Mientras sigan en pie, la mina es de ellos y la montaña, de nadie.
+NpcDador=635
+NivelMin=42
+Requiere=35
+NumMatar=4
+Matar1=552-1
+Matar2=577-2
+Matar3=579-2
+Matar4=575-1
+Reward=EXP:3600000;ORO:420000
+
+[QUEST38]
+Destino=211-40-46
+Destino1=211-40-46
+Destino2=211-50-38
+Nombre=Los guardianes de la veta
+Historia=Abajo de los cuatro colosos hay una cámara que nadie vació nunca, y no es por falta de ganas: cada vez que alguien baja, la veta le manda otro guardián. Ya perdí la cuenta de los que mandaron a callar a mis hombres. Que dejen de contar.
+NpcDador=635
+NivelMin=44
+Requiere=37
+NumMatar=2
+Matar1=575-3
+Matar2=579-4
+Reward=EXP:5200000;ORO:620000
+
+'--- Bracket 45-50 ---
+
+[QUEST39]
+Destino=205-70-60
+Nombre=El corazón de la mina
+Historia=Todo lo que enfrentaste en esas minas venía de más abajo. Los colosos no custodian oro: custodian lo que lo hace crecer, y hay que arrancarlo del hielo donde late. No hay libro que diga cómo hacerlo, así que vas a tener que escribir el capítulo vos. Es el fin del camino... o el tuyo.
+NpcDador=635
+NivelMin=46
+Requiere=38
+NumMatar=2
+Matar1=575-2
+Matar2=587-4
+Destino1=205-70-60
+Destino2=233-57-51
+Reward=EXP:7500000;ORO:900000
+
+[QUEST40]
+Destino=233-57-51
+Destino1=233-57-51
+Destino2=232-54-51
+Nombre=La leyenda dormida
+Historia=Derrotaste al Rey Dragón, pero las escamas que me trajiste no eran suyas. Hay algo más viejo dormido bajo el glaciar, y el hielo se rearma solo cada amanecer. Cada amanecer alguien tiene que estar ahí para recordarle que este mundo ya no es suyo.
+NpcDador=639
+NivelMin=48
+Requiere=24
+Repetible=1
+CooldownHoras=24
+NumMatar=2
+Matar1=587-5
+Matar2=585-2
+Reward=EXP:11000000;ORO:1300000
+
+
+'==================== CUSTODIO DEL ABISMO <Mercader Prohibido> (NPC 641, Ullathorpe) ====================
+'Quest endgame repetible (lvl 40+): fuente de Monedas Abisales para comprarle gear al Custodio.
+
+[QUEST41]
+Destino=140-53-26
+Nombre=La Deuda Abisal
+Historia=Cada Moneda Abisal que ves en mi cofre la pago con sangre ajena. El Abismo acuña de a poco, y lo que acuña lo guardan los colosos de piedra de las minas hondas. Traeme la prueba de que rompiste tres y hablaremos de negocios. No es tarea para cualquiera: solo los que ya vieron el nivel 40 sobreviven al primer golpe.
+NpcDador=641
+NivelMin=40
+Requiere=0
+Repetible=1
+CooldownHoras=3
+NumMatar=1
+Matar1=552-3
+Reward=EXP:400000;OBJ:1012:5

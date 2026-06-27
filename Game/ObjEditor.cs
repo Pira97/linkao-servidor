@@ -220,6 +220,11 @@ public static class ObjEditor
         // Refresco en tiempo real del inventario de todos los usuarios que tengan el objeto.
         Inventory.RefreshObjEverywhere((short)objIndex);
 
+        // ...y del CATÁLOGO del cliente. RefreshObjEverywhere reenvía los slots, pero el
+        // paquete de inventario sólo lleva objIndex/cantidad/equipado: el nombre y los stats
+        // que se ven en el tooltip salen del catálogo horneado del cliente, no del server.
+        BroadcastObjInfo(objIndex, cambios);
+
         string resumen = string.Join(", ", cambios.Select(c => $"{c.Key}={c.Value}"));
         Console.WriteLine($"[ObjEditor] {u.Name} editó OBJ{objIndex} ({o.Name}): {resumen}");
 
@@ -236,6 +241,49 @@ public static class ObjEditor
             if (AdminLoader.GetFaccionStatus(otro.Name) < MIN_PRIV) continue;
             ServerPackets.ConsoleMsg(otro.Conn,
                 $"[Editor de objetos] {u.Name} editó el objeto {objIndex} ({o.Name}): {resumen}", 7);
+        }
+    }
+
+    /// <summary>
+    /// Avisa a TODOS los online (no sólo a los GMs) que un objeto cambió, con los stats ya
+    /// resueltos, para que su catálogo local quede al día sin recargar el cliente.
+    ///
+    /// El daño se resuelve con la MISMA regla que <see cref="Combat"/>: el rango PVE/PVP pisa
+    /// al base sólo si su máximo es &gt; 0. Se manda el valor efectivo, no los campos crudos,
+    /// para que el cliente no tenga que reimplementar esa regla.
+    ///
+    /// Name/GrhIndex viajan SÓLO si el GM los tocó en este guardado: el cliente tiene su propia
+    /// capa de presentación (locale_obj_es.ind renombra objetos y les da iconos custom a
+    /// propósito) y pisarla en cada retoque de balance revertiría esos renombres.
+    /// </summary>
+    private static void BroadcastObjInfo(int objIndex, List<(string Key, string Value)> cambios)
+    {
+        var o = ObjData.Get(objIndex);
+        bool pve = o.MaxHITPVE > 0, pvp = o.MaxHITPVP > 0;
+        var campos = new List<(string, string)>
+        {
+            ("ObjType", ((int)o.Type).ToString()),
+            ("MaxDef", o.MaxDef.ToString()),
+            ("MinDef", o.MinDef.ToString()),
+            ("MaxHitPvE", (pve ? o.MaxHITPVE : o.MaxHIT).ToString()),
+            ("MinHitPvE", (pve ? o.MinHITPVE : o.MinHIT).ToString()),
+            ("MaxHitPvP", (pvp ? o.MaxHITPVP : o.MaxHIT).ToString()),
+            ("MinHitPvP", (pvp ? o.MinHITPVP : o.MinHIT).ToString()),
+        };
+        bool Toco(params string[] claves) =>
+            cambios.Any(c => claves.Any(k => string.Equals(c.Key, k, StringComparison.OrdinalIgnoreCase)));
+        if (Toco("Name", "Nombre")) campos.Add(("Name", o.Name ?? ""));
+        if (Toco("GrhIndex")) campos.Add(("GrhIndex", o.GrhIndex.ToString()));
+
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var otro = UserListManager.UserList[i];
+            if (otro?.flags.UserLogged != true || otro.Conn == null) continue;
+            // Candado de ClientCaps: el que no declaró el bit no sabe saltear el id y se le
+            // cerraría la sesión (ver Connection.SoportaObjInfoUpdate). Los clientes viejos
+            // simplemente siguen viendo el catálogo horneado hasta que recargan.
+            if (!otro.Conn.SoportaObjInfoUpdate) continue;
+            ServerPackets.ObjInfoUpdate(otro.Conn, objIndex, campos);
         }
     }
 

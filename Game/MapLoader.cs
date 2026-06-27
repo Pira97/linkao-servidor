@@ -62,6 +62,10 @@ public sealed class MapData
     public List<MapObj> Objs = new();
     // Partículas ambientales del mapa (fuego, fuentes, etc.) — (X,Y,ParticulaIndex). Se envían al loguear.
     public List<MapParticle> Particles = new();
+    // Tiles con teleport creado en RUNTIME (comando /ct, portal del hechizo), clave x*101+y.
+    // No vienen en el .csm así que hay que reenviar su ObjectCreate en cada FullUpdate (login/relog/entrada
+    // de nuevo usuario), a diferencia de los teleports estáticos que el cliente ya dibuja desde el mapa.
+    public HashSet<int> DynamicTeleports = new();
     public short[,] FloorObj = new short[101, 101];
     public int[,] FloorAmount = new int[101, 101];
     // Info del mapa (PK, backup, etc.)
@@ -201,8 +205,13 @@ public static class MapLoader
                 for (int x = 1; x <= 100; x++)
                 {
                     int g1 = graphic1[x, y];
+                    // 490000-490020: agua importada de Recursos-master junto con sus mapas
+                    // (18-ago-2026). Es un bloque contiguo reservado justamente para poder
+                    // sumarlo como un rango acá; sin esto, HayAgua daba false en todo el
+                    // mundo nuevo y se rompían la pesca y la navegación.
                     bool agua = (g1 >= 1505 && g1 <= 1520) || (g1 >= 5665 && g1 <= 5680)
-                              || (g1 >= 13547 && g1 <= 13562);
+                              || (g1 >= 13547 && g1 <= 13562)
+                              || (g1 >= 490000 && g1 <= 490020);
                     map.Water[x, y] = agua && !graphic2[x, y];
                 }
 
@@ -246,6 +255,9 @@ public static class MapLoader
             for (int i = 0; i < numNpcs; i++)
             {
                 var n = new MapNpc { X = Int(), Y = Int(), NpcIndex = Int() };
+                // Antes se omitían los NPC 31-33 ("Vendedor Battle"): ahora se respetan
+                // los que trae el .csm (colocados en el editor). EnsureCityVendors ya
+                // evita duplicar los vendedores automáticos si el mapa ya los incluye.
                 if (n.NpcIndex > 0) map.Npcs.Add(n);
             }
 

@@ -97,7 +97,7 @@ public static class Subastas
                 it.ObjIndex = 0; it.Amount = 0; it.Equipped = false;
                 if (u.Invent.NroItems > 0) u.Invent.NroItems--;
             }
-            ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, it.ObjIndex, it.Amount, it.Equipped);
+            ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
 
             var sub = _subastas[subId];
             sub.Active = true;

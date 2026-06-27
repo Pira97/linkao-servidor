@@ -26,6 +26,7 @@ public static class PacketHandler
     public static void HandleIncomingData(Connection conn)
     {
         var incoming = conn.IncomingData;
+        bool quedaPendiente = false;
 
         // GameLock (mundo) ANTES de incoming (cola de la conexión): mientras un handler corre, ni el
         // tick de IA ni otra conexión ni una desconexión pueden mutar UserList/NPCs/visibilidad a la
@@ -33,8 +34,22 @@ public static class PacketHandler
         lock (Game.UserListManager.GameLock)
         lock (incoming)
         {
+            int procesados = 0;
             while (incoming.Length > 0)
             {
+                // Fix C1 (auditoría DDoS 24-ago-2026): tope de paquetes por adquisición de
+                // GameLock. Sin esto, una ráfaga grande de una sola conexión (miles de packets
+                // chicos en un solo recv()) vaciaba TODO el backlog bajo un único lock,
+                // monopolizando el GameLoop y congelando a todos los demás jugadores. Al llegar
+                // al tope se corta el drenaje AQUÍ (sin tocar 'incoming': los packets restantes
+                // quedan intactos y en orden) y se re-programa el resto para después de soltar
+                // el lock — ver el Task.Run al final del método.
+                if (procesados >= Network.SecurityConfig.MaxPaquetesPorAdquisicionDeLock)
+                {
+                    quedaPendiente = true;
+                    break;
+                }
+
                 // Snapshot para poder reintentar si el packet llegó partido,
                 // y para diagnosticar packets desconocidos viendo los bytes crudos.
                 byte[] backup = incoming.ToArray();
@@ -46,6 +61,8 @@ public static class PacketHandler
 
                     if (conocido)
                     {
+                        procesados++;
+                        GlobalStats.PaqueteProcesado();
                         if (DebugPackets)
                         {
                             // Instrumentación: id, bytes disponibles antes, consumidos, restantes, usuario.
@@ -92,6 +109,32 @@ public static class PacketHandler
                 }
             }
         }
+
+        // Fix C1: si se cortó por presupuesto (backlog real todavía pendiente), reprogramar el
+        // resto en el thread pool en vez de reintentar en el mismo hilo/ciclo. Esto SUELTA
+        // GameLock antes de continuar (ya salimos de los 'lock' de arriba), dándole oportunidad
+        // real a otras conexiones y al tick de IA de correr entre ráfaga y ráfaga de la misma
+        // conexión abusiva. No es un busy-loop: cada continuación se encola una sola vez y
+        // vuelve a competir por el lock como cualquier otro handler, no lo reintenta en caliente.
+        if (quedaPendiente)
+            _ = Task.Run(() => HandleIncomingData(conn));
+    }
+
+    /// <summary>
+    /// Fix C2 (auditoría DDoS 24-ago-2026): helper compartido por los handlers de gameplay caro
+    /// (ataque, hechizo, click sobre NPC/tile, comercio, banco, inventario, mensajes de grupo).
+    /// Ninguno tenía cooldown de servidor antes de esto. Devuelve true si el paquete puede
+    /// procesarse; si se superó el límite, lo descarta (false) y si el abuso es sostenido
+    /// (Excesivo=true) desconecta la conexión, igual que ya hacían Walk y Chat.
+    /// </summary>
+    private static bool RateLimitOk(Connection conn, Game.User u, string categoria, int maxPorVentana, long ventanaMs)
+    {
+        // PacketRateLimiter.Permitir ya actualiza GlobalStats/SecurityLog: acá sólo se decide
+        // si además hay que cortar la conexión (abuso sostenido).
+        var rl = Game.PacketRateLimiter.Permitir(conn.UserIndex, categoria, maxPorVentana, ventanaMs, conn.RemoteIp, u?.Account);
+        if (rl.Permitido) return true;
+        if (rl.Excesivo) conn.FlushAndClose();
+        return false;
     }
 
     /// <summary>Devuelve el nombre del ClientPacketID, o "??" si el valor no está definido.</summary>
@@ -103,6 +146,11 @@ public static class PacketHandler
     /// <summary>Devuelve false si el id no está mapeado todavía.</summary>
     private static bool Dispatch(Connection conn, ClientPacketID id)
     {
+        // AFK: cualquier paquete real del jugador (inventario, hechizo, ataque, moverse, etc.)
+        // cuenta como actividad, no solo caminar — si no, la partícula de AFK (238) seguía puesta
+        // mientras el usuario abría el inventario o casteaba parado.
+        if (conn.UserIndex > 0) Game.GameTimer.ClearAfk(conn.UserIndex);
+
         switch (id)
         {
             case ClientPacketID.ConnectAccount:        HandleConnectAccount(conn);        return true;
@@ -110,6 +158,7 @@ public static class PacketHandler
             case ClientPacketID.ProcesosLogin:         HandleProcesosLogin(conn);         return true;
             case ClientPacketID.LoginExistingChar:     HandleLoginExistingChar(conn);     return true;
             case ClientPacketID.LoginNewChar:          HandleLoginNewChar(conn);          return true;
+            case ClientPacketID.CheckNombrePj:         HandleCheckNombrePj(conn);         return true;
             case ClientPacketID.Walk:                  HandleWalk(conn);                  return true;
             case ClientPacketID.ChangeHeading:         HandleChangeHeading(conn);         return true;
             case ClientPacketID.Talk:                  HandleTalk(conn);                  return true;
@@ -184,12 +233,14 @@ public static class PacketHandler
             case ClientPacketID.BankExtractGold:       HandleBankExtractGold(conn);       return true;
             case ClientPacketID.PartyCreate:           HandlePartyCreate(conn);           return true;
             case ClientPacketID.PartyJoin:             HandlePartyJoin(conn);             return true;
+            case ClientPacketID.PartyInviteByName:     HandlePartyInviteByName(conn);     return true;
             case ClientPacketID.PartyLeave:            HandlePartyLeave(conn);            return true;
             case ClientPacketID.PartyMessage:          HandlePartyMessage(conn);          return true;
             case ClientPacketID.PartyAccept:           HandlePartyAccept(conn);           return true;
             case ClientPacketID.PartyReject:           HandlePartyReject(conn);           return true;
             case ClientPacketID.PartyKick:             HandlePartyKick(conn);             return true;
             case ClientPacketID.PartyOnline:           HandlePartyOnline(conn);           return true;
+            case ClientPacketID.PartySignal:           HandlePartySignal(conn);           return true;
             case ClientPacketID.GuildMessage:          HandleGuildMessage(conn);          return true;
             case ClientPacketID.Work:                  HandleWork(conn);                  return true;
             case ClientPacketID.UserCommerceStart:     HandleUserCommerceStart(conn);     return true;
@@ -210,6 +261,8 @@ public static class PacketHandler
             case ClientPacketID.DelAmigos:             HandleDelAmigos(conn);             return true;
             case ClientPacketID.MsgAmigos:             HandleMsgAmigos(conn);             return true;
             case ClientPacketID.OnAmigos:              HandleOnAmigos(conn);              return true;
+            case ClientPacketID.RequestAmigosList:     HandleRequestAmigosList(conn);     return true;
+            case ClientPacketID.AmigoReject:           HandleAmigoReject(conn);           return true;
             case ClientPacketID.RequestStats:          HandleRequestStats(conn);          return true;
             case ClientPacketID.UpTime:                HandleUpTime(conn);                return true;
             case ClientPacketID.ArenaJoin:             HandleArenaJoin(conn);             return true;
@@ -218,6 +271,14 @@ public static class PacketHandler
             case ClientPacketID.CentinelReport:        HandleCentinelReport(conn);        return true;
             case ClientPacketID.RequestShopData:       HandleRequestShopData(conn);       return true;
             case ClientPacketID.ShopBuyItem:           HandleShopBuyItem(conn);           return true;
+            case ClientPacketID.RequestPremiumParticles: HandleRequestPremiumParticles(conn); return true;
+            case ClientPacketID.BuyPremiumParticle:    HandleBuyPremiumParticle(conn);    return true;
+            case ClientPacketID.RequestCreditItems:    HandleRequestCreditItems(conn);    return true;
+            case ClientPacketID.BuyCreditItem:         HandleBuyCreditItem(conn);         return true;
+            case ClientPacketID.EquipPremiumParticle:  HandleEquipPremiumParticle(conn);  return true;
+            case ClientPacketID.BankDepositPremium:    HandleBankDepositPremium(conn);    return true;
+            case ClientPacketID.BankExtractItemPremium: HandleBankExtractItemPremium(conn); return true;
+            case ClientPacketID.BuyBovedaPremium:      HandleBuyBovedaPremium(conn);      return true;
             case ClientPacketID.ResuscitationSafeToggle: HandleResuscitationSafeToggle(conn);return true;
             case ClientPacketID.SeleccionarHogar:      HandleSeleccionarHogar(conn);      return true;
             case ClientPacketID.Enlist:                HandleEnlist(conn);                return true;
@@ -239,6 +300,9 @@ public static class PacketHandler
             case ClientPacketID.ObjEditorDetailRequest: HandleObjEditorDetailRequest(conn); return true;
             case ClientPacketID.ObjEditorSave:          HandleObjEditorSave(conn);          return true;
             case ClientPacketID.ObjEditorReloadAll:     HandleObjEditorReloadAll(conn);     return true;
+            case ClientPacketID.BalanceEditorRequest:   HandleBalanceEditorRequest(conn);   return true;
+            case ClientPacketID.BalanceEditorSave:      HandleBalanceEditorSave(conn);      return true;
+            case ClientPacketID.DamageEditorPreviewRequest: HandleDamageEditorPreviewRequest(conn); return true;
             case ClientPacketID.SpawnBot:               HandleSpawnBot(conn);               return true;
 
             // --- Battle Pass / Pase de Temporada (NUEVO, no VB6) ---
@@ -247,8 +311,33 @@ public static class PacketHandler
             case ClientPacketID.BattlePassBuy:          HandleBattlePassBuy(conn);          return true;
 
             case ClientPacketID.NpcCatalogRequest:      HandleNpcCatalogRequest(conn);      return true;
+            case ClientPacketID.BotClasesRequest:       HandleBotClasesRequest(conn);       return true;
+            case ClientPacketID.PetElegir:              HandlePetElegir(conn);              return true;
+            case ClientPacketID.PetInvGuardar:          HandlePetInvGuardar(conn);          return true;
+            case ClientPacketID.PetInvSacar:            HandlePetInvSacar(conn);            return true;
+            case ClientPacketID.PetHogar:               HandlePetHogar(conn);               return true;
+            case ClientPacketID.PetInvRequest:          HandlePetInvRequest(conn);          return true;
             case ClientPacketID.TorneoAction:           HandleTorneoAction(conn);           return true;
             case ClientPacketID.QueryMapNpcs:           HandleQueryMapNpcs(conn);           return true;
+
+            // --- Sistema de Misiones (NUEVO, no VB6) ---
+            case ClientPacketID.QuestAccept:            HandleQuestAction(conn, 0);         return true;
+            case ClientPacketID.QuestTurnIn:            HandleQuestAction(conn, 1);         return true;
+            case ClientPacketID.QuestAbandon:           HandleQuestAction(conn, 2);         return true;
+            case ClientPacketID.QuestLogRequest:        HandleQuestLogRequest(conn);        return true;
+
+            // --- Extensiones del cliente web (NUEVO, no VB6) ---
+            case ClientPacketID.ClientCaps:             HandleClientCaps(conn);             return true;
+            case ClientPacketID.EspiaMouse:             HandleEspiaMouse(conn);             return true;
+            case ClientPacketID.EspiaUi:                HandleEspiaUi(conn);                return true;
+            case ClientPacketID.SpectateLogin:          HandleSpectateLogin(conn);          return true;
+            case ClientPacketID.SpectateTarget:         HandleSpectateTarget(conn);         return true;
+
+            // --- Editor de hechizos en vivo para GMs (NUEVO, no VB6) ---
+            case ClientPacketID.SpellEditorRequest:       HandleSpellEditorRequest(conn);       return true;
+            case ClientPacketID.SpellEditorDetailRequest: HandleSpellEditorDetailRequest(conn); return true;
+            case ClientPacketID.SpellEditorSave:          HandleSpellEditorSave(conn);          return true;
+            case ClientPacketID.SpellEditorReloadAll:     HandleSpellEditorReloadAll(conn);     return true;
 
             // --- Resto de packets conocidos: consumir su payload exacto vía tabla PayloadSpec.
             //     Mantiene el stream alineado aunque la lógica de juego aún no esté portada.
@@ -433,6 +522,13 @@ public static class PacketHandler
                 _ => ConsumePayload(sub, b)
             };
 
+            // Mandar el packet 94 a mano NO da privilegios: quien decide es la tabla de
+            // Chat.PuedeUsarComando (misma que para el chat), así los pocos subcomandos
+            // inofensivos del panel (/hora) siguen andando para cualquiera y el resto no.
+            // Acá sólo se deja el rastro del intento.
+            if (u.FaccionStatus < Game.AdminLoader.STATUS_CONSEJERO)
+                Console.WriteLine($"[SEGURIDAD] {u.Name} (status {u.FaccionStatus}) mandó GMCommands sub={sub} → '{cmd}' sin ser GM.");
+
             if (!string.IsNullOrEmpty(cmd))
                 Game.Chat.HandleGMCommand(conn.UserIndex, cmd);
         }
@@ -448,12 +544,12 @@ public static class PacketHandler
     /// Chat.Tokenize trata "..." como un solo token.</summary>
     private static string Q(string s) => "\"" + s + "\"";
     private static string GM_NoPayload(ByteQueue b, string cmd) => cmd;
-    private static string GM_WarpChar(ByteQueue b) { var n=b.ReadASCIIString(); var m=b.ReadInteger(); var x=b.ReadByte(); var y=b.ReadByte(); return $"/telep {Q(n)} {m} {x} {y}"; } // SIBB
+    private static string GM_WarpChar(ByteQueue b) { var n=b.ReadASCIIString(); var m=b.ReadInteger(); var x=b.ReadInteger(); var y=b.ReadInteger(); return $"/telep {Q(n)} {m} {x} {y}"; } // SIII (coords ensanchadas a short por mundo continuo)
     private static string GM_Jail(ByteQueue b) { var n=b.ReadASCIIString(); var r=b.ReadASCIIString(); var m=b.ReadByte(); return $"/carcel {Q(n)} {Q(r)} {m}"; } // SSB
     private static string GM_WarnUser(ByteQueue b) { var n=b.ReadASCIIString(); var r=b.ReadASCIIString(); return $"/advertencia {Q(n)} {r}"; } // SS
     private static string GM_EditChar(ByteQueue b) { var n=b.ReadASCIIString(); var op=b.ReadByte(); var a1=b.ReadASCIIString(); var a2=b.ReadASCIIString(); return $"/mod {Q(n)} {op} {a1} {a2}".TrimEnd(); } // SBSS
     private static string GM_BanChar(ByteQueue b) { var n=b.ReadASCIIString(); b.ReadByte(); return $"/ban {Q(n)}"; } // SB
-    private static string GM_TeleportCreate(ByteQueue b) { var m=b.ReadInteger(); var x=b.ReadByte(); var y=b.ReadByte(); return $"/ct {m} {x} {y}"; } // IBB
+    private static string GM_TeleportCreate(ByteQueue b) { var m=b.ReadInteger(); var x=b.ReadInteger(); var y=b.ReadInteger(); return $"/ct {m} {x} {y}"; } // III (coords ensanchadas a short por mundo continuo)
     private static string GM_BanIP(ByteQueue b) { var ip=b.ReadASCIIString(); var r=b.ReadASCIIString(); return $"/banip {ip} {r}"; } // SS
     private static string GM_AlterPassword(ByteQueue b) { var n=b.ReadASCIIString(); var c=b.ReadASCIIString(); return $"/altpass {Q(n)} {Q(c)}"; } // SS
     private static string GM_SetIniVar(ByteQueue b) { var k=b.ReadASCIIString(); var s=b.ReadASCIIString(); var v=b.ReadASCIIString(); return $"/setinivar {k} {s} {v}"; } // SSS
@@ -889,12 +985,16 @@ public static class PacketHandler
     /// <summary>
     /// HandleLoginNewChar. Cable: Byte(id) + ASCIIString(cuenta) + blockprefixed(pass)
     /// + Integer(version) + ASCIIString(nombre) + Byte(raza) + Byte(genero) + Byte(clase)
-    /// + Byte(hogar) + Integer(head) + ASCIIString(mac) + Long(hdserial).
+    /// + Byte(hogar) + Integer(head) + ASCIIString(mac) + Long(hdserial) + Byte(petTipoElegido)
+    /// + ASCIIString(petNombreElegido). Los DOS últimos campos son NUEVOS (no existen en el
+    /// protocolo AO original, sin cliente Godot que los consuma — ver memoria "Godot
+    /// descartado"): la mascota compañera que el jugador eligió en el panel de creación
+    /// (0 = ninguna / clase sin mascota) y el nombre que le puso, ver PetLeveling.PetTipo.
     /// </summary>
     private static void HandleLoginNewChar(Connection conn)
     {
         var b = conn.IncomingData;
-        if (b.Length < 14) throw new NotEnoughDataException();
+        if (b.Length < 16) throw new NotEnoughDataException();
         b.ReadByte();
         string cuenta = b.ReadASCIIString();
         byte[] passBlk = b.ReadBlockBytes(); // pass cifrado (bytes crudos)
@@ -907,19 +1007,37 @@ public static class PacketHandler
         short head = b.ReadInteger();
         b.ReadASCIIString();              // mac
         b.ReadLong();                     // hdserial
+        byte petTipoElegido = b.ReadByte();
+        string petNombreElegido = b.ReadASCIIString();
 
         // VALIDACIÓN DE VERSIÓN (VersionOK, Admin.bas:95) — después de leer todo el payload.
         if (!RechazarSiVersionInvalida(conn, version)) return;
+
+        // Fix H3 (auditoría DDoS 24-ago-2026): este camino de login (creación de personaje)
+        // llamaba a ValidarCuenta DIRECTO, sin pasar por LoginThrottle — un atacante podía
+        // reintentar fuerza bruta indefinidamente por acá aunque el login normal ya estuviera
+        // protegido. Mismo gate ANTES de tocar el .cnt/verificar password, misma tabla
+        // (por cuenta y por IP) que HandleLoginAccount, para que el bloqueo sea uno solo
+        // sin importar por qué puerta entró el atacante.
+        string ip = conn.RemoteIp;
+        if (!Game.LoginThrottle.PuedeIntentar(cuenta, ip, out string motivoBloqueo))
+        {
+            ServerPackets.ShowMessageBox(conn, motivoBloqueo);
+            conn.FlushAndClose();
+            return;
+        }
 
         // Validar cuenta antes de crear el personaje (no baneada, password correcta).
         string password = Game.Crypto.ShiftDecrypt(passBlk);
         if (!Game.AccountManager.ValidarCuenta(cuenta, password, out string err))
         {
+            if (err == "Contraseña incorrecta.") Game.LoginThrottle.RegistrarFallo(cuenta, ip);
             // VB6: FlushBuffer + CloseSocket en todo rechazo de login.
             ServerPackets.ShowMessageBox(conn, err);
             conn.FlushAndClose();
             return;
         }
+        Game.LoginThrottle.RegistrarExito(cuenta, ip);
         // Una sola sesión por cuenta (anti-clon/dupe), igual que el login normal.
         if (Game.UserListManager.CuentaConectada(cuenta) >= 1)
         {
@@ -928,7 +1046,38 @@ public static class PacketHandler
             return;
         }
 
-        Game.CharCreator.LoginNewChar(conn, cuenta, nombre, raza, genero, clase, hogar, head);
+        Game.CharCreator.LoginNewChar(conn, cuenta, nombre, raza, genero, clase, hogar, head, petTipoElegido, petNombreElegido);
+    }
+
+    /// <summary>
+    /// HandleCheckNombrePj (158, NUEVO no VB6). Chequeo de nombre libre ANTES de crear el
+    /// personaje (la pantalla Crear Personaje pregunta al escribir/aceptar). Pre-login:
+    /// no requiere cuenta — solo mira si existe el .chr. Cable: Byte(id) + ASCIIString(nombre).
+    /// Responde NombreCheckResult y cierra la conexión (el cliente reconecta para crear).
+    /// </summary>
+    private static void HandleCheckNombrePj(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();
+        string nombre = b.ReadASCIIString().Trim();
+
+        byte disponible; string msg;
+        if (string.IsNullOrEmpty(nombre) || !Game.CharCreator.NombreValido(nombre))
+        {
+            disponible = 0; msg = "Nombre de personaje inválido.";
+        }
+        else if (Game.CharLoader.PersonajeExiste(nombre))
+        {
+            disponible = 0; msg = "El nombre ya está en uso.";
+        }
+        else
+        {
+            disponible = 1; msg = "Nombre disponible.";
+        }
+
+        ServerPackets.NombreCheckResult(conn, disponible, msg);
+        conn.FlushAndClose();
     }
 
     /// <summary>
@@ -1016,10 +1165,34 @@ public static class PacketHandler
         b.ReadByte();                  // id
         byte heading = b.ReadByte();
 
-        if (heading < 1 || heading > 4) return;   // VB6: Exit Sub si inválido
+        // 1..4 ortogonales (VB6: Exit Sub si inválido) y 5..8 DIAGONALES, que son un agregado
+        // nuestro del 18-ago-2026: viajan sólo acá dentro. Movement.MoveUserChar mueve en
+        // diagonal pero guarda y difunde un rumbo ortogonal, así que ningún otro punto del
+        // servidor —ni ningún otro cliente— ve nunca un 5..8. Ver Movement.NORTHEAST.
+        if (heading < 1 || heading > 8) return;
 
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (!u.flags.UserLogged) return;
+
+        // Movement.MoveUserChar no valida cadencia (sólo posición/colisión): sin este límite un
+        // cliente modificado podría mandar Walk mucho más rápido que la animación real (~238ms/tile),
+        // lo que además de un posible speed-hack visual satura CharacterMove hacia todos los
+        // vecinos. El límite es generoso (bien por encima del ritmo real) para no rozar el juego
+        // legítimo; sólo corta el abuso franco.
+        var rl = Game.PacketRateLimiter.Permitir(conn.UserIndex, "walk",
+            Network.SecurityConfig.MovimientoMaxPorVentana, Network.SecurityConfig.MovimientoVentanaMs,
+            conn.RemoteIp, u.Account);
+        if (!rl.Permitido)
+        {
+            var (rpx, rpy) = Game.Continuous.Pos(u.Pos.Map, u.Pos.X, u.Pos.Y);
+            ServerPackets.PosUpdate(conn, rpx, rpy); // resincronizar: el cliente predijo el paso, el server lo descartó
+            if (rl.Excesivo) conn.FlushAndClose();
+            return;
+        }
+
+        // Modo espía (/espiar): el Dios no camina, mira. Su personaje queda parado donde está
+        // y se le corrige el sprite (que en su pantalla es el del espiado). Ver Espia.cs.
+        if (Game.Espia.AbsorberMovimientoDelEspia(conn)) return;
 
         // Sólo se mueve si no está paralizado/inmovilizado (1:1 con HandleWalk) ni congelado por
         // la cuenta regresiva de un combate de torneo.
@@ -1029,7 +1202,7 @@ public static class PacketHandler
             // Paralizado/inmovilizado/congelado: el cliente igual predijo el paso localmente. Como el
             // server NO lo movió, hay que reenviarle su posición real (PosUpdate) para resincronizar;
             // si no, el personaje queda "buggeado" adelantado respecto del server. (VB6 WritePosUpdate.)
-            ServerPackets.PosUpdate(conn, (byte)u.Pos.X, (byte)u.Pos.Y);
+            { var (px, py) = Game.Continuous.Pos(u.Pos.Map, u.Pos.X, u.Pos.Y); ServerPackets.PosUpdate(conn, px, py); }
     }
 
     /// <summary>
@@ -1046,6 +1219,8 @@ public static class PacketHandler
 
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (!u.flags.UserLogged || u.Char.heading == heading) return;
+        // Modo espía: tampoco gira. Se le devuelve el rumbo real del espiado (Espia.cs).
+        if (Game.Espia.AbsorberMovimientoDelEspia(conn)) return;
         u.Char.heading = heading;
         // Difundir el nuevo rumbo al área para que los demás vean el giro en el lugar (CharacterChange).
         Game.Combat.DifundirApariencia(u);
@@ -1116,6 +1291,236 @@ public static class PacketHandler
     }
 
     /// <summary>BattlePassClaim: Byte(nivel), Byte(carril 0=gratis/1=premium).</summary>
+    /// <summary>QuestAccept/QuestTurnIn/QuestAbandon: Integer(questId). accion: 0=aceptar, 1=entregar, 2=abandonar.</summary>
+    private static void HandleQuestAction(Connection conn, int accion)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException(); // id(1) + questId(2)
+        b.ReadByte(); // id
+        int questId = b.ReadInteger();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        switch (accion)
+        {
+            case 0: Game.QuestSystem.Accept(conn.UserIndex, questId); break;
+            case 1: Game.QuestSystem.TurnIn(conn.UserIndex, questId); break;
+            case 2: Game.QuestSystem.Abandon(conn.UserIndex, questId); break;
+        }
+    }
+
+    /// <summary>QuestLogRequest: (sin payload). Responde QuestInfo origen=0 con las misiones activas.</summary>
+    private static void HandleQuestLogRequest(Connection conn)
+    {
+        conn.IncomingData.ReadByte(); // id
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        Game.QuestSystem.SendQuestLog(conn.UserIndex);
+    }
+
+    /// <summary>
+    /// ClientCaps: Byte(caps). El cliente declara qué extensiones del protocolo entiende
+    /// (bit0 = paquetes del modo espía). Sin esto el server asume "cliente viejo" y no le
+    /// manda ningún paquete que no supiera leer. Ver Connection.Caps.
+    /// </summary>
+    private static void HandleClientCaps(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 2) throw new NotEnoughDataException();
+        b.ReadByte();                  // id
+        conn.Caps = b.ReadByte();
+    }
+
+    /// <summary>
+    /// EspiaMouse: Long(xPx) + Long(yPx) + Integer(nx) + Integer(ny) + Byte(botones).
+    /// Posición del mouse del jugador en píxeles de mundo Y en pantalla normalizada (esta
+    /// última es la que sirve cuando tiene el mouse sobre el HUD). Solo la manda el cliente
+    /// al que el server se lo pidió (EspiaReportarMouse), y solo se reenvía si efectivamente
+    /// lo están espiando.
+    /// </summary>
+    private static void HandleEspiaMouse(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 14) throw new NotEnoughDataException(); // id(1)+x(4)+y(4)+nx(2)+ny(2)+botones(1)
+        b.ReadByte();                  // id
+        int x = b.ReadLong();
+        int y = b.ReadLong();
+        short nx = b.ReadInteger();
+        short ny = b.ReadInteger();
+        byte botones = b.ReadByte();
+        if (!conn.ReportaAlEspia) return;   // no se lo pedimos: descartar
+        Game.Espia.MouseDelEspiado(conn, x, y, nx, ny, botones);
+    }
+
+    // ===================== MODO ESPECTADOR (mirar sin personaje) =====================
+
+    /// <summary>
+    /// SpectateLogin: ASCIIString(cuenta) + blockPrefixed(pass) + Integer(version) +
+    /// ASCIIString(objetivo). Autentica una conexión que va a MIRAR sin entrar al mundo.
+    ///
+    /// Permiso: la cuenta tiene que existir, la contraseña coincidir y alguno de SUS
+    /// personajes tiene que ser Dios (Server.ini [Dioses]). El espectador nunca hace
+    /// EnterWorld, así que su slot de usuario queda con UserLogged=false y el mundo entero
+    /// lo ignora: no ocupa tile, no lo ve nadie, no lo pueden atacar.
+    ///
+    /// Con objetivo vacío responde la lista de jugadores online (UserNameList) para que el
+    /// cliente muestre a quién mirar.
+    /// </summary>
+    private static void HandleSpectateLogin(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 9) throw new NotEnoughDataException();
+        b.ReadByte();                          // id
+        string cuenta   = b.ReadASCIIString();
+        byte[] passBlk  = b.ReadBlockBytes();
+        short version   = b.ReadInteger();
+        string objetivo = b.ReadASCIIString();
+        string password = Game.Crypto.ShiftDecrypt(passBlk);
+
+        if (!RechazarSiVersionInvalida(conn, version)) return;
+
+        // Cuenta VACÍA = viene del panel de deploy: la contraseña es en realidad el token
+        // del servidor (archivo espectador.token, ver Espia.CargarToken). El panel corre en
+        // la máquina del dueño y ya está autenticado, así que no se le pide nada más.
+        if (string.IsNullOrWhiteSpace(cuenta))
+        {
+            if (!Game.Espia.TokenValido(password))
+            {
+                Console.WriteLine("[Espectador] RECHAZADO: token del panel inválido");
+                ServerPackets.ShowMessageBox(conn, "Token de espectador inválido o vencido.");
+                conn.FlushAndClose();
+                return;
+            }
+            MarcarEspectador(conn);
+            Console.WriteLine($"[Espectador] entrada por token del panel (objetivo='{objetivo}')");
+            if (string.IsNullOrWhiteSpace(objetivo)) { EnviarOnlineParaEspectar(conn); return; }
+            EngancharEspectador(conn, objetivo);
+            return;
+        }
+
+        if (!Game.AccountManager.ValidarCuenta(cuenta, password, out string error))
+        {
+            Console.WriteLine($"[Espectador] RECHAZADO cuenta='{cuenta}': {error}");
+            ServerPackets.ShowMessageBox(conn, "No se pudo entrar como espectador: " + error);
+            conn.FlushAndClose();
+            return;
+        }
+        if (!Game.AccountManager.CuentaTieneDios(cuenta))
+        {
+            Console.WriteLine($"[Espectador] RECHAZADO cuenta='{cuenta}': ningún personaje Dios");
+            ServerPackets.ShowMessageBox(conn, "El modo espectador es solo para Dioses.");
+            conn.FlushAndClose();
+            return;
+        }
+
+        MarcarEspectador(conn);
+        Console.WriteLine($"[Espectador] cuenta '{cuenta}' autenticada (objetivo='{objetivo}')");
+        if (string.IsNullOrWhiteSpace(objetivo)) { EnviarOnlineParaEspectar(conn); return; }
+        EngancharEspectador(conn, objetivo);
+    }
+
+    /// <summary>
+    /// SpectateTarget: ASCIIString(nombre). Cambia a quién mira el espectador; con nombre
+    /// vacío corta y le manda la lista de online de nuevo.
+    /// </summary>
+    private static void HandleSpectateTarget(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();
+        string nombre = b.ReadASCIIString();
+        if (!conn.EsEspectador) return;         // no se autenticó como espectador: ignorar
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            Game.Espia.Terminar(conn);
+            Game.Espia.TerminarNpc(conn);   // por si estaba mirando un bot de la guerra
+            EnviarOnlineParaEspectar(conn);
+            return;
+        }
+        EngancharEspectador(conn, nombre);
+    }
+
+    /// <summary>
+    /// Marca la conexión como espectadora Y le da por sentadas las capacidades del modo
+    /// espía. Hace falta: al espectador se le manda EspiaVista dentro de la MISMA ráfaga en
+    /// la que se loguea, y su ClientCaps todavía viene viajando en sentido contrario — sin
+    /// esto el server descarta ese paquete (y con él el puntero, los clics y las ventanas
+    /// replicadas) por creerlo un cliente viejo. Es seguro asumirlo: el cliente Godot nunca
+    /// manda SpectateLogin, así que acá solo llega el cliente web.
+    /// </summary>
+    private static void MarcarEspectador(Connection conn)
+    {
+        conn.EsEspectador = true;
+        conn.Caps |= 1;   // bit0 = entiende los paquetes del modo espía
+    }
+
+    /// <summary>Lista de jugadores online (nombre|mapa) para el selector del espectador.</summary>
+    private static void EnviarOnlineParaEspectar(Connection conn)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 1; i <= Game.UserListManager.LastUser; i++)
+        {
+            var u = Game.UserListManager.UserList[i];
+            if (u?.flags.UserLogged != true || u.Conn == null) continue;
+            if (sb.Length > 0) sb.Append('|');   // el cliente separa por '|' (ver incoming.js)
+            sb.Append(u.Name);
+        }
+        // Bots de guerra/progresivos: también se pueden espectar (ver Espia.EmpezarEspectadorNpc).
+        // Van al final y con el nombre tal cual, que es único (Bots.RandomNick lleva un contador).
+        foreach (var b in Game.NpcManager.BotsEspectables())
+        {
+            if (string.IsNullOrEmpty(b.Name)) continue;
+            if (sb.Length > 0) sb.Append('|');
+            sb.Append(b.Name);
+        }
+        ServerPackets.UserNameList(conn, sb.ToString());
+    }
+
+    private static void EngancharEspectador(Connection conn, string nombre)
+    {
+        Game.User objetivo = null;
+        for (int i = 1; i <= Game.UserListManager.LastUser; i++)
+        {
+            var u = Game.UserListManager.UserList[i];
+            if (u?.flags.UserLogged == true && u.Conn != null
+                && string.Equals(u.Name, nombre.Trim(), StringComparison.OrdinalIgnoreCase))
+            { objetivo = u; break; }
+        }
+        // Sentinela del panel: "seguir la acción" — la cámara elige sola a qué bot mirar y va
+        // saltando de pelea en pelea (ver Espia.EmpezarEspectadorAccion).
+        if (nombre.Trim().Equals("__accion__", StringComparison.OrdinalIgnoreCase))
+        { Game.Espia.EmpezarEspectadorAccion(conn); return; }
+
+        if (objetivo == null)
+        {
+            // ¿Es un bot de guerra o progresivo? Se mira distinto (no hay stream que espejar,
+            // se le arma la vista a mano alrededor del NPC — ver Espia.EmpezarEspectadorNpc).
+            foreach (var b in Game.NpcManager.BotsEspectables())
+                if (string.Equals(b.Name, nombre.Trim(), StringComparison.OrdinalIgnoreCase))
+                { Game.Espia.EmpezarEspectadorNpc(conn, b); return; }
+
+            ServerPackets.ConsoleMsg(conn, $"'{nombre}' no está online.", 4);
+            EnviarOnlineParaEspectar(conn);
+            return;
+        }
+        Game.Espia.EmpezarEspectador(conn, objetivo);
+    }
+
+    /// <summary>
+    /// EspiaUi: ASCIIString(estado). Qué tiene abierto el jugador en su interfaz (solapa,
+    /// ventanas, slots seleccionados). El server no lo interpreta, solo lo reenvía al Dios
+    /// que lo está espiando: el formato es un contrato entre los dos clientes.
+    /// </summary>
+    private static void HandleEspiaUi(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException(); // id(1) + len(2)
+        b.ReadByte();                  // id
+        string estado = b.ReadASCIIString();
+        if (!conn.ReportaAlEspia) return;
+        if (estado.Length > 512) return;   // reporte absurdo: no lo propagamos
+        Game.Espia.UiDelEspiado(conn, estado);
+    }
+
     private static void HandleBattlePassClaim(Connection conn)
     {
         var b = conn.IncomingData;
@@ -1190,8 +1595,119 @@ public static class PacketHandler
         conn.IncomingData.ReadByte(); // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (u == null || !u.flags.UserLogged) return;
-        if (Game.AdminLoader.GetFaccionStatus(u.Name) < Game.AdminLoader.STATUS_CONSEJERO) return;
+        if (!Game.Chat.RequierePrivilegio(u, Game.AdminLoader.STATUS_CONSEJERO, "NpcCatalogRequest")) return;
         ServerPackets.NpcCatalog(conn, Game.NpcData.All());
+    }
+
+    /// <summary>
+    /// PetElegir: Byte(id) + Byte(tipo) + ASCIIString(nombre).
+    ///
+    /// Arreglo para los personajes CREADOS ANTES de que la mascota existiera: como la elección de
+    /// tipo y nombre vive en el panel de creación, esos .chr no tienen sección [MASCOTA] y sus
+    /// dueños quedaron sin nada. Con esto la eligen UNA vez desde el panel de mascota.
+    ///
+    /// Se acepta sólo si el personaje NO tiene mascota todavía (PetTipo == 0): no es un
+    /// "cambiar de mascota" — la elección sigue siendo para siempre, igual que en la creación.
+    /// El tipo tiene que corresponder a su clase (PetLeveling.ClasePuedeTener) y el nombre valida
+    /// igual que en CharCreator (1-20, letras y espacios). Además le enseña el hechizo de
+    /// invocación, que es lo que CharCreator le graba al personaje nuevo.
+    /// </summary>
+    private static void HandlePetElegir(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException(); // id(1) + tipo(1) + string(>=2)
+        b.ReadByte(); // id
+        byte tipoRaw = b.ReadByte();
+        string nombre = (b.ReadASCIIString() ?? "").Trim();
+
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+
+        void Aviso(string s) => ServerPackets.ConsoleMsg(conn, s, 1);
+
+        if (u.PetTipo != 0)
+        { Aviso("Ya tenés una mascota compañera: no se puede cambiar."); return; }
+
+        var tipo = (Game.PetLeveling.PetTipo)tipoRaw;
+        if (!Game.PetLeveling.ClasePuedeTener(u.Clase, tipo))
+        { Aviso("Esa mascota no corresponde a tu clase."); return; }
+
+        bool nombreValido = nombre.Length is >= 1 and <= 20
+            && nombre.All(c => char.IsLetter(c) || c == ' ');
+        if (!nombreValido)
+        { Aviso("El nombre de la mascota debe tener entre 1 y 20 letras."); return; }
+
+        u.PetTipo = tipoRaw; u.PetNivel = 1; u.PetExp = 0; u.PetNombre = nombre; u.PetDead = false;
+
+        // Hechizo de invocación: sin esto elegiría la mascota y no tendría cómo llamarla.
+        // Mismo criterio que CharCreator (que se lo graba en [HECHIZOS] al nacer).
+        int hInvocar = Game.PetLeveling.HechizoInvocarFor(tipo);
+        if (hInvocar > 0 && !Game.Inventory.DarHechizo(u, (short)hInvocar))
+            Aviso("No tenés espacio libre en la lista de hechizos: hacé lugar y volvé a intentarlo.");
+
+        Aviso($"Desde ahora te acompaña {nombre}. Invocala con el hechizo de invocación.");
+        Game.Combat.EnviarPetInfo(u);
+        // Fix H4 (auditoría DDoS 24-ago-2026): antes esto llamaba a CharSaver.SaveUser directo,
+        // I/O de disco SINCRÓNICO acá mismo con GameLock tomado (HandleIncomingData lo toma
+        // antes de despachar). Ahora se captura el snapshot (copia de memoria, sin I/O, igual
+        // que el autosave periódico) y el guardado real corre en PersistenceWorker sin el lock.
+        Game.PersistenceWorker.EnqueueSingle(Game.CharSaver.CaptureSnapshot(u));
+    }
+
+    /// <summary>PetInvGuardar: Byte(id) + Byte(slot inventario) + Long(cantidad). Jugador → mascota.</summary>
+    private static void HandlePetInvGuardar(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 6) throw new NotEnoughDataException(); // id(1)+slot(1)+long(4)
+        b.ReadByte();
+        byte slot = b.ReadByte();
+        int cant = b.ReadLong();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        Game.PetInventory.Guardar(u, slot, cant);
+    }
+
+    /// <summary>PetInvSacar: Byte(id) + Byte(slot mochila) + Long(cantidad). Mascota → jugador.</summary>
+    private static void HandlePetInvSacar(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 6) throw new NotEnoughDataException();
+        b.ReadByte();
+        byte slot = b.ReadByte();
+        int cant = b.ReadLong();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        Game.PetInventory.Sacar(u, slot, cant);
+    }
+
+    /// <summary>PetHogar: solo Byte(id). La mascota se va y deja la mochila en la bóveda.</summary>
+    private static void HandlePetHogar(Connection conn)
+    {
+        conn.IncomingData.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        Game.PetInventory.RegresarAlHogar(u);
+    }
+
+    /// <summary>PetInvRequest: solo Byte(id). Manda la mochila (el panel la pide al abrirse).</summary>
+    private static void HandlePetInvRequest(Connection conn)
+    {
+        conn.IncomingData.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        Game.PetInventory.EnviarMochila(u);
+    }
+
+    /// <summary>BotClasesRequest: solo Byte(id). Responde BotClasesCatalog (clases de bot
+    /// invocables, Game.Bots.Clases) si el rango alcanza para invocar bots (mismo umbral que
+    /// el comando /bot en Chat.cs: STATUS_SEMIDIOS).</summary>
+    private static void HandleBotClasesRequest(Connection conn)
+    {
+        conn.IncomingData.ReadByte(); // id
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+        if (!Game.Chat.RequierePrivilegio(u, Game.AdminLoader.STATUS_SEMIDIOS, "BotClasesRequest")) return;
+        ServerPackets.BotClasesCatalog(conn, Game.Bots.Clases);
     }
 
     /// <summary>
@@ -1279,7 +1795,97 @@ public static class PacketHandler
         Game.ObjEditor.ReloadAll(conn);
     }
 
-    /// <summary>SpawnBot: Byte(id) ASCIIString(clase) Byte(raza). Invoca bot(s) que pelean (GM).</summary>
+    // ============================================================
+    //  Editor de intervalos de Golpe/Hechizo en vivo para GMs (NUEVO, no VB6) — mismo patrón que ObjEditor*
+    // ============================================================
+
+    /// <summary>BalanceEditorRequest: solo Byte(id). Responde BalanceEditorDetail (valida privilegios adentro).</summary>
+    private static void HandleBalanceEditorRequest(Connection conn)
+    {
+        conn.IncomingData.ReadByte(); // id
+        Game.BalanceEditor.SendDetail(conn);
+    }
+
+    /// <summary>BalanceEditorSave: Byte(count) count×[ASCIIString clave, ASCIIString valor].</summary>
+    private static void HandleBalanceEditorSave(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 2) throw new NotEnoughDataException(); // id(1)+byte(1)
+        b.ReadByte(); // id
+        byte count = b.ReadByte();
+        var cambios = new List<(string, string)>();
+        for (int i = 0; i < count; i++)
+        {
+            string key = b.ReadASCIIString();
+            string value = b.ReadASCIIString();
+            cambios.Add((key, value));
+        }
+        Game.BalanceEditor.Save(conn.UserIndex, cambios);
+    }
+
+    /// <summary>DamageEditorPreviewRequest: Integer spellIndex, Integer staffObjIndex, Integer casterLevel,
+    /// Integer casterINT, Byte isPvP, Integer targetResistencia. Responde DamageEditorPreviewResult.</summary>
+    private static void HandleDamageEditorPreviewRequest(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 12) throw new NotEnoughDataException(); // id(1)+int×4(8)+byte(1)+int(2)
+        b.ReadByte(); // id
+        int spellIndex = b.ReadInteger();
+        int staffObjIndex = b.ReadInteger();
+        int casterLevel = b.ReadInteger();
+        int casterINT = b.ReadInteger();
+        bool isPvP = b.ReadByte() != 0;
+        int targetResistencia = b.ReadInteger();
+        Game.DamageEditor.Preview(conn, spellIndex, staffObjIndex, casterLevel, casterINT, isPvP, targetResistencia);
+    }
+
+    // ============================================================
+    //  Editor de hechizos en vivo para GMs (NUEVO, no VB6) — mismo patrón que ObjEditor*
+    // ============================================================
+
+    /// <summary>SpellEditorRequest: solo Byte(id). Responde SpellEditorList (valida privilegios adentro).</summary>
+    private static void HandleSpellEditorRequest(Connection conn)
+    {
+        conn.IncomingData.ReadByte(); // id
+        Game.SpellEditor.SendList(conn);
+    }
+
+    /// <summary>SpellEditorDetailRequest: Integer(spellIndex). Responde SpellEditorDetail.</summary>
+    private static void HandleSpellEditorDetailRequest(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException(); // id(1)+int(2)
+        b.ReadByte(); // id
+        int spellIndex = b.ReadInteger();
+        Game.SpellEditor.SendDetail(conn, spellIndex);
+    }
+
+    /// <summary>SpellEditorSave: Integer(spellIndex) Byte(count) count×[ASCIIString clave, ASCIIString valor].</summary>
+    private static void HandleSpellEditorSave(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 4) throw new NotEnoughDataException(); // id(1)+int(2)+byte(1)
+        b.ReadByte(); // id
+        int spellIndex = b.ReadInteger();
+        byte count = b.ReadByte();
+        var cambios = new List<(string, string)>();
+        for (int i = 0; i < count; i++)
+        {
+            string key = b.ReadASCIIString();
+            string value = b.ReadASCIIString();
+            cambios.Add((key, value));
+        }
+        Game.SpellEditor.Save(conn.UserIndex, spellIndex, cambios);
+    }
+
+    /// <summary>SpellEditorReloadAll: solo Byte(id). Relee todo el Hechizos.dat de disco (valida privilegios adentro).</summary>
+    private static void HandleSpellEditorReloadAll(Connection conn)
+    {
+        conn.IncomingData.ReadByte(); // id
+        Game.SpellEditor.ReloadAll(conn);
+    }
+
+    /// <summary>SpawnBot: Byte(id) ASCIIString(clase) Byte(raza) Byte(faccion) Byte(nivel) Byte(progresivo). Invoca bot(s) que pelean (GM).</summary>
     private static void HandleSpawnBot(Connection conn)
     {
         var b = conn.IncomingData;
@@ -1288,7 +1894,9 @@ public static class PacketHandler
         string clase = b.ReadASCIIString();
         byte raza = b.ReadByte();
         byte faccion = b.ReadByte();   // 0=ninguna, 1=Armada, 2=Milicia, 3=Caos
-        Game.Chat.SpawnBotsDesdePacket(conn.UserIndex, clase, raza, faccion);
+        byte nivel = b.ReadByte();     // 1-50; 0/fuera de rango = 50 (Bots.Spawn lo clampea)
+        bool progresivo = b.ReadByte() != 0;
+        Game.Chat.SpawnBotsDesdePacket(conn.UserIndex, clase, raza, faccion, nivel, progresivo);
     }
 
     /// <summary>HandleRequestPositionUpdate. Cable: solo Byte(id). Responde PosUpdate.</summary>
@@ -1297,7 +1905,7 @@ public static class PacketHandler
         conn.IncomingData.ReadByte();  // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (u.flags.UserLogged)
-            ServerPackets.PosUpdate(conn, (byte)u.Pos.X, (byte)u.Pos.Y);
+            { var (px, py) = Game.Continuous.Pos(u.Pos.Map, u.Pos.X, u.Pos.Y); ServerPackets.PosUpdate(conn, px, py); }
     }
 
     /// <summary>HandleRequestAtributes. Cable: solo Byte(id). Responde Attributes.</summary>
@@ -1364,7 +1972,9 @@ public static class PacketHandler
         byte slot = b.ReadByte();
         int amount = b.ReadLong();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Inventory.DropDestroy(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "inventario", Network.SecurityConfig.InventarioMaxPorVentana, Network.SecurityConfig.InventarioVentanaMs)) return;
+        Game.Inventory.DropDestroy(conn.UserIndex, slot, amount);
     }
 
     /// <summary>
@@ -1378,6 +1988,8 @@ public static class PacketHandler
         b.ReadByte();              // id
         byte slot1 = b.ReadByte();
         byte slot2 = b.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (!RateLimitOk(conn, u, "inventario", Network.SecurityConfig.InventarioMaxPorVentana, Network.SecurityConfig.InventarioVentanaMs)) return;
         Game.Inventory.SwapObjects(conn.UserIndex, slot1, slot2);
     }
 
@@ -1456,6 +2068,25 @@ public static class PacketHandler
         conn.IncomingData.ReadByte();       // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (u.flags.UserLogged) Game.Social.OnAmigos(conn.UserIndex);
+    }
+
+    /// <summary>HandleRequestAmigosList (155, NUEVO no VB6). Cable: solo Byte(id). Devuelve AmigosList (182).</summary>
+    private static void HandleRequestAmigosList(Connection conn)
+    {
+        conn.IncomingData.ReadByte();       // id
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.Social.SendAmigosList(conn.UserIndex);
+    }
+
+    /// <summary>HandleAmigoReject (156, NUEVO no VB6). Cable: Byte(id) + ASCII(nombre del solicitante).</summary>
+    private static void HandleAmigoReject(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();                       // id
+        string nombre = b.ReadASCIIString();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.Social.RejectAmigo(conn.UserIndex, nombre);
     }
 
     /// <summary>HandleResuscitationToggle (Protocol.bas:2393). Cable: solo Byte(id). Alterna SeguroResu (LocaleMsg 14/15).</summary>
@@ -1630,6 +2261,55 @@ public static class PacketHandler
         if (u.flags.UserLogged) Game.MercadoPago.ShopBuyItem(conn.UserIndex, itemId);
     }
 
+    /// <summary>HandleRequestPremiumParticles (NUEVO, no VB6). Cable: solo Byte(id). Envía el catálogo.</summary>
+    private static void HandleRequestPremiumParticles(Connection conn)
+    {
+        conn.IncomingData.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.PremiumParticles.RequestCatalog(conn.UserIndex);
+    }
+
+    /// <summary>HandleBuyPremiumParticle (NUEVO, no VB6). Cable: Byte(id) + Int(itemId).</summary>
+    private static void HandleBuyPremiumParticle(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();
+        short itemId = b.ReadInteger();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.PremiumParticles.Comprar(conn.UserIndex, itemId);
+    }
+
+    /// <summary>HandleRequestCreditItems (NUEVO, no VB6). Cable: solo Byte(id). Envía el catálogo.</summary>
+    private static void HandleRequestCreditItems(Connection conn)
+    {
+        conn.IncomingData.ReadByte();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.CreditItems.RequestCatalog(conn.UserIndex);
+    }
+
+    /// <summary>HandleBuyCreditItem (NUEVO, no VB6). Cable: Byte(id) + Int(itemId).</summary>
+    private static void HandleBuyCreditItem(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();
+        short itemId = b.ReadInteger();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.CreditItems.Comprar(conn.UserIndex, itemId);
+    }
+
+    /// <summary>HandleEquipPremiumParticle (NUEVO, no VB6). Cable: Byte(id) + Int(streamId, 0=desequipar).</summary>
+    private static void HandleEquipPremiumParticle(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();
+        short streamId = b.ReadInteger();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.PremiumParticles.Equipar(conn.UserIndex, streamId);
+    }
+
     /// <summary>HandleAuctionCreate (Protocol.bas:21774). Cable: Byte(id) + Int(objIndex) + Long(amount) + Long(buyout).</summary>
     private static void HandleAuctionCreate(Connection conn)
     {
@@ -1777,7 +2457,9 @@ public static class PacketHandler
     {
         conn.IncomingData.ReadByte();  // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Inventory.PickUp(conn.UserIndex);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "inventario", Network.SecurityConfig.InventarioMaxPorVentana, Network.SecurityConfig.InventarioVentanaMs)) return;
+        Game.Inventory.PickUp(conn.UserIndex);
     }
 
     /// <summary>HandleDrop. Cable: Byte(id) + Byte(Slot) + Long(Amount).</summary>
@@ -1789,7 +2471,9 @@ public static class PacketHandler
         byte slot = b.ReadByte();
         int amount = b.ReadLong();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Inventory.Drop(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "inventario", Network.SecurityConfig.InventarioMaxPorVentana, Network.SecurityConfig.InventarioVentanaMs)) return;
+        Game.Inventory.Drop(conn.UserIndex, slot, amount);
     }
 
     /// <summary>HandleEquipItem. Cable: Byte(id) + Byte(Slot) + Byte(autopot) + Byte(token).</summary>
@@ -1802,7 +2486,9 @@ public static class PacketHandler
         b.ReadByte();                  // autopot (ignorado)
         b.ReadByte();                  // token (ignorado)
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Inventory.EquipItem(conn.UserIndex, slot);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "inventario", Network.SecurityConfig.InventarioMaxPorVentana, Network.SecurityConfig.InventarioVentanaMs)) return;
+        Game.Inventory.EquipItem(conn.UserIndex, slot);
     }
 
     /// <summary>HandleUseItem. Cable: Byte(id) + Byte(Slot) + Byte(autopot) + Byte(token).</summary>
@@ -1840,7 +2526,9 @@ public static class PacketHandler
     {
         conn.IncomingData.ReadByte();  // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged && u.flags.Muerto == 0 && !u.flags.TorneoCongelado) Game.Combat.UsuarioAtaca(conn.UserIndex);
+        if (!u.flags.UserLogged || u.flags.Muerto != 0 || u.flags.TorneoCongelado) return;
+        if (!RateLimitOk(conn, u, "attack", Network.SecurityConfig.AtaqueMaxPorVentana, Network.SecurityConfig.AtaqueVentanaMs)) return;
+        Game.Combat.UsuarioAtaca(conn.UserIndex);
     }
 
     /// <summary>HandleCastSpell. Cable: Byte(id) + Byte(slot). Selecciona el hechizo a lanzar.</summary>
@@ -1851,7 +2539,9 @@ public static class PacketHandler
         b.ReadByte();                  // id
         byte slot = b.ReadByte();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged && !u.flags.TorneoCongelado) Game.Combat.CastSpell(conn.UserIndex, slot);
+        if (!u.flags.UserLogged || u.flags.TorneoCongelado) return;
+        if (!RateLimitOk(conn, u, "spell", Network.SecurityConfig.HechizoMaxPorVentana, Network.SecurityConfig.HechizoVentanaMs)) return;
+        Game.Combat.CastSpell(conn.UserIndex, slot);
     }
 
     /// <summary>
@@ -1923,27 +2613,44 @@ public static class PacketHandler
     /// HandleWorkLeftClick. Cable: Byte(id) + Byte(X) + Byte(Y) + Byte(Skill).
     /// Si Skill = Magia(8), lanza el hechizo pendiente sobre (X,Y).
     /// </summary>
+    /// <summary>
+    /// Resuelve la coord recibida de un clic. Mundo continuo: llega GLOBAL → (mapa vecino, local).
+    /// Clásico: llega local del mapa actual → devuelve (0, x, y). map=0 = "usar u.Pos.Map".
+    /// </summary>
+    private static void ResolveClick(Game.User u, int rx, int ry, out int map, out int x, out int y)
+    {
+        if (Game.Continuous.Enabled && Game.RegionLayout.TryGlobalToLocal(u.Pos.Map, rx, ry, out int tm, out int lx, out int ly))
+        { map = tm; x = lx; y = ly; return; }
+        map = 0; x = rx; y = ry;
+    }
+
     private static void HandleWorkLeftClick(Connection conn)
     {
         var b = conn.IncomingData;
-        if (b.Length < 4) throw new NotEnoughDataException();
+        if (b.Length < 6) throw new NotEnoughDataException(); // id(1)+X(2)+Y(2)+skill(1) — coords short
         b.ReadByte();                  // id
-        byte x = b.ReadByte();
-        byte y = b.ReadByte();
+        int rx = b.ReadInteger();
+        int ry = b.ReadInteger();
         byte skill = b.ReadByte();
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "npcclick", Network.SecurityConfig.NpcClickMaxPorVentana, Network.SecurityConfig.NpcClickVentanaMs)) return;
+        // Mundo continuo: la coord llega global → resolver a (mapa, local). Mismo-mapa round-trips igual.
+        // Las sub-acciones de ranged/hechizo/trabajo operan con coords locales (cross-map ranged: TODO).
+        ResolveClick(u, rx, ry, out int _wm, out int _wx, out int _wy);
+        byte x = (byte)_wx;
+        byte y = (byte)_wy;
         if (u.flags.Muerto == 1 || u.flags.Descansar != 0 || u.flags.Meditando) return; // VB6 gate
         const byte Robar = 14, Magia = 8, FundirMetal = 88, Domar = 12, ArmasArrojadizas = 5, Proyectiles = 6;
 
         // Combate a distancia: el propio AtaqueADistancia llama LookatTile (Commerce.LeftClick) tras
         // validar arma/munición. Para el resto, fijamos el target del tile acá (VB6: cada case llama LookatTile).
-        if (skill == Proyectiles)      { Game.Combat.AtaqueADistancia(conn.UserIndex, x, y, arrojadiza: false); return; }
-        if (skill == ArmasArrojadizas) { Game.Combat.AtaqueADistancia(conn.UserIndex, x, y, arrojadiza: true);  return; }
+        if (skill == Proyectiles)      { Game.Combat.AtaqueADistancia(conn.UserIndex, x, y, arrojadiza: false, targetMap: _wm); return; }
+        if (skill == ArmasArrojadizas) { Game.Combat.AtaqueADistancia(conn.UserIndex, x, y, arrojadiza: true,  targetMap: _wm); return; }
 
-        Game.Commerce.LeftClick(conn.UserIndex, x, y);
+        Game.Commerce.LeftClick(conn.UserIndex, x, y, _wm);
 
-        if (skill == Magia) Game.Combat.LanzarHechizoEn(conn.UserIndex, x, y);
+        if (skill == Magia) Game.Combat.LanzarHechizoEn(conn.UserIndex, x, y, _wm);
         else if (skill == FundirMetal) Game.Work.FundirMetal(conn.UserIndex, x, y);
         else if (skill == Robar) Game.Work.DoRobarEnTile(conn.UserIndex, x, y);
         else if (skill == Domar) Game.Work.DoDomarEnTile(conn.UserIndex, x, y);
@@ -1955,12 +2662,15 @@ public static class PacketHandler
     private static void HandleLeftClick(Connection conn)
     {
         var b = conn.IncomingData;
-        if (b.Length < 3) throw new NotEnoughDataException();
+        if (b.Length < 5) throw new NotEnoughDataException(); // id(1)+X(2)+Y(2) — coords short
         b.ReadByte();                  // id
-        byte x = b.ReadByte();
-        byte y = b.ReadByte();
+        int rx = b.ReadInteger();
+        int ry = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Commerce.LeftClick(conn.UserIndex, x, y);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "npcclick", Network.SecurityConfig.NpcClickMaxPorVentana, Network.SecurityConfig.NpcClickVentanaMs)) return;
+        ResolveClick(u, rx, ry, out int cm, out int cx, out int cy);
+        Game.Commerce.LeftClick(conn.UserIndex, (byte)cx, (byte)cy, cm);
     }
 
     /// <summary>HandleCraft*. Cable: Byte(id) + Integer(itemIndex) + Integer(cantidad). Fabrica un item.</summary>
@@ -2003,13 +2713,16 @@ public static class PacketHandler
         }
     }
 
-    /// <summary>Difunde EfectoCharParticula a todos los del mapa del usuario (equiv. SendData ToPCArea).</summary>
+    /// <summary>Difunde EfectoCharParticula a todos los del mapa del usuario (equiv. SendData ToPCArea).
+    /// Mundo continuo: también a quien lo ve desde el mapa vecino (VeChar; la partícula va anclada
+    /// al char, sin coords, así que no necesita traducción).</summary>
     private static void BroadcastEfectoCharParticula(Game.User u, short particula, float time, bool remove)
     {
         for (int i = 1; i <= Game.UserListManager.LastUser; i++)
         {
             var o = Game.UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+            if (o?.flags.UserLogged == true && o.Conn != null
+                && Game.AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                 ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, particula, time, remove);
         }
     }
@@ -2021,13 +2734,15 @@ public static class PacketHandler
     private static void HandleDoubleClick(Connection conn)
     {
         var b = conn.IncomingData;
-        if (b.Length < 3) throw new NotEnoughDataException();
+        if (b.Length < 5) throw new NotEnoughDataException(); // id(1)+X(2)+Y(2) — coords short
         b.ReadByte();                  // id
-        byte x = b.ReadByte();
-        byte y = b.ReadByte();
+        int rx = b.ReadInteger();
+        int ry = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged)
-            Game.Accion.DoubleClick(conn.UserIndex, u.Pos.Map, x, y);  // FASE 1: Accion() completa
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "npcclick", Network.SecurityConfig.NpcClickMaxPorVentana, Network.SecurityConfig.NpcClickVentanaMs)) return;
+        ResolveClick(u, rx, ry, out int cm, out int cx, out int cy);
+        Game.Accion.DoubleClick(conn.UserIndex, (short)(cm > 0 ? cm : u.Pos.Map), (byte)cx, (byte)cy);  // FASE 1: Accion() completa
     }
 
     /// <summary>HandleCommerceStart. Cable: solo Byte(id). Abre comercio con el NPC objetivo.</summary>
@@ -2035,7 +2750,9 @@ public static class PacketHandler
     {
         conn.IncomingData.ReadByte();  // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Commerce.CommerceStart(conn.UserIndex);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.Commerce.CommerceStart(conn.UserIndex);
     }
 
     /// <summary>HandleCommerceEnd. Cable: solo Byte(id).</summary>
@@ -2055,7 +2772,9 @@ public static class PacketHandler
         byte slot = b.ReadByte();
         int amount = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Commerce.CommerceBuy(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.Commerce.CommerceBuy(conn.UserIndex, slot, amount);
     }
 
     /// <summary>HandleCommerceSell. Cable: Byte(id) + Byte(Slot) + Integer(Amount).</summary>
@@ -2067,7 +2786,9 @@ public static class PacketHandler
         byte slot = b.ReadByte();
         int amount = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Commerce.CommerceSell(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.Commerce.CommerceSell(conn.UserIndex, slot, amount);
     }
 
     /// <summary>HandleBankStart. Cable: solo Byte(id). Abre la bóveda con el NPC objetivo.</summary>
@@ -2095,7 +2816,9 @@ public static class PacketHandler
         byte slot = b.ReadByte();
         int amount = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Bank.Deposit(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "banco", Network.SecurityConfig.BancoMaxPorVentana, Network.SecurityConfig.BancoVentanaMs)) return;
+        Game.Bank.Deposit(conn.UserIndex, slot, amount);
     }
 
     /// <summary>HandleBankExtractItem. Cable: Byte(id) + Byte(Slot) + Integer(Amount).</summary>
@@ -2107,7 +2830,9 @@ public static class PacketHandler
         byte slot = b.ReadByte();
         int amount = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Bank.Extract(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "banco", Network.SecurityConfig.BancoMaxPorVentana, Network.SecurityConfig.BancoVentanaMs)) return;
+        Game.Bank.Extract(conn.UserIndex, slot, amount);
     }
 
     /// <summary>HandleBankDepositGold. Cable: Byte(id) + Long(amount).</summary>
@@ -2117,7 +2842,9 @@ public static class PacketHandler
         if (b.Length < 5) throw new NotEnoughDataException();
         b.ReadByte(); int amount = b.ReadLong();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Bank.DepositGold(conn.UserIndex, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "banco", Network.SecurityConfig.BancoMaxPorVentana, Network.SecurityConfig.BancoVentanaMs)) return;
+        Game.Bank.DepositGold(conn.UserIndex, amount);
     }
 
     /// <summary>HandleBankExtractGold. Cable: Byte(id) + Long(amount).</summary>
@@ -2127,7 +2854,47 @@ public static class PacketHandler
         if (b.Length < 5) throw new NotEnoughDataException();
         b.ReadByte(); int amount = b.ReadLong();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.Bank.ExtractGold(conn.UserIndex, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "banco", Network.SecurityConfig.BancoMaxPorVentana, Network.SecurityConfig.BancoVentanaMs)) return;
+        Game.Bank.ExtractGold(conn.UserIndex, amount);
+    }
+
+    /// <summary>HandleBankDepositPremium (NUEVO, no VB6). Cable: Byte(id) + Byte(vaultId) + Byte(Slot) + Integer(Amount).</summary>
+    private static void HandleBankDepositPremium(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 5) throw new NotEnoughDataException();
+        b.ReadByte();                  // id
+        byte vaultId = b.ReadByte();
+        byte slot = b.ReadByte();
+        int amount = b.ReadInteger();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "banco", Network.SecurityConfig.BancoMaxPorVentana, Network.SecurityConfig.BancoVentanaMs)) return;
+        Game.Bank.DepositPremium(conn.UserIndex, vaultId, slot, amount);
+    }
+
+    /// <summary>HandleBankExtractItemPremium (NUEVO, no VB6). Cable: Byte(id) + Byte(vaultId) + Byte(Slot) + Integer(Amount).</summary>
+    private static void HandleBankExtractItemPremium(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 5) throw new NotEnoughDataException();
+        b.ReadByte();                  // id
+        byte vaultId = b.ReadByte();
+        byte slot = b.ReadByte();
+        int amount = b.ReadInteger();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "banco", Network.SecurityConfig.BancoMaxPorVentana, Network.SecurityConfig.BancoVentanaMs)) return;
+        Game.Bank.ExtractPremium(conn.UserIndex, vaultId, slot, amount);
+    }
+
+    /// <summary>HandleBuyBovedaPremium (NUEVO, no VB6). Cable: solo Byte(id).</summary>
+    private static void HandleBuyBovedaPremium(Connection conn)
+    {
+        conn.IncomingData.ReadByte();  // id
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.Bank.ComprarBovedaPremium(conn.UserIndex);
     }
 
     /// <summary>HandlePartyCreate. Cable: solo Byte(id).</summary>
@@ -2148,6 +2915,17 @@ public static class PacketHandler
         if (u.flags.UserLogged) Game.PartySystem.Join(conn.UserIndex, ci);
     }
 
+    /// <summary>HandlePartyInviteByName (157, NUEVO no VB6). Cable: Byte(id) + ASCII(nombre).</summary>
+    private static void HandlePartyInviteByName(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException();
+        b.ReadByte();                       // id
+        string nombre = b.ReadASCIIString();
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.PartySystem.JoinByName(conn.UserIndex, nombre);
+    }
+
     /// <summary>HandlePartyLeave. Cable: solo Byte(id).</summary>
     private static void HandlePartyLeave(Connection conn)
     {
@@ -2163,7 +2941,9 @@ public static class PacketHandler
         if (b.Length < 3) throw new NotEnoughDataException();
         b.ReadByte(); string msg = b.ReadUnicodeString();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.PartySystem.Message(conn.UserIndex, msg);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "grupo", Network.SecurityConfig.GrupoMensajeMaxPorVentana, Network.SecurityConfig.GrupoMensajeVentanaMs)) return;
+        Game.PartySystem.Message(conn.UserIndex, msg);
     }
 
     /// <summary>HandlePartyAccept. Cable: solo Byte(id). Acepta la invitación pendiente.</summary>
@@ -2200,6 +2980,32 @@ public static class PacketHandler
         if (u.flags.UserLogged) Game.PartySystem.Online(conn.UserIndex);
     }
 
+    /// <summary>
+    /// MEJORA-005: HandlePartySignal. Cable: Byte(id) + Byte(tipo) + si tipo==2, Integer(mapa1)
+    /// + Byte(x1) + Byte(y1) + Integer(mapa2) + Byte(x2) + Byte(y2) (recorrido: dos puntos
+    /// elegidos a mano en el Mapamundi, cada uno con su propio mapa). tipo==1 (ayuda) no manda
+    /// nada más — usa la posición actual del jugador.
+    /// </summary>
+    private static void HandlePartySignal(Connection conn)
+    {
+        conn.IncomingData.ReadByte();
+        byte tipo = conn.IncomingData.ReadByte();
+        if (tipo == 2)
+        {
+            int mapa1 = conn.IncomingData.ReadInteger();
+            byte x1 = conn.IncomingData.ReadByte();
+            byte y1 = conn.IncomingData.ReadByte();
+            int mapa2 = conn.IncomingData.ReadInteger();
+            byte x2 = conn.IncomingData.ReadByte();
+            byte y2 = conn.IncomingData.ReadByte();
+            var uR = Game.UserListManager.UserList[conn.UserIndex];
+            if (uR.flags.UserLogged) Game.PartySystem.EnviarRecorrido(conn.UserIndex, mapa1, x1, y1, mapa2, x2, y2);
+            return;
+        }
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u.flags.UserLogged) Game.PartySystem.EnviarSenal(conn.UserIndex, tipo);
+    }
+
     /// <summary>HandleGuildMessage. Cable: Byte(id) + ASCIIString(msg).</summary>
     private static void HandleGuildMessage(Connection conn)
     {
@@ -2207,7 +3013,9 @@ public static class PacketHandler
         if (b.Length < 3) throw new NotEnoughDataException();
         b.ReadByte(); string msg = b.ReadASCIIString();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.PartySystem.GuildMessage(conn.UserIndex, msg);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "grupo", Network.SecurityConfig.GrupoMensajeMaxPorVentana, Network.SecurityConfig.GrupoMensajeVentanaMs)) return;
+        Game.PartySystem.GuildMessage(conn.UserIndex, msg);
     }
 
     /// <summary>
@@ -2235,7 +3043,9 @@ public static class PacketHandler
     {
         conn.IncomingData.ReadByte();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.UserTrade.Start(conn.UserIndex);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.UserTrade.Start(conn.UserIndex);
     }
 
     /// <summary>HandleUserCommerceOfferGold. Cable: Byte(id) + Long(amount).</summary>
@@ -2245,7 +3055,9 @@ public static class PacketHandler
         if (b.Length < 5) throw new NotEnoughDataException();
         b.ReadByte(); int amount = b.ReadLong();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.UserTrade.OfferGold(conn.UserIndex, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.UserTrade.OfferGold(conn.UserIndex, amount);
     }
 
     /// <summary>HandleUserCommerceOfferItem. Cable: Byte(id) + Byte(Slot) + Integer(Amount).</summary>
@@ -2255,7 +3067,9 @@ public static class PacketHandler
         if (b.Length < 4) throw new NotEnoughDataException();
         b.ReadByte(); byte slot = b.ReadByte(); int amount = b.ReadInteger();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.UserTrade.OfferItem(conn.UserIndex, slot, amount);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.UserTrade.OfferItem(conn.UserIndex, slot, amount);
     }
 
     /// <summary>HandleUserCommerceConfirm. Cable: solo Byte(id).</summary>
@@ -2263,7 +3077,9 @@ public static class PacketHandler
     {
         conn.IncomingData.ReadByte();
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) Game.UserTrade.Confirm(conn.UserIndex);
+        if (!u.flags.UserLogged) return;
+        if (!RateLimitOk(conn, u, "comercio", Network.SecurityConfig.ComercioMaxPorVentana, Network.SecurityConfig.ComercioVentanaMs)) return;
+        Game.UserTrade.Confirm(conn.UserIndex);
     }
 
     /// <summary>HandleUserCommerceCancel. Cable: solo Byte(id).</summary>

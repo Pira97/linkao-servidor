@@ -196,7 +196,7 @@
 'PERGAMINOS
 
 [INIT]
-NumOBJs=2034
+NumOBJs=2087
 
 
 '**************************** COMIDAS ****************************
@@ -9554,7 +9554,6 @@ Sksastreria=10
 PielLobo=6
 PielOsoPardo=0
 PielOsoPolar=0
-Permanente=2
 LocaleID=31
 Texto=
 
@@ -9573,7 +9572,6 @@ PielLobo=446
 PielOsoPardo=0
 PielOsoPolar=0
 Sksastreria=10
-Permanente=2
 LocaleID=32
 Texto=
 
@@ -9592,7 +9590,6 @@ PielLobo=6
 PielOsoPardo=0
 PielOsoPolar=0
 Sksastreria=10
-Permanente=2
 LocaleID=35
 Texto=
 
@@ -9659,7 +9656,6 @@ PielLobo=3
 PielOsoPardo=0
 PielOsoPolar=0
 SKSastreria=10
-Permanente=2
 LocaleID=238
 Texto=
 
@@ -9678,7 +9674,6 @@ SKSastreria=10
 PielLobo=3
 PielOsoPardo=0
 PielOsoPolar=0
-Permanente=2
 LocaleID=477
 Texto=
 
@@ -9727,7 +9722,6 @@ PielLobo=4
 PielOsoPardo=0
 PielOsoPolar=0
 RazasProhibidas=1,2,3,4,5
-Permanente=2
 LocaleID=1033
 Texto=
 
@@ -9746,7 +9740,6 @@ PielLobo=4
 PielOsoPardo=0
 PielOsoPolar=0
 RazasProhibidas=1,2,3,4,5
-Permanente=2
 LocaleID=1034
 Texto=
 
@@ -9765,7 +9758,6 @@ PielLobo=4
 PielOsoPardo=0
 PielOsoPolar=0
 RazasProhibidas=1,2,3,4,5
-Permanente=2
 LocaleID=1035
 Texto=
 
@@ -9774,7 +9766,7 @@ Texto=
 Name=Vestimentas Tribales (Newbies)
 GrhIndex=986
 ObjType=3
-NumRopaje=252
+NumRopaje=251
 MAXDEF=0
 NoSeCae=1
 MINDEF=0
@@ -9831,7 +9823,6 @@ PielLobo=6
 PielOsoPardo=0
 PielOsoPolar=0
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=1179
 Texto=
 
@@ -9851,7 +9842,6 @@ PielOsoPardo=0
 PielOsoPolar=0
 Sksastreria=10
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=1180
 Texto=
 
@@ -9871,7 +9861,6 @@ PielOsoPardo=0
 PielOsoPolar=0
 Sksastreria=10
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=1181
 Texto=
 
@@ -9939,7 +9928,6 @@ SKSastreria=15
 PielLobo=95
 PielOsoPardo=3
 PielOsoPolar=0
-Permanente=2
 LocaleID=506
 Texto=
 
@@ -9972,7 +9960,6 @@ MAXDEF=5
 MINDEF=5
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=80
 Texto=
 
@@ -9989,7 +9976,6 @@ MinELV=20
 Crucial=1
 RazasProhibidas=2,5
 ClasesProhibidas=2,7,5,6,1,17,13,4,15,18,14,11
-Permanente=2
 LocaleID=475
 Texto=
 
@@ -10004,7 +9990,6 @@ MINDEF=5
 Valor=2400
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=498
 Texto=
 
@@ -10020,7 +10005,6 @@ Valor=200
 Crucial=1
 RazasProhibidas=2,5
 ClasesProhibidas=2,16,17
-Permanente=2
 LocaleID=489
 Texto=
 
@@ -10036,7 +10020,6 @@ Valor=200
 RazasProhibidas=1,3,4,6
 Crucial=1
 ClasesProhibidas=2,16,17
-Permanente=2
 LocaleID=490
 Texto=
 
@@ -10051,7 +10034,6 @@ MINDEF=2
 Valor=100
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=680
 Texto=
 
@@ -10066,7 +10048,6 @@ MINDEF=2
 Valor=100
 Crucial=1
 razasprohibidas=1,3,4,6
-Permanente=2
 LocaleID=681
 Texto=
 
@@ -10081,7 +10062,6 @@ MINDEF=0
 Valor=4000
 RazasProhibidas=1,3,4,6
 Crucial=1
-Permanente=2
 LocaleID=1216
 Texto=
 
@@ -10154,7 +10134,6 @@ MINDEF=5
 Valor=10000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=908
 ClasesProhibidas=16,11,14,15,12,13,12,5
 Texto=
@@ -10185,7 +10164,6 @@ MINDEF=5
 Valor=10000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=919
 ClasesProhibidas=16,11,14,15,12,13,12,5
 Texto=
@@ -10201,7 +10179,6 @@ MINDEF=10
 Valor=50000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=921
 ClasesProhibidas=16,11,14,15,12,13,12,5
 Texto=
@@ -10217,7 +10194,6 @@ MINDEF=15
 Valor=225000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=923
 ClasesProhibidas=16,11,14,15,12,13,12,5
 Texto=
@@ -10278,7 +10254,6 @@ Valor=50
 Crucial=1
 Genero=2
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=169
 Texto=
 
@@ -10293,7 +10268,6 @@ MINDEF=9
 Valor=3000
 Genero=2
 Crucial=1
-Permanente=2
 LocaleID=492
 RazasProhibidas=2,5
 ClasesProhibidas=2,16,17
@@ -10311,7 +10285,6 @@ Valor=500
 Crucial=1
 RazasProhibidas=2,5
 Genero=2
-Permanente=2
 LocaleID=374
 Texto=
 
@@ -10327,7 +10300,6 @@ Valor=5000
 Genero=2
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=479
 Texto=
 
@@ -10359,7 +10331,6 @@ Valor=4000
 Genero=2
 RazasProhibidas=1,3,4,6
 Crucial=1
-Permanente=2
 LocaleID=495
 ClasesProhibidas=3
 Texto=
@@ -10468,7 +10439,6 @@ Valor=100
 Genero=2
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=618
 ClasesProhibidas=16,17
 Texto=
@@ -10500,7 +10470,6 @@ Valor=225000
 Genero=2
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=459
 Texto=
 
@@ -10591,7 +10560,6 @@ MAXDEF=12
 MINDEF=12
 Valor=3000
 Crucial=1
-Permanente=2
 LocaleID=30
 RazasProhibidas=2,5
 ClasesProhibidas=16
@@ -10608,7 +10576,6 @@ MINDEF=12
 Valor=3000
 Genero=2
 Crucial=1
-Permanente=2
 LocaleID=508
 RazasProhibidas=2,5
 ClasesProhibidas=16
@@ -10625,7 +10592,6 @@ MINDEF=12
 Valor=3000
 Crucial=1
 RazasProhibidas=1,3,4,6
-Permanente=2
 LocaleID=958
 ClasesProhibidas=16
 Texto=
@@ -10641,7 +10607,6 @@ MINDEF=15
 Valor=5000
 Crucial=1
 MinELV=6
-Permanente=2
 LocaleID=952
 RazasProhibidas=2,5
 ClasesProhibidas=2,16
@@ -10678,7 +10643,6 @@ MINDEF=16
 Valor=10000
 Crucial=1
 MinELV=8
-Permanente=2
 LocaleID=355
 RazasProhibidas=2,5
 ClasesProhibidas=2,14,11,2,7,6,13,16,15
@@ -10695,7 +10659,6 @@ MINDEF=16
 Valor=10000
 Crucial=1
 MinELV=8
-Permanente=2
 LocaleID=1539
 RazasProhibidas=1,3,4,6
 ClasesProhibidas=2,14,11,2,7,6,13,16,15
@@ -10713,7 +10676,6 @@ Valor=10000
 Genero=2
 MinELV=8
 Crucial=1
-Permanente=2
 LocaleID=487
 RazasProhibidas=2,5
 ClasesProhibidas=2,14,11,2,7,6,13,16,15
@@ -11608,7 +11570,6 @@ MINDEF=8
 Valor=3000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=195
 MinELV=6
 ClasesProhibidas=3,4,5,8,9,10,11,12,13,14,15,17
@@ -11625,7 +11586,6 @@ MINDEF=5
 Valor=1500
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=236
 MinELV=4
 ClasesProhibidas=3,4,5,8,9,10,11,12,13,14,15,17
@@ -11642,7 +11602,6 @@ MINDEF=10
 Valor=5000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=373
 MinELV=8
 ClasesProhibidas=3,4,5,8,9,10,11,12,13,14,15,17
@@ -11659,7 +11618,6 @@ MINDEF=14
 Valor=8000
 Crucial=1
 RazasProhibidas=2,5
-Permanente=2
 LocaleID=237
 MinELV=10
 ClasesProhibidas=3,4,5,8,9,10,11,12,13,14,15,17
@@ -11783,7 +11741,6 @@ MINDEF=14
 Valor=8000
 RazasProhibidas=1,3,4,6
 Crucial=1
-Permanente=2
 LocaleID=504
 MinELV=15
 ClasesProhibidas=3,4,5,8,9,10,11,12,13,14,15,17
@@ -11801,7 +11758,6 @@ Valor=8000
 RazasProhibidas=1,3,4,6
 Genero=2
 Crucial=1
-Permanente=2
 LocaleID=505
 MinELV=15
 ClasesProhibidas=3,4,5,8,9,10,11,12,13,14,15,17
@@ -12140,7 +12096,6 @@ MINDEF=2
 Valor=1200
 MinELV=10
 Crucial=1
-Permanente=2
 LocaleID=1149
 ClasesProhibidas=3,9,10,4,16,17,13,11,14,15,8,12,5
 Texto=
@@ -12157,7 +12112,6 @@ MINDEF=8
 Valor=3600
 MinELV=15
 Crucial=1
-Permanente=2
 LocaleID=1150
 ClasesProhibidas=3,9,10,4,16,17,13,11,14,15,8,12,5
 Texto=
@@ -12174,7 +12128,6 @@ MINDEF=5
 Valor=2400
 MinELV=12
 Crucial=1
-Permanente=2
 LocaleID=1151
 ClasesProhibidas=3,9,10,4,16,17,13,11,14,15,8,12,5
 Texto=
@@ -12461,8 +12414,8 @@ GrhIndex=510
 Objtype=2
 MinHITPVP=5
 MaxHITPVP=8
-MinHITPVE=10
-MaxHITPVE=14
+MinHITPVE=110
+MaxHITPVE=114
 NoSeCae=1
 MaxHIT=2
 Valor=0
@@ -12490,7 +12443,6 @@ Crucial=1
 Apuñala=1
 LingH=4
 SkHerreria=0
-Permanente=2
 LocaleID=15
 Snd1=25
 Snd2=86
@@ -12512,7 +12464,6 @@ Valor=200
 Anim=8
 Apuñala=1
 Crucial=1
-Permanente=2
 LocaleID=165
 Snd1=25
 Snd2=86
@@ -12731,7 +12682,6 @@ Valor=2000
 Anim=1
 Crucial=1
 Apuñala=1
-Permanente=2
 LocaleID=164
 Snd1=25
 Snd2=86
@@ -12775,7 +12725,6 @@ MaxHIT=8
 Valor=350
 Anim=1
 Crucial=1
-Permanente=2
 LocaleID=2
 ClasesProhibidas=2,7,5,6,16
 Snd1=25
@@ -12798,7 +12747,6 @@ Valor=1800
 Anim=1
 MinELV=6
 Crucial=1
-Permanente=2
 LocaleID=19
 ClasesProhibidas=2,7,5,6,16,11,14,13,1,18,8
 Snd1=25
@@ -12821,7 +12769,6 @@ Valor=3200
 Anim=1
 MinELV=8
 Crucial=1
-Permanente=2
 LocaleID=123
 ClasesProhibidas=2,7,5,6,16,1,4,11,14,15,13,18,10,8
 Snd1=25
@@ -12866,7 +12813,6 @@ Valor=2000
 Anim=1
 MinELV=6
 Crucial=1
-Permanente=2
 LocaleID=125
 ClasesProhibidas=2,7,5,6,16,1,11,14,15,13,18,10,8
 Snd1=25
@@ -12889,7 +12835,6 @@ Valor=4350
 Anim=1
 MinELV=9
 Crucial=1
-Permanente=2
 LocaleID=390
 ClasesProhibidas=2,7,6,16,1,11,14,15,13
 Snd1=25
@@ -13417,9 +13362,11 @@ Texto=
 Name=Martillo de Piedra (Newbies)
 GrhIndex=708
 Objtype=2
-MinHIT=5
+MinHITPVP=5
+MinHITPVE=105
 NoSeCae=1
-MaxHIT=5
+MaxHITPVP=5
+MaxHITPVE=105
 Valor=0
 Anim=1
 Permanente=2
@@ -13443,7 +13390,6 @@ Valor=4500
 Anim=1
 MinELV=10
 Crucial=1
-Permanente=2
 LocaleID=392
 ClasesProhibidas=2,7,11,4,10,5,8,15,6,16,18
 Snd1=25
@@ -13508,8 +13454,10 @@ Texto=
 Name=Daga Arrojadiza (Newbies)
 GrhIndex=927
 Objtype=2
-MinHIT=1
-MaxHIT=2
+MinHITPVP=1
+MinHITPVE=101
+MaxHITPVP=2
+MaxHITPVE=102
 NoSeCae=1
 Valor=0
 Anim=8
@@ -13539,7 +13487,6 @@ Crucial=1
 LingH=2
 SkHerreria=0
 Proyectil=2
-Permanente=2
 LocaleID=639
 Snd1=25
 Snd2=68
@@ -13562,7 +13509,6 @@ Valor=14
 Anim=8
 Crucial=1
 Proyectil=2
-Permanente=2
 LocaleID=711
 Snd1=25
 Snd2=68
@@ -13662,7 +13608,6 @@ Anim=15
 Proyectil=1
 crucial=1
 MinELV=4
-Permanente=2
 LocaleID=702
 ClasesProhibidas=2,7,5,6,16,17,4,11,14,15,12,10,13,1,9,18
 Snd1=25
@@ -13969,7 +13914,6 @@ Anim=7
 Proyectil=1
 Municiones=1
 Crucial=1
-Permanente=2
 LocaleID=943
 MinELV=18
 ClasesProhibidas=2,17,3
@@ -13989,8 +13933,8 @@ Objtype=2
 NoSeCae=1
 MinHITPVP=40
 MaxHITPVP=35
-MinHITPVE=18
-MaxHITPVE=25
+MinHITPVE=118
+MaxHITPVE=125
 Valor=0
 Anim=7
 Proyectil=1
@@ -14098,7 +14042,6 @@ Anim=7
 Proyectil=1
 Municiones=1
 Crucial=1
-Permanente=2
 LocaleID=710
 ClasesProhibidas=2
 Snd1=25
@@ -14202,8 +14145,10 @@ Name=Baculo (Newbies)
 GrhIndex=17513
 Objtype=2
 NoSeCae=1
-MinHIT=2
-MaxHIT=4
+MinHITPVP=2
+MinHITPVE=102
+MaxHITPVP=4
+MaxHITPVE=104
 Valor=0
 Anim=6
 Crucial=0
@@ -14230,7 +14175,6 @@ Valor=5000
 Anim=6
 MinELV=8
 Crucial=1
-Permanente=2
 LocaleID=391
 ClasesProhibidas=11,14,12,17,4,5,8,13,15,16,9,10,3,1,6
 Snd1=25
@@ -14275,7 +14219,7 @@ Texto=
 
 
 [OBJ1147]
-Name=Baculo de Hechicero (DM +20)
+Name=Baculo de Hechicero (DM +40)
 GrhIndex=19592
 Objtype=2
 MinHITPVP=210
@@ -15745,8 +15689,10 @@ Name=Nudillos de Hierro (Newbies)
 GrhIndex=25678
 valor=0
 NoSeCae=1
-MINHIT=1
-MAXHIT=3
+MINHITPVP=1
+MINHITPVE=101
+MAXHITPVP=3
+MAXHITPVE=103
 Objtype=46
 Crucial=0
 Permanente=2
@@ -16697,7 +16643,6 @@ MinHITPVE=130
 MaxHITPVE=135
 Valor=40
 Crucial=1
-Permanente=2
 LocaleID=1500
 Texto=
 
@@ -16726,8 +16671,8 @@ Objtype=32
 NoSeCae=1
 MinHITPVP=40
 MaxHITPVP=50
-MinHITPVE=25
-MaxHITPVE=29
+MinHITPVE=125
+MaxHITPVE=129
 Valor=0
 Permanente=2
 LocaleID=1263
@@ -16910,7 +16855,6 @@ MINDEF=6
 Valor=2000
 MinELV=6
 Crucial=1
-Permanente=2
 LocaleID=128
 ClasesProhibidas=2,7,5,6,16,11,13,15
 Texto=
@@ -16927,7 +16871,6 @@ MINDEF=7
 Valor=3000
 MinELV=15
 Crucial=1
-Permanente=2
 LocaleID=950
 ClasesProhibidas=2,7,5,6,16,11,13,15
 Texto=
@@ -16944,7 +16887,6 @@ MINDEF=8
 Valor=4000
 MinELV=15
 Crucial=1
-Permanente=2
 LocaleID=954
 ClasesProhibidas=2,7,5,6,16,11,13,15
 Texto=
@@ -21550,6 +21492,8 @@ SubTipo=12
 Permanente=2
 LocaleID=1514
 Texto=
+ExtraHIT=15
+DuracionEfecto=600000
 
 
 [OBJ1597]
@@ -21591,6 +21535,7 @@ Name=Pocion Azul (Newbies)
 GrhIndex=541
 ObjType=11
 NoSeCae=1
+Permanente=2
 SubTipo=4
 MaxModificador=20
 MinModificador=20
@@ -21611,6 +21556,7 @@ TipoPocion=11
 Destruir=1
 NoSeCae=1
 Texto=Te convierte en usuario Donador por tiempo ilimitado
+SubTipo=18
 
 
 [OBJ1604]
@@ -21768,6 +21714,13 @@ GrhIndex=540
 ObjType=11
 LocaleID=593
 Texto=Aumenta temporalmente tu agilidad entre 1 y 10 puntos
+SubTipo=1
+MinModificador=1
+MaxModificador=10
+DuracionEfecto=50000
+Valor=0
+NoSeCae=1
+Permanente=2
 
 [OBJ594]
 Name=Poción Verde (Newbies)
@@ -21775,6 +21728,13 @@ GrhIndex=543
 ObjType=11
 LocaleID=594
 Texto=Aumenta temporalmente tu fuerza entre 1 y 5 puntos
+SubTipo=2
+MinModificador=1
+MaxModificador=5
+DuracionEfecto=50000
+Valor=0
+NoSeCae=1
+Permanente=2
 
 [OBJ1113]
 Name=Palabra Sagrada (Clérigos)
@@ -22062,6 +22022,7 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1647
 Texto=Con esta mágica poción podras cambiar el nombre de tu personaje.
+SubTipo=23
 
 [OBJ1648]
 Name=Runa de Transporte (Donador)
@@ -22222,6 +22183,7 @@ Texto=Este cofre puede contener objetos fantásticos.
 Name=Montura de Viajero (Altos)
 GrhIndex=1021
 ObjType=44
+NumRopaje=690
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22234,6 +22196,7 @@ Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque
 Name=Montura de Viajero (Bajos)
 GrhIndex=1021
 ObjType=44
+NumRopaje=691
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22244,8 +22207,10 @@ Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque
 
 [OBJ1669]
 Name=Montura de Sombras (Altos)
-GrhIndex=1021
+GrhIndex=52207
 ObjType=44
+NumRopaje=888
+Vuela=1
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22258,6 +22223,7 @@ Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque
 Name=Montura Espectral (Bajos)
 GrhIndex=1021
 ObjType=44
+NumRopaje=357
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22270,6 +22236,7 @@ Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque
 Name=Huargo Poseido (Orcos)
 GrhIndex=29967
 ObjType=44
+NumRopaje=692
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22282,6 +22249,7 @@ Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque
 Name=Huargo Poseido Reforzado (Orcos)
 GrhIndex=29967
 ObjType=44
+NumRopaje=693
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22294,6 +22262,7 @@ Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque
 Name=Montura Legendaria (Altos)
 GrhIndex=1021
 ObjType=44
+NumRopaje=688
 MaxDef=20
 MinDef=20
 MaxHIT=20
@@ -22599,6 +22568,10 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1699
 Texto=Otorga entre +3 y +8 pts de vida, el máx permitido es +24, solo pueden utilizarse 3 pociones mágicas por personaje, si tu vida no te gusto y crees que podes conseguir mejor promedio, debes resetear con la poción de reinicio.
+SubTipo=16
+MinModificador=3
+MaxModificador=8
+CuantoAumento=3
 
 [OBJ1700]
 Name=Teleport
@@ -22630,11 +22603,12 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1704
 Texto=Con esta poción podrás cambiar la cara de tu personaje por una cara especial.
+SubTipo=7
 
 [OBJ1705]
 Name=Montura de Dragón Rojo
 GrhIndex=1021
-NumRopaje=359
+NumRopaje=358
 ObjType=44
 MaxDef=25
 MinDef=25
@@ -23074,6 +23048,12 @@ GrhIndex=972
 ObjType=11
 LocaleID=1743
 Texto=Transforma al usuario en un Fango, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+SubTipo=14
+Body=173
+Cabeza=0
+ExtraHIT=8
+ExtraDEF=12
+DuracionEfecto=300000
 
 [OBJ1744]
 Name=Pocion de Metamorfosis: Vampiro (Halloween)
@@ -23081,6 +23061,12 @@ GrhIndex=972
 ObjType=11
 LocaleID=1744
 Texto=Transforma al usuario en un Vampiro, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+SubTipo=14
+Body=434
+Cabeza=0
+ExtraHIT=25
+ExtraDEF=15
+DuracionEfecto=300000
 
 [OBJ1745]
 Name=Pocion de Metamorfosis: Vampiro Transformado (Halloween)
@@ -23088,6 +23074,12 @@ GrhIndex=972
 ObjType=11
 LocaleID=1745
 Texto=Transforma al usuario en un Vampiro Transformado, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+SubTipo=14
+Body=463
+Cabeza=0
+ExtraHIT=35
+ExtraDEF=20
+DuracionEfecto=300000
 
 [OBJ1746]
 Name=Destellos del Terror I (Halloween)
@@ -23095,6 +23087,8 @@ GrhIndex=891
 ObjType=11
 LocaleID=1746
 Texto=Otorga a su portador una párticula que se pierde al desconectarse.
+SubTipo=9
+Particula=20
 
 [OBJ1747]
 Name=Destellos del Terror II (Halloween)
@@ -23102,6 +23096,8 @@ GrhIndex=891
 ObjType=11
 LocaleID=1747
 Texto=Otorga a su portador una párticula que se pierde al desconectarse.
+SubTipo=9
+Particula=30
 
 [OBJ1748]
 Name=Mochila Nivel 1 (+5 slot)
@@ -23130,6 +23126,7 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1751
 Texto=Con esta poción podrás elegír la cara de tu personaje.
+SubTipo=7
 
 [OBJ1752]
 Name=Galletas Navideñas (Navidad)
@@ -23137,6 +23134,7 @@ GrhIndex=49143
 ObjType=1
 LocaleID=1752
 Texto=Restaura 40 puntos de hambre
+MinHam=40
 
 [OBJ1753]
 Name=Tres Tiros
@@ -23145,6 +23143,7 @@ ObjType=11
 CreaLuz=2:&HFFFFCC
 Snd1=376
 LocaleID=1753
+FX=94
 
 [OBJ1754]
 Name=Cohete
@@ -23252,6 +23251,12 @@ GrhIndex=972
 ObjType=11
 LocaleID=1768
 Texto=Transforma al usuario en Santa Transformado, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+SubTipo=14
+Body=457
+Cabeza=622
+ExtraHIT=20
+ExtraDEF=20
+DuracionEfecto=300000
 
 [OBJ1769]
 Name=Lista de Regalos
@@ -23303,6 +23308,12 @@ GrhIndex=972
 ObjType=11
 LocaleID=1775
 Texto=Transforma al usuario en un Felino, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+SubTipo=14
+Body=147
+Cabeza=0
+ExtraHIT=10
+ExtraDEF=15
+DuracionEfecto=300000
 
 [OBJ1776]
 Name=Regalo
@@ -23314,84 +23325,13 @@ LocaleID=1776
 Name=Montura de Dragón Rojo (Bajos)
 GrhIndex=1021
 ObjType=44
+NumRopaje=358
 MaxDef=25
 MinDef=25
 MaxHIT=25
 MinHIT=25
 MinELV=34
 LocaleID=1777
-Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
-
-[OBJ1778]
-Name=Montura de Dragón Azul
-GrhIndex=1021
-ObjType=44
-MaxDef=25
-MinDef=25
-MaxHIT=25
-MinHIT=25
-MinELV=34
-LocaleID=1778
-Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
-
-[OBJ1779]
-Name=Montura de Dragón Azul (Bajos)
-GrhIndex=1021
-ObjType=44
-MaxDef=25
-MinDef=25
-MaxHIT=25
-MinHIT=25
-MinELV=34
-LocaleID=1779
-Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
-
-[OBJ1780]
-Name=Montura de Dragón Dorado
-GrhIndex=1021
-ObjType=44
-MaxDef=25
-MinDef=25
-MaxHIT=25
-MinHIT=25
-MinELV=34
-LocaleID=1780
-Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
-
-[OBJ1781]
-Name=Montura de Dragón Dorado (Bajos)
-GrhIndex=1021
-ObjType=44
-MaxDef=25
-MinDef=25
-MaxHIT=25
-MinHIT=25
-MinELV=34
-LocaleID=1781
-Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
-
-[OBJ1782]
-Name=Montura Especial (Navidad)
-GrhIndex=1021
-ObjType=44
-MaxDef=20
-MinDef=20
-MaxHIT=20
-MinHIT=20
-MinELV=34
-LocaleID=1782
-Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
-
-[OBJ1783]
-Name=Montura Especial (Navidad) (Bajos)
-GrhIndex=1021
-ObjType=44
-MaxDef=20
-MinDef=20
-MaxHIT=20
-MinHIT=20
-MinELV=34
-LocaleID=1783
 Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
 
 [OBJ1784]
@@ -23415,6 +23355,11 @@ GrhIndex=601
 ObjType=11
 LocaleID=1791
 Texto=Cura el veneno
+SubTipo=5
+LanzaHechizo=1
+Valor=0
+NoSeCae=1
+Permanente=2
 
 [OBJ1793]
 Name=Estatua de Kerpes
@@ -23614,6 +23559,8 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1813
 Texto=Otorga a su portador un título especial y único.
+SubTipo=19
+Tag=Colaborador
 
 [OBJ1814]
 Name=Túnica Apocalipsis
@@ -23838,6 +23785,7 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1844
 Texto=Usa esta poción para cambiar tu facción sin necesidad de pagar tu perdón.
+SubTipo=15
 
 [OBJ1845]
 Name=Poción de Facción: Republicano
@@ -23845,6 +23793,7 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1845
 Texto=Usa esta poción para cambiar tu facción sin necesidad de pagar tu perdón.
+SubTipo=15
 
 [OBJ1846]
 Name=Collar De Rykan (2/3)
@@ -23870,6 +23819,10 @@ GrhIndex=50139
 ObjType=11
 LocaleID=1848
 Texto=Otorga 100 créditos en tu cuenta (subastable/comerciable) al ser consumido.
+SubTipo=13
+CuantoAumento=100
+Destruir=1
+NoSeCae=1
 
 [OBJ1849]
 Name=Gran Saco de Créditos (50 créditos - No transferibles)
@@ -23877,6 +23830,10 @@ GrhIndex=50139
 ObjType=11
 LocaleID=1849
 Texto=Otorga 50 créditos en tu cuenta (subastable/comerciable) al ser consumido.
+SubTipo=13
+CuantoAumento=50
+Destruir=1
+NoSeCae=1
 
 [OBJ1850]
 Name=Saco de Créditos (10 créditos - No transferibles)
@@ -23884,6 +23841,10 @@ GrhIndex=50139
 ObjType=11
 LocaleID=1850
 Texto=Otorga 10 créditos en tu cuenta (subastable/comerciable) al ser consumido.
+SubTipo=13
+CuantoAumento=10
+Destruir=1
+NoSeCae=1
 
 [OBJ1851]
 Name=Cartel
@@ -24923,6 +24884,8 @@ GrhIndex=891
 ObjType=11
 LocaleID=1956
 Texto=Otorga a su portador una párticula que se pierde solo al desconectarse.
+SubTipo=9
+Particula=25
 
 [OBJ1957]
 Name=Portal a Intermundia (Casteable)
@@ -24930,6 +24893,7 @@ GrhIndex=609
 ObjType=11
 LocaleID=1957
 Texto=Otorga la posibilidad de lazar un portal a intermundia en el lugar seleccionado (casteado)
+SubTipo=6
 
 [OBJ1958]
 Name=Scroll a Sala de Portales
@@ -24937,6 +24901,10 @@ GrhIndex=26035
 ObjType=11
 LocaleID=1958
 Texto=Este objeto te llevará a Sala de Portales independientemente de donde te encuentres.
+SubTipo=20
+MapaDestino=49
+DestinoX=50
+DestinoY=50
 
 [OBJ1960]
 Name=Portón Cerrado
@@ -24973,6 +24941,8 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1964
 Texto=Otorga a su portador una mágica particula que se pierde al desconectarse.
+SubTipo=9
+Particula=33
 
 [OBJ1965]
 Name=Poción de nacimiento
@@ -24980,6 +24950,7 @@ GrhIndex=50138
 ObjType=11
 LocaleID=1965
 Texto=Al usarla se reinicia tu vida +UP, y podes volver a utilizar 3 pociones mágicas de vida para tener nuevamente posibilidad de mejorar tu vida en un promedio más alto
+SubTipo=17
 
 [OBJ1966]
 Name=Regalo
@@ -25309,6 +25280,7 @@ GrhIndex=50138
 ObjType=11
 LocaleID=2005
 Texto=Esta poción devolverá a la vida a tu familiar o mascota.
+SubTipo=21
 
 [OBJ2006]
 Name=Invocación de nueva mascota (Alífero del Infierno)
@@ -25316,6 +25288,8 @@ GrhIndex=49199
 ObjType=11
 LocaleID=2006
 Texto=Al conjurar este oscuro pergamino, una bestia inmortal se convertirá en tu nuevo protector, conservando las estadisticas de tu anterior mascota (sin habilidades)
+SubTipo=22
+NumNpc=534
 
 [OBJ2007]
 Name=Resurgimiento del Alífero del Infierno
@@ -25650,3 +25624,735 @@ Objtype=24
 ClasesProhibidas=2,3,5,8,10,11,12,13,14,15,16,17,18,19,20
 LocaleID=2034
 Texto=Hechizo de leveo (nivel 15). Causa dano a tu enemigo.
+
+'**************************** MONEDA ABISAL ****************************
+[OBJ1012]
+Name=Moneda Abisal
+GrhIndex=704
+ObjType=29
+Valor=0
+Texto=Moneda unica del Abismo. Solo el Custodio del Abismo la acepta.
+[OBJ370]
+Name=Mata de Pasto
+GrhIndex=50700
+Objtype=20
+Agarrable=1
+LocaleID=370
+Texto=
+
+[OBJ492]
+Name=Mata de Pasto
+GrhIndex=50701
+Objtype=20
+Agarrable=1
+LocaleID=492
+Texto=
+
+[OBJ494]
+Name=Mata de Pasto
+GrhIndex=50702
+Objtype=20
+Agarrable=1
+LocaleID=494
+Texto=
+
+[OBJ596]
+Name=Mata de Pasto
+GrhIndex=50703
+Objtype=20
+Agarrable=1
+LocaleID=596
+Texto=
+
+[OBJ600]
+Name=Mata de Pasto
+GrhIndex=50704
+Objtype=20
+Agarrable=1
+LocaleID=600
+Texto=
+
+[OBJ724]
+Name=Mata de Pasto
+GrhIndex=50705
+Objtype=20
+Agarrable=1
+LocaleID=724
+Texto=
+
+[OBJ727]
+Name=Mata de Pasto Grande
+GrhIndex=50706
+Objtype=20
+Agarrable=1
+LocaleID=727
+Texto=
+
+
+[OBJ2035]
+Name=Alas de Ángel
+GrhIndex=403800
+ObjType=3
+Subtipo=2
+Anim=88
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2036]
+Name=Escudo Esmeralda
+GrhIndex=403801
+ObjType=3
+Subtipo=2
+Anim=87
+MAXDEF=18
+MINDEF=15
+Valor=8000
+MinELV=35
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2037]
+Name=Escudo Carmesí
+GrhIndex=403802
+ObjType=3
+Subtipo=2
+Anim=86
+MAXDEF=18
+MINDEF=15
+Valor=8000
+MinELV=35
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2038]
+Name=Escudo del Alba
+GrhIndex=403803
+ObjType=3
+Subtipo=2
+Anim=64
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2039]
+Name=Escudo del Lirio
+GrhIndex=403804
+ObjType=3
+Subtipo=2
+Anim=65
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2040]
+Name=Escudo del Dragón Verde
+GrhIndex=403805
+ObjType=3
+Subtipo=2
+Anim=66
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2041]
+Name=Escudo del Cruzado
+GrhIndex=403806
+ObjType=3
+Subtipo=2
+Anim=69
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2042]
+Name=Escudo del León
+GrhIndex=403807
+ObjType=3
+Subtipo=2
+Anim=70
+MAXDEF=18
+MINDEF=15
+Valor=8000
+MinELV=35
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2043]
+Name=Escudo del Grifo
+GrhIndex=403808
+ObjType=3
+Subtipo=2
+Anim=71
+MAXDEF=18
+MINDEF=15
+Valor=8000
+MinELV=35
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2044]
+Name=Escudo de la Orden
+GrhIndex=403809
+ObjType=3
+Subtipo=2
+Anim=74
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2045]
+Name=Escudo Dorado
+GrhIndex=403810
+ObjType=3
+Subtipo=2
+Anim=76
+MAXDEF=18
+MINDEF=15
+Valor=8000
+MinELV=35
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2046]
+Name=Escudo Templario
+GrhIndex=403811
+ObjType=3
+Subtipo=2
+Anim=78
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2047]
+Name=Escudo del Hospitalario
+GrhIndex=403812
+ObjType=3
+Subtipo=2
+Anim=79
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2048]
+Name=Escudo del Ocaso
+GrhIndex=403813
+ObjType=3
+Subtipo=2
+Anim=81
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2049]
+Name=Escudo del Sol
+GrhIndex=403814
+ObjType=3
+Subtipo=2
+Anim=83
+MAXDEF=18
+MINDEF=15
+Valor=8000
+MinELV=35
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2050]
+Name=Escudo de Sangre
+GrhIndex=403815
+ObjType=3
+Subtipo=2
+Anim=60
+MAXDEF=12
+MINDEF=12
+Valor=3000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2051]
+Name=Yelmo Cerrado
+GrhIndex=403816
+ObjType=3
+Subtipo=1
+Anim=72
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2052]
+Name=Yelmo del Caballero
+GrhIndex=403817
+ObjType=3
+Subtipo=1
+Anim=73
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2053]
+Name=Yelmo Astado
+GrhIndex=403818
+ObjType=3
+Subtipo=1
+Anim=75
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2054]
+Name=Corona de Llamas
+GrhIndex=403819
+ObjType=3
+Subtipo=1
+Anim=77
+MAXDEF=20
+MINDEF=20
+Valor=3000
+MinELV=20
+Texto=
+
+[OBJ2055]
+Name=Máscara del Demonio Rojo
+GrhIndex=403820
+ObjType=3
+Subtipo=1
+Anim=79
+MAXDEF=20
+MINDEF=20
+Valor=3000
+MinELV=20
+Texto=
+
+[OBJ2056]
+Name=Yelmo Dorado
+GrhIndex=403821
+ObjType=3
+Subtipo=1
+Anim=88
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2057]
+Name=Yelmo Alado
+GrhIndex=403822
+ObjType=3
+Subtipo=1
+Anim=91
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2058]
+Name=Yelmo del Berserker
+GrhIndex=403823
+ObjType=3
+Subtipo=1
+Anim=92
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2059]
+Name=Cráneo Astado
+GrhIndex=403824
+ObjType=3
+Subtipo=1
+Anim=95
+MAXDEF=20
+MINDEF=20
+Valor=3000
+MinELV=20
+Texto=
+
+[OBJ2060]
+Name=Máscara de Dragón Verde
+GrhIndex=403825
+ObjType=3
+Subtipo=1
+Anim=111
+MAXDEF=20
+MINDEF=20
+Valor=3000
+MinELV=20
+Texto=
+
+[OBJ2061]
+Name=Máscara del Diablo
+GrhIndex=403826
+ObjType=3
+Subtipo=1
+Anim=112
+MAXDEF=20
+MINDEF=20
+Valor=3000
+MinELV=20
+Texto=
+
+[OBJ2062]
+Name=Yelmo Samurái
+GrhIndex=403827
+ObjType=3
+Subtipo=1
+Anim=113
+MAXDEF=35
+MINDEF=35
+Valor=12000
+MinELV=25
+ClasesProhibidas=2,7,5,6,16,13,11,14,15
+Texto=
+
+[OBJ2063]
+Name=Máscara del Conspirador
+GrhIndex=403828
+ObjType=3
+Subtipo=1
+Anim=117
+MAXDEF=10
+MINDEF=5
+Valor=500
+Texto=
+
+[OBJ2064]
+Name=Gorro Navideño
+GrhIndex=403829
+ObjType=3
+Subtipo=1
+Anim=143
+MAXDEF=10
+MINDEF=5
+Valor=500
+Texto=
+
+[OBJ2065]
+Name=Corona Real
+GrhIndex=403830
+ObjType=3
+Subtipo=1
+Anim=71
+MAXDEF=10
+MINDEF=5
+Valor=500
+Texto=
+
+[OBJ2066]
+Name=Máscara de Arlequín
+GrhIndex=403831
+ObjType=3
+Subtipo=1
+Anim=102
+MAXDEF=10
+MINDEF=5
+Valor=500
+Texto=
+
+[OBJ2067]
+Name=Armadura de Placas Carmesí
+GrhIndex=403832
+ObjType=3
+NumRopaje=519
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2068]
+Name=Armadura del Alba
+GrhIndex=403833
+ObjType=3
+NumRopaje=524
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2069]
+Name=Armadura Ígnea
+GrhIndex=403834
+ObjType=3
+NumRopaje=528
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2070]
+Name=Armadura del Infierno
+GrhIndex=403835
+ObjType=3
+NumRopaje=529
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2071]
+Name=Armadura Dorada del Campeón
+GrhIndex=403836
+ObjType=3
+NumRopaje=540
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2072]
+Name=Armadura de Escamas Azules
+GrhIndex=403837
+ObjType=3
+NumRopaje=543
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2073]
+Name=Armadura del General
+GrhIndex=403838
+ObjType=3
+NumRopaje=545
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2074]
+Name=Armadura de Hueso
+GrhIndex=403839
+ObjType=3
+NumRopaje=550
+MAXDEF=18
+MINDEF=18
+Valor=5000
+Texto=
+
+[OBJ2075]
+Name=Armadura del Heraldo Azul
+GrhIndex=403840
+ObjType=3
+NumRopaje=566
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2076]
+Name=Armadura de Obsidiana
+GrhIndex=403841
+ObjType=3
+NumRopaje=570
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2077]
+Name=Armadura del Centinela Azul
+GrhIndex=403842
+ObjType=3
+NumRopaje=576
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2078]
+Name=Armadura de Marfil
+GrhIndex=403843
+ObjType=3
+NumRopaje=581
+MAXDEF=18
+MINDEF=18
+Valor=5000
+Texto=
+
+[OBJ2079]
+Name=Armadura de Ámbar
+GrhIndex=403844
+ObjType=3
+NumRopaje=584
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2080]
+Name=Armadura del Nigromante
+GrhIndex=403845
+ObjType=3
+NumRopaje=595
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+[OBJ2081]
+Name=Traje de Esqueleto
+GrhIndex=403846
+ObjType=3
+NumRopaje=605
+MAXDEF=10
+MINDEF=10
+Valor=1500
+Texto=
+
+[OBJ2082]
+Name=Túnica del Bosque
+GrhIndex=403847
+ObjType=3
+NumRopaje=620
+MAXDEF=18
+MINDEF=18
+Valor=5000
+Texto=
+
+[OBJ2083]
+Name=Vestido Carmesí
+GrhIndex=403848
+ObjType=3
+NumRopaje=664
+MAXDEF=10
+MINDEF=10
+Valor=1500
+Texto=
+
+[OBJ2084]
+Name=Armadura del Demonio Alado
+GrhIndex=403849
+ObjType=3
+NumRopaje=736
+MAXDEF=38
+MINDEF=37
+Valor=20000
+MinELV=30
+Texto=
+
+
+[OBJ2085]
+Name=Montura Legendaria (Bajos)
+GrhIndex=403850
+ObjType=44
+NumRopaje=689
+MaxDef=20
+MinDef=20
+MaxHIT=20
+MinHIT=20
+MinELV=34
+Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
+
+[OBJ2086]
+Name=Corcel Ígneo
+GrhIndex=403851
+ObjType=44
+NumRopaje=862
+MaxDef=20
+MinDef=20
+MaxHIT=20
+MinHIT=20
+MinELV=34
+Texto=Este objeto otorga una velocidad extra al jugador, incrementando el ataque y la defensa el mismo.
+
+
+[OBJ2087]
+Name=Jinete del Dragón Rojo
+GrhIndex=403979
+ObjType=44
+NumRopaje=890
+valor=1800000
+MaxDef=22
+MinDef=22
+MaxHIT=22
+MinHIT=22
+MinELV=34
+Texto=Un dragon rojo domado con su propio jinete: veloz en tierra y con una presencia temible en el campo de batalla.
+
+[OBJ2088]
+Name=Invocar Ely
+GrhIndex=26020
+Valor=250000
+Crucial=1
+HechizoIndex=123
+Objtype=24
+ClasesProhibidas=1,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
+LocaleID=2088
+Texto=
+
+[OBJ2089]
+Name=Invocar Lobo
+GrhIndex=26021
+Valor=150000
+Crucial=1
+HechizoIndex=124
+Objtype=24
+ClasesProhibidas=1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18
+LocaleID=2089
+Texto=
+
+[OBJ2090]
+Name=Invocar Oso Pardo
+GrhIndex=26019
+Valor=150000
+Crucial=1
+HechizoIndex=125
+Objtype=24
+ClasesProhibidas=1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18
+LocaleID=2090
+Texto=

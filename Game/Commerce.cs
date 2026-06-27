@@ -19,13 +19,26 @@ public static class Commerce
     /// (primero en el tile de abajo y+1, donde el sprite "se para", luego en x,y) y manda su
     /// info por consola (CharMsgStatus/NPC). Guarda el target para comercio/trade.
     /// </summary>
-    public static void LeftClick(int userIndex, byte x, byte y)
+    public static void LeftClick(int userIndex, byte x, byte y, int targetMap = 0)
     {
         var u = UserListManager.UserList[userIndex];
-        short map = (short)u.Pos.Map;
+        // targetMap>0 (mundo continuo): el clic cayó en un mapa vecino; el resto de la lógica opera
+        // con ese mapa y coords locales. targetMap==0 → mapa actual (comportamiento clásico 1:1).
+        short map = (short)(targetMap > 0 ? targetMap : u.Pos.Map);
 
-        // VB6 LookatTile (GameLogic.bas:779): rango de visión y posición válida.
-        if (Math.Abs(u.Pos.Y - y) > RANGO_VISION_Y || Math.Abs(u.Pos.X - x) > RANGO_VISION_X)
+        // VB6 LookatTile (GameLogic.bas:779): rango de visión. Mismo mapa = distancia local (1:1).
+        // Cross-map (mundo continuo) = distancia GLOBAL entre observador y tile clickeado.
+        int dvx, dvy;
+        if (map == u.Pos.Map)
+        {
+            dvx = Math.Abs(u.Pos.X - x); dvy = Math.Abs(u.Pos.Y - y);
+        }
+        else if (RegionLayout.TryGlobalDelta(u.Pos.Map, u.Pos.X, u.Pos.Y, map, x, y, out int gdx, out int gdy))
+        {
+            dvx = Math.Abs(gdx); dvy = Math.Abs(gdy);
+        }
+        else return;
+        if (dvy > RANGO_VISION_Y || dvx > RANGO_VISION_X)
             return;
         var mapData = MapLoader.Get(map);
         if (mapData == null || x < 1 || x > 100 || y < 1 || y > 100)
@@ -125,8 +138,11 @@ public static class Commerce
     private static void EnviarCharMsgStatusNpc(User u, NpcManager.NpcInstance n)
     {
         int porcVida = n.MaxHP > 0 ? n.MinHP * 100 / n.MaxHP : 0;
+        // St1 (campo libre del packet): 1 = NPC dormido por instrumento musical.
+        // El cliente lo muestra como "(Dormido)" al lado del nick en la consola.
+        byte st1 = (byte)(n.DormidoHasta > Environment.TickCount64 / 1000.0 ? 1 : 0);
         ServerPackets.CharMsgStatusNPC(u.Conn, (short)n.NpcIndex, n.Status, puedeVerVida: 0,
-            porcVida: porcVida, st1: 0, nivel: 0, maestro: (byte)(n.MaestroUser > 0 ? 1 : 0), owner: 0);
+            porcVida: porcVida, st1: st1, nivel: 0, maestro: (byte)(n.MaestroUser > 0 ? 1 : 0), owner: 0);
     }
 
     // bt_status del tooltip (WriteCharMsgStatus, Protocol.bas:20191): GM o facción mapeada.
@@ -168,7 +184,26 @@ public static class Commerce
     {
         var u = UserListManager.UserList[userIndex];
         u.Comerciando = true;
-        ServerPackets.CommerceInit(u.Conn);
+        u.ComercioNpcNoCompra = npc.NoCompra;   // recordar si este NPC compra (para validar la venta)
+
+        // ¿Es transportador? El cliente abre el form de Viajar (sin inventario del usuario) en vez del
+        // comercio normal. Lo decide el server porque los slots del NPC se envían DESPUÉS del CommerceInit
+        // (el cliente todavía no los tiene al elegir qué ventana abrir). Transportador = NpcType 7, o un
+        // NPC cuyo inventario es 100% Pasajes (otPasajes).
+        bool esViajes = npc.NpcType == 7;
+        if (!esViajes && npc.Inventario != null)
+        {
+            bool any = false, allPasajes = true;
+            foreach (var (objIndex, _) in npc.Inventario)
+            {
+                if (objIndex <= 0) continue;
+                any = true;
+                if (ObjData.Get(objIndex).Type != ObjType.Pasajes) { allPasajes = false; break; }
+            }
+            esViajes = any && allPasajes;
+        }
+
+        ServerPackets.CommerceInit(u.Conn, !npc.NoCompra, esViajes, npc.Moneda);
 
         if (npc.Inventario != null)
         {
@@ -176,7 +211,10 @@ public static class Commerce
             {
                 var (objIndex, amount) = npc.Inventario[slot];
                 var od = ObjData.Get(objIndex);
-                float precio = od.Valor;
+                // NPC con moneda propia: usa el precio de Precios[] (si está definido); si no, cae al Valor en oro.
+                float precio = npc.Moneda > 0 && npc.Precios != null && slot < npc.Precios.Length && npc.Precios[slot] > 0
+                    ? npc.Precios[slot]
+                    : od.Valor;
                 // Marcar si el usuario puede usar ese ropaje/arma/escudo por clase/raza/nivel/sexo.
                 byte motivo = objIndex > 0 ? Inventory.MotivoNoUsable(u, od) : (byte)0;
                 byte puedeUsar = (byte)(motivo == 0 ? 1 : 0);
@@ -213,10 +251,33 @@ public static class Commerce
             return;
         }
 
-        int precioUnit = ObjData.Get(objIndex).Valor;
+        // Pergaminos de hechizo: avisar si el personaje ya conoce el hechizo. La compra
+        // sigue igual (puede quererlo para otro personaje), solo se le advierte.
+        if (odBuy.Type == ObjType.Pergaminos && odBuy.HechizoIndex > 0
+            && UserTieneHechizo(u, odBuy.HechizoIndex))
+        {
+            ServerPackets.ConsoleMsg(u.Conn,
+                $"Ya conoces el hechizo {SpellData.GetName(odBuy.HechizoIndex)}.", 1);
+        }
+
+        // Precio: moneda propia del NPC (Precios[]) o, por defecto, el Valor en oro del obj.dat.
+        bool usaMoneda = npc.Moneda > 0;
+        int idxSlot = slot - 1;
+        int precioUnit = usaMoneda && npc.Precios != null && idxSlot < npc.Precios.Length && npc.Precios[idxSlot] > 0
+            ? npc.Precios[idxSlot]
+            : ObjData.Get(objIndex).Valor;
         long costo = (long)precioUnit * amount;
 
-        if (u.Stats.GLD < costo)
+        if (usaMoneda)
+        {
+            if (Inventory.ContarObjeto(u, npc.Moneda) < costo)
+            {
+                string nom = ObjData.Get(npc.Moneda).Name;
+                ServerPackets.ConsoleMsg(u.Conn, $"No tienes suficientes {(string.IsNullOrEmpty(nom) ? "monedas" : nom)}.", 1);
+                return;
+            }
+        }
+        else if (u.Stats.GLD < costo)
         {
             ServerPackets.ConsoleMsg(u.Conn, "No tienes suficiente oro.", 1);
             return;
@@ -229,7 +290,15 @@ public static class Commerce
             return;
         }
 
-        u.Stats.GLD -= (int)costo;
+        // Cobrar: descontar la divisa del inventario (QuitarObjetos refresca sus slots) o el oro.
+        if (usaMoneda)
+            Inventory.QuitarObjetos(u, npc.Moneda, (int)costo);
+        else
+        {
+            u.Stats.GLD -= (int)costo;
+            ServerPackets.UpdateGold(u.Conn, u.Stats.GLD);
+        }
+
         if (u.Invent.Object[invSlot].ObjIndex == objIndex)
             u.Invent.Object[invSlot].Amount += amount;
         else
@@ -240,9 +309,16 @@ public static class Commerce
             u.Invent.NroItems++;
         }
 
-        ServerPackets.UpdateGold(u.Conn, u.Stats.GLD);
         SendInvSlot(u, invSlot);
         Skills.SubirSkill(userIndex, 15); // eSkill.Comerciar 1:1 (Comercio.bas:253)
+    }
+
+    /// <summary>TieneHechizo (modHechizos.bas): ¿el usuario ya conoce el hechizo?</summary>
+    private static bool UserTieneHechizo(User u, int hIndex)
+    {
+        for (int k = 1; k <= Constants.MAXUSERHECHIZOS; k++)
+            if (u.Stats.UserHechizos[k] == hIndex) return true;
+        return false;
     }
 
     private const byte NPCTYPE_TRANSPORTADOR = 7; // eNPCType.transportadores
@@ -275,6 +351,10 @@ public static class Commerce
         if (MapLoader.Get(pasaje.HastaMap) == null)
         { ServerPackets.ConsoleMsg(u.Conn, "El destino no es válido.", 1); return; }
 
+        // El viaje agota: sin energía no se puede viajar.
+        if (u.Stats.MinSta <= 0)
+        { ServerPackets.ConsoleMsg(u.Conn, "Estás demasiado agotado para viajar. Recupera energía primero.", 1); return; }
+
         int precio = pasaje.Valor;
         if (u.Stats.GLD < precio)
         { ServerPackets.ConsoleMsg(u.Conn, "No tienes suficiente oro para el viaje.", 1); return; }
@@ -284,9 +364,15 @@ public static class Commerce
         Movement.WarpUser(userIndex, (short)pasaje.HastaMap, (short)pasaje.HastaX, (short)pasaje.HastaY);
         ServerPackets.ConsoleMsg(u.Conn, "Has llegado a tu destino.", 1);
 
-        // Efecto del pasaje original: resetea hambre y sed (VB6 MinAGU/MinHam = 0).
+        // El viaje agota al personaje: hambre, sed y energía quedan en 0.
+        // Activar también los flags para que no regenere energía hasta comer y beber.
         u.Stats.MinAGU = 0;
         u.Stats.MinHam = 0;
+        u.Stats.MinSta = 0;
+        u.flags.Hambre = 1;
+        u.flags.Sed = 1;
+        ServerPackets.UpdateHungerAndThirst(u.Conn, u);
+        ServerPackets.UpdateSta(u.Conn, u.Stats.MinSta);
     }
 
     // Bando al que pertenece el puerto/ciudad de cada pirata transportador (por mapa).
@@ -321,6 +407,11 @@ public static class Commerce
     {
         var u = UserListManager.UserList[userIndex];
         if (!u.Comerciando || amount <= 0) return;
+        if (u.ComercioNpcNoCompra)   // NPC que solo vende: no compra ítems al usuario
+        {
+            ServerPackets.ConsoleMsg(u.Conn, "Este mercader no compra objetos.", 1);
+            return;
+        }
         if (slot < 1 || slot > Constants.MAX_INVENTORY_SLOTS) return;
         ref var item = ref u.Invent.Object[slot];
         if (item.ObjIndex == 0) return;
@@ -348,7 +439,6 @@ public static class Commerce
 
     private static void SendInvSlot(User u, int slot)
     {
-        var o = u.Invent.Object[slot];
-        ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, o.ObjIndex, o.Amount, o.Equipped);
+        ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
     }
 }

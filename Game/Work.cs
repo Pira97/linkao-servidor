@@ -12,6 +12,9 @@ public static class Work
     // Skills (eSkill): pesca=18, mineria=19, talar=20, botanica=21.
     public const byte SkillPesca = 18, SkillMineria = 19, SkillTalar = 20, SkillBotanica = 21;
     private const byte Pesca = 18, Mineria = 19, Talar = 20, Botanica = 21;
+    // Fundir metal (HandleWorkLeftClick FundirMetal, PacketHandler.cs). No es un eSkill real
+    // (no sube experiencia de skill), se reutiliza WorkSkill solo para enganchar DoTrabajar.
+    private const byte SkillFundir = 88;
     // Recursos (objindex, Declares.bas).
     private const short Lena = 58, Pescado = 139, Raiz = 888;
     // Clases (eClass) y esfuerzo (stamina) por clase (Declares.bas:352-362).
@@ -45,6 +48,7 @@ public static class Work
             case SkillMineria:  DoMineria(userIndex, u);  break;
             case SkillTalar:    DoTalar(userIndex, u);    break;
             case SkillBotanica: DoBotanica(userIndex, u); break;
+            case SkillFundir:   DoLingotesTick(userIndex, u); break;
         }
     }
 
@@ -122,6 +126,7 @@ public static class Work
             npc.MaestroUser = userIndex;
             npc.Hostil = false;             // ya no ataca a su amo
             npc.Movement = 8;               // SigueAmo
+            u.UltimaMascotaNpc = npc.NpcIndex; // para la poción de resucitar mascotas
             ServerPackets.ConsoleMsg(u.Conn, "¡Has domado a la criatura!", 1);
             Skills.SubirSkill(userIndex, DomarSkill); // SubirSkill 1:1 (Trabajo.bas:1222)
         }
@@ -255,14 +260,39 @@ public static class Work
             && u.Invent.Object[slot].ObjIndex > 0
             && ObjData.Get(u.Invent.Object[slot].ObjIndex).Type == ObjType.Minerales)
         {
+            // Antes fundía UN lote acá mismo y soltaba Lingoteando: había que re-clickear la
+            // fragua para seguir. Ahora arma el mismo mecanismo de Trabajando+WorkSkill que
+            // talar/pescar/minar (DoTrabajar, GameTimer): sigue solo, un lote por tick
+            // (~2s), hasta que DoLingotesTick se quede sin minerales para otro lote.
             u.flags.Trabajando = true;
-            DoLingotes(userIndex);
-            u.flags.Lingoteando = 0;
+            u.flags.WorkSkill = SkillFundir;
+            u.flags.WorkX = x;
+            u.flags.WorkY = y;
+            ServerPackets.ConsoleMsg(u.Conn, "Comienzas a fundir.", 1);
         }
         else
         {
             ServerPackets.ConsoleMsg(u.Conn, "¡No tienes más minerales!", 1); // msg 401 / 195
         }
+    }
+
+    /// <summary>
+    /// DoLingotesTick: llamado por DoTrabajar cada ~2s mientras flags.Trabajando siga prendido
+    /// con WorkSkill=SkillFundir. Repite DoLingotes (un lote por tick) hasta que el slot marcado
+    /// en Lingoteando no alcance ni para un lote más — recién ahí apaga Trabajando/Lingoteando.
+    /// </summary>
+    private static void DoLingotesTick(int userIndex, User u)
+    {
+        int slot = u.flags.Lingoteando;
+        short obji = (slot > 0 && slot <= Constants.MAX_INVENTORY_SLOTS) ? u.Invent.Object[slot].ObjIndex : (short)0;
+        if (obji <= 0 || ObjData.Get(obji).Type != ObjType.Minerales
+            || u.Invent.Object[slot].Amount < MineralesParaLingote(obji))
+        {
+            u.flags.Trabajando = false;
+            u.flags.Lingoteando = 0;
+            return;
+        }
+        DoLingotes(userIndex);
     }
 
     /// <summary>DoLingotes (Trabajo.bas:916) 1:1: funde los minerales del slot marcado en lingotes.</summary>
@@ -302,8 +332,7 @@ public static class Work
         if (!AddItem(u, miObj))
             DropItemAtPos(u.Pos, miObj);
 
-        var o = u.Invent.Object[slot];
-        ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, o.ObjIndex, o.Amount, o.Equipped);
+        ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
         SendInvUpdate(u);
         ServerPackets.ConsoleMsg(u.Conn, $"¡Has obtenido {cantidadItems} lingotes!", 1); // msg 207
     }
@@ -394,10 +423,12 @@ public static class Work
         {
             short mineral = (short)ObjData.Get(obj).MineralIndex;
             if (mineral <= 0) return;
-            Entregar(u, mineral, Random.Shared.Next(10, 31) * Ruleta.MultiplicadorMineria());
+            int cantMinada = Random.Shared.Next(10, 31);
+            Entregar(u, mineral, cantMinada);
             ServerPackets.ConsoleMsg(u.Conn, "¡Has extraído algunos minerales!", 1);
             Skills.SubirSkill(userIndex, SkillMineria); // SubirSkill 1:1 (Trabajo.bas:2346)
             BattlePass.OnWork(userIndex);
+            Achievements.OnMinar(userIndex, mineral, cantMinada); // logros de mineria (10k oro/hierro)
         }
         else ServerPackets.ConsoleMsg(u.Conn, "¡No has conseguido nada!", 1);
     }
@@ -429,7 +460,28 @@ public static class Work
         return false;
     }
 
-    private static void DropItemAtPos(WorldPos pos, UserObj item)
+    /// <summary>
+    /// Mientras trabaja (minar/pescar/talar), el arma equipada se OCULTA visualmente y al
+    /// terminar reaparece. Se sincroniza 1/seg desde GameTimer.Tick: una sola vía cubre todos
+    /// los puntos que prenden/apagan flags.Trabajando (inicio, fallo, movimiento, muerte, etc.)
+    /// y también re-oculta si el jugador equipa un arma en medio del trabajo.
+    /// </summary>
+    public static void SyncArmaTrabajo(User u)
+    {
+        // Apariencias especiales: navegando/montado (body de barco/montura, el arma no se ve)
+        // o metamorfoseado — no tocar la anim del arma en esos estados.
+        if (u.flags.Navegando || u.flags.Montando == 1 || u.flags.Metamorfoseado != 0) return;
+
+        short deseado = 0;
+        if (!u.flags.Trabajando && u.Invent.WeaponEqpObjIndex > 0)
+            deseado = (short)ObjData.Get(u.Invent.WeaponEqpObjIndex).WeaponAnim;
+        if (u.Char.WeaponAnim == deseado) return;
+
+        u.Char.WeaponAnim = deseado;
+        Inventory.BroadcastCharChange(u);
+    }
+
+    public static void DropItemAtPos(WorldPos pos, UserObj item)
     {
         var map = MapLoader.Get(pos.Map);
         if (map != null) { map.FloorObj[pos.X, pos.Y] = item.ObjIndex; map.FloorAmount[pos.X, pos.Y] = item.Amount; }
@@ -440,7 +492,7 @@ public static class Work
         for (int s = 1; s <= Constants.MAX_INVENTORY_SLOTS; s++)
         {
             var o = u.Invent.Object[s];
-            if (o.ObjIndex > 0) ServerPackets.ChangeInventorySlot(u.Conn, (byte)s, o.ObjIndex, o.Amount, o.Equipped);
+            if (o.ObjIndex > 0) ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)s);
         }
     }
 

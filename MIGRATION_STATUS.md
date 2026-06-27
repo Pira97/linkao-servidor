@@ -373,7 +373,7 @@ SOBRANTES.** Condición para pasar a PRIORIDAD 2 (combate) cumplida.
 ## PRIORIDAD 11 — CLIMA (modClima.bas) ✅
 
 `Clima.cs` 1:1 (845 líneas portadas). `Tick()` 1/seg desde FlushLoop:
-- Cambio automático cada IntervaloClima (Server.ini [CLIMA], def 2400s) con prob 50/35/15 (despe/lluvia/tormenta=3).
+- Cambio automático cada IntervaloClima (Server.ini [CLIMA], def 5400s) con prob 75/18/7 (despe/lluvia/tormenta=3). Retocado porque llovía demasiado seguido (original 50/35/15 cada 2400s, y el Server.ini vivo encima tenía IntervaloClima=122 de alguna prueba, así que en la práctica reroleaba cada 2 min).
 - Lluvia/tormenta: AmbientLight=40 (oscuro), RainToggle, sonido de lluvia (191) en loop cada 5s, truenos, mensajes de consola.
 - Rayos cada 300s (y al iniciar el clima): flash de luz (100→40 tras 2s), partícula 48 + daño (50/100 HP) a jugadores a cielo abierto (no dungeon, no BAJOTECHO, no trigger≥20); UserDie si mata.
 - Dungeons: siempre despejado + luz normal. `EsDungeon` = mapa 37 o `MapInfo.Zona=="DUNGEON"`.

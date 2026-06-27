@@ -103,6 +103,17 @@ public static class Inventory
 
         int amount = map.FloorAmount[x, y];
 
+        // Oro (otGuita): va DIRECTO a la billetera (Stats.GLD), no ocupa slot de inventario.
+        if (ObjData.Get(objIndex).Type == ObjType.Guita)
+        {
+            u.Stats.GLD += amount;
+            map.FloorObj[x, y] = 0;
+            map.FloorAmount[x, y] = 0;
+            AreaVisibility.ObjectRemoved(u.Pos.Map, x, y);
+            ServerPackets.UpdateGold(u.Conn, u.Stats.GLD);
+            return;
+        }
+
         // Buscar slot: uno con el mismo obj (apilar) o uno vacío.
         int slot = FindSlotForObject(u, objIndex);
         if (slot == 0) return; // inventario lleno
@@ -155,6 +166,16 @@ public static class Inventory
         ref var item = ref u.Invent.Object[slot];
         if (item.ObjIndex == 0) return;
 
+        // Slot fantasma (ObjIndex seteado pero Amount<=0 por alguna desincronización previa):
+        // autoreparar en vez de devolver un no-op silencioso que dejaba el item pegado para siempre.
+        if (item.Amount <= 0)
+        {
+            item.ObjIndex = 0; item.Amount = 0; item.Equipped = false;
+            if (u.Invent.NroItems > 0) u.Invent.NroItems--;
+            SendSlot(u, slot);
+            return;
+        }
+
         var od = ObjData.Get(item.ObjIndex);
 
         // Montado y tira la montura → desmonta primero (VB6 DoEquita toggle), luego cae al piso.
@@ -164,25 +185,28 @@ public static class Inventory
             DoEquita(u, ref u.Invent.Object[ms], ms, ObjData.Get(u.Invent.MonturaObjIndex));
         }
 
+        // Los GMs (Consejero+) pueden tirar cualquier objeto sin restricción, aunque se pierda.
+        bool esGM = u.FaccionStatus >= 7;
+
         // Navegando: no se puede tirar el barco (VB6 msg 20).
-        if (u.flags.Navegando && od.Type == ObjType.Barcos)
+        if (!esGM && u.flags.Navegando && od.Type == ObjType.Barcos)
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes hacer eso mientras navegas.", 1); return; }
 
         // Items faccionarios (Real/Caos/Milicia): no se pueden tirar al piso.
-        if (od.Real == 1 || od.Caos == 1 || od.Milicia == 1)
+        if (!esGM && (od.Real == 1 || od.Caos == 1 || od.Milicia == 1))
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes desprenderte de un objeto faccionario.", 1); return; }
 
         // Destruir==1 → confirmación de destrucción (ShowMessageBox accion 1 → cliente reenvía DropDestroy).
-        if (od.Destruir == 1)
+        if (!esGM && od.Destruir == 1)
         { ServerPackets.ShowMessageBox(u.Conn, "", true, 1); return; }
 
         // Item newbie permanente (Permanente==2) → confirmación de eliminación (accion 10).
-        if (od.Permanente == 2)
+        if (!esGM && od.Permanente == 2)
         { ServerPackets.ShowMessageBox(u.Conn, "¿Deseas eliminar este objeto?", true, 10); return; }
 
         // Items newbie (Newbie>0): no se tiran al piso, pero el jugador debe poder eliminarlos
         // (antes DropObj los bloqueaba sin salida). Se ofrece la confirmación de destrucción (accion 10).
-        if (ItemNewbie(item.ObjIndex) && u.FaccionStatus < 7)
+        if (!esGM && ItemNewbie(item.ObjIndex) && u.FaccionStatus < 7)
         { ServerPackets.ShowMessageBox(u.Conn, "¿Deseas eliminar este objeto?", true, 10); return; }
 
         DropObj(u, slot, amount, u.Pos.Map, u.Pos.X, u.Pos.Y);
@@ -198,12 +222,15 @@ public static class Inventory
         var od = ObjData.Get(objIndex);
         if (num > item.Amount) num = item.Amount;
 
+        // Los GMs (Consejero+) pueden tirar cualquier objeto sin restricción, aunque se pierda.
+        bool esGM = u.FaccionStatus >= 7;
+
         // Bloqueo total para items faccionarios o con NoSeCae (DropObj:430).
-        if (od.Real > 0 || od.Caos > 0 || od.Milicia > 0 || od.NoSeCae > 0)
+        if (!esGM && (od.Real > 0 || od.Caos > 0 || od.Milicia > 0 || od.NoSeCae > 0))
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes desprenderte de ese objeto.", 1); return; } // msg 260
 
         // Item newbie: los jugadores comunes no pueden tirarlos.
-        if (ItemNewbie(objIndex) && u.FaccionStatus < 7)
+        if (!esGM && ItemNewbie(objIndex) && u.FaccionStatus < 7)
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes desprenderte de ese objeto.", 1); return; } // msg 260
 
         var mp = MapLoader.Get(map);
@@ -249,26 +276,43 @@ public static class Inventory
 
     /// <summary>
     /// TirarOro (InvUsuario.bas:150) — deja el oro en el piso como pilas de iORO (tope MAX_INVENTORY_OBJS
-    /// por tile). Versión núcleo: apila en el tile del jugador (sin dispersión por tiles vecinos).
+    /// = 10k por tile). Si la cantidad supera una pila, se dispersa en tiles cercanos (espiral desde el
+    /// jugador, radio 5), como el VB6. Tiles válidos: no bloqueados, sin agua, sin TileExit y vacíos
+    /// (o con oro con lugar en la pila). Solo se descuenta del GLD lo que efectivamente cayó al piso.
     /// </summary>
     private static void TirarOro(User u, int cantidad)
     {
         if (cantidad <= 0 || cantidad > u.Stats.GLD) return;
         var mp = MapLoader.Get(u.Pos.Map);
         if (mp == null) return;
-        int x = u.Pos.X, y = u.Pos.Y;
 
-        // No tirar oro encima de un objeto que no sea oro.
-        if (mp.FloorObj[x, y] != 0 && mp.FloorObj[x, y] != ORO_INDEX) return;
+        int restante = cantidad;
+        for (int r = 0; r <= 5 && restante > 0; r++)
+        {
+            for (int dx = -r; dx <= r && restante > 0; dx++)
+            for (int dy = -r; dy <= r && restante > 0; dy++)
+            {
+                if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r) continue; // solo el anillo del radio r
+                int x = u.Pos.X + dx, y = u.Pos.Y + dy;
+                if (x < 1 || x > 100 || y < 1 || y > 100) continue;
+                if (mp.IsBlocked(x, y) || mp.HasWater(x, y)) continue;
+                if (mp.Exits[x, y] != null) continue; // no dejar oro sobre un TileExit
 
-        long enPiso = (mp.FloorObj[x, y] == ORO_INDEX) ? mp.FloorAmount[x, y] : 0;
-        int poner = (int)Math.Min(cantidad, MAX_INVENTORY_OBJS - enPiso);
-        if (poner <= 0) return;
+                long enPiso;
+                if (mp.FloorObj[x, y] == ORO_INDEX) enPiso = mp.FloorAmount[x, y];
+                else if (mp.FloorObj[x, y] == 0) enPiso = 0;
+                else continue; // tile ocupado por otro objeto
 
-        mp.FloorObj[x, y] = ORO_INDEX;
-        mp.FloorAmount[x, y] += poner;
-        u.Stats.GLD -= poner;
-        AreaVisibility.ObjectAppeared(u.Pos.Map, x, y, ORO_INDEX, mp.FloorAmount[x, y]);
+                int poner = (int)Math.Min(restante, MAX_INVENTORY_OBJS - enPiso);
+                if (poner <= 0) continue;
+
+                mp.FloorObj[x, y] = ORO_INDEX;
+                mp.FloorAmount[x, y] += poner;
+                restante -= poner;
+                AreaVisibility.ObjectAppeared(u.Pos.Map, x, y, ORO_INDEX, mp.FloorAmount[x, y]);
+            }
+        }
+        u.Stats.GLD -= cantidad - restante;
     }
 
     /// <summary>
@@ -284,12 +328,17 @@ public static class Inventory
 
         switch (od.Type)
         {
+            // Estos dos mandan SendSlot porque DoEquita/DoNavega apagan el flag Equipped
+            // y por este camino nadie más se lo avisaba al cliente: la cruz roja quedaba
+            // pegada hasta reloguear. EquipItem sí lo hacía; acá faltaba.
             case ObjType.Monturas:
                 DoEquita(u, ref it, slot, od);      // toggle: desmonta
+                SendSlot(u, slot);
                 return;
 
             case ObjType.Barcos:
                 DoNavega(u, ref it, slot, od);       // toggle: desembarca
+                SendSlot(u, slot);
                 return;
 
             case ObjType.Weapon:
@@ -369,6 +418,15 @@ public static class Inventory
         ref var item = ref u.Invent.Object[slot];
         if (item.ObjIndex == 0) return;
 
+        // Slot fantasma: ver comentario homólogo en TirarItem/DropObj.
+        if (item.Amount <= 0)
+        {
+            item.ObjIndex = 0; item.Amount = 0; item.Equipped = false;
+            if (u.Invent.NroItems > 0) u.Invent.NroItems--;
+            SendSlot(u, slot);
+            return;
+        }
+
         var od = ObjData.Get(item.ObjIndex);
         // Muerto: solo barcos (subir/bajar de la barca estando muerto). El resto del equipo no.
         if (u.flags.Muerto == 1 && od.Type != ObjType.Barcos) return;
@@ -390,10 +448,11 @@ public static class Inventory
                 if (!item.Equipped && u.Invent.NudiEqpObjIndex > 0)
                     Desequipar(u, u.Invent.NudiEqpSlot);
                 ToggleEquip(u, ref item, slot, ref u.Invent.WeaponEqpObjIndex, ref u.Invent.WeaponEqpSlot,
-                    equip => { // Navegando/Montando: NO tocar el body/anim visible (InvUsuario.bas:1145), así
-                               // no se ve el arma sobre el caballo ni se pierde el body del barco. El slot
-                               // equipado igual se guarda y RestaurarAparienciaAPie lo reconstruye al bajar.
-                               if (AparienciaAPie(u)) u.Char.WeaponAnim = (short)(equip ? od.WeaponAnim : 0);
+                    equip => { // A diferencia del body, el arma se dibuja como overlay propio en este
+                               // cliente (igual que el casco, ver el comentario en ObjType.Casco más abajo),
+                               // así que también se ve montado/navegando. Antes tenía el guard AparienciaAPie()
+                               // heredado del VB6 original (ahí SÍ compartía sprite con el caballo/barco).
+                               u.Char.WeaponAnim = (short)(equip ? od.WeaponAnim : 0);
                                SetAura(u, ref u.Char.Arma_Aura, 1, equip ? od.Aura : 0);
                                // SND_SACARARMA al equipar (salvo anim 2 = desarmado). El cliente VB6 lo
                                // tocaba en CharacterChangeSlot Case 4, pero este server usa CharacterChange
@@ -415,14 +474,35 @@ public static class Inventory
                                SndAura(u, od, equip); });
                 break;
             case ObjType.Escudo:
+                // Alas (ShieldAnim=88, ver Movement.cs::Volando): no dejar bajarse mientras el
+                // vuelo es lo único que sostiene al usuario sobre agua o una estructura — sin
+                // esto quedaría atascado a pie en un tile ilegal. Solo se valida al DESEQUIPAR
+                // (item.Equipped ya es true acá); ponérselas nunca es peligroso.
+                if (item.Equipped && od.ShieldAnim == 88 && !Movement.PosicionLegalAPie(u))
+                {
+                    ServerPackets.ConsoleMsg(u.Conn, "No podés quitarte las Alas ahí arriba: aterrizá en un lugar seguro primero.", 1);
+                    return;
+                }
+                // Alas: no se pueden equipar montado ni navegando (y viceversa, ver DoEquita/DoNavega).
+                if (!item.Equipped && od.ShieldAnim == 88 && (u.flags.Montando != 0 || u.flags.Navegando))
+                {
+                    ServerPackets.ConsoleMsg(u.Conn, "No podés usar Alas mientras estás montado o navegando.", 1);
+                    return;
+                }
                 ToggleEquip(u, ref item, slot, ref u.Invent.EscudoEqpObjIndex, ref u.Invent.EscudoEqpSlot,
-                    equip => { if (AparienciaAPie(u)) u.Char.ShieldAnim = (short)(equip ? od.ShieldAnim : 0);
+                    equip => { // Mismo caso que arma/casco: el escudo es overlay propio, se ve
+                               // aunque estés montado o navegando.
+                               u.Char.ShieldAnim = (short)(equip ? od.ShieldAnim : 0);
                                SetAura(u, ref u.Char.Escudo_Aura, 3, equip ? od.Aura : 0);
                                SndAura(u, od, equip); });
                 break;
             case ObjType.Casco:
+                // A diferencia de body/arma/escudo, el casco NO comparte sprite con la montura/barco
+                // en este cliente: se dibuja como overlay propio sobre la cabeza (ver HIDE_HEAD_BODIES
+                // en game.html), así que sí tiene que verse aunque estés montado o navegando. Antes
+                // tenía el mismo guard AparienciaAPie() que el resto y quedaba invisible hasta bajarse.
                 ToggleEquip(u, ref item, slot, ref u.Invent.CascoEqpObjIndex, ref u.Invent.CascoEqpSlot,
-                    equip => { if (AparienciaAPie(u)) u.Char.CascoAnim = (short)(equip ? od.CascoAnim : 0);
+                    equip => { u.Char.CascoAnim = (short)(equip ? od.CascoAnim : 0);
                                SetAura(u, ref u.Char.Head_Aura, 4, equip ? od.Aura : 0); });
                 break;
 
@@ -548,10 +628,20 @@ public static class Inventory
     private static void DoEquita(User u, ref UserObj item, byte slot, ObjData.Obj od)
     {
         if (u.flags.Navegando) { ServerPackets.ConsoleMsg(u.Conn, "No puedes hacer eso mientras navegas.", 1); return; }
+        // Alas (ShieldAnim=88): no se puede montar mientras están puestas (simétrico al bloqueo del Escudo case).
+        if (u.Invent.EscudoEqpObjIndex > 0 && ObjData.Get(u.Invent.EscudoEqpObjIndex).ShieldAnim == 88)
+        { ServerPackets.ConsoleMsg(u.Conn, "No puedes montar mientras llevás puestas las Alas.", 1); return; }
 
-        // Al MONTAR (no al desmontar): skill Equitación (PuedeUsarSkill) + clase/raza/sexo/facción
+        // Clic sobre una montura DISTINTA de la que estás usando: es un cambio de montura,
+        // no un desmonte. Sin esto el toggle era ciego y dejaba las dos marcadas como equipadas.
+        bool cambioDeMontura = u.flags.Montando != 0
+                               && u.Invent.MonturaSlot >= 1
+                               && u.Invent.MonturaSlot <= Constants.MAX_INVENTORY_SLOTS
+                               && u.Invent.MonturaSlot != slot;
+
+        // Al MONTAR o al CAMBIAR (no al desmontar): skill Equitación (PuedeUsarSkill) + clase/raza/sexo/facción
         // (VB6 DoEquita, Trabajo.bas:2682). El nivel NO se valida (se usa la skill, no MinELV).
-        if (u.flags.Montando == 0)
+        if (u.flags.Montando == 0 || cambioDeMontura)
         {
             const int SK_EQUITACION = 27; // eSkill.Equitacion
             bool esGm = u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO;
@@ -561,25 +651,43 @@ public static class Inventory
             { ServerPackets.ConsoleMsg(u.Conn, motivoMont, 1); return; }
         }
 
-        if (u.flags.Montando == 0)
+        if (u.flags.Montando == 0 || cambioDeMontura)
         {
+            // Metamorfoseado: montar reemplaza el body por el de la montura, así que la
+            // transformación debe cortarse antes (si no, quedaría Metamorfoseado=1 con el
+            // bonus ExtraHIT/DEF colgado y el body original perdido al desmontar).
+            if (u.flags.Metamorfoseado == 1) Combat.RevertirMetamorfosis(u.id);
+            // CAMBIO de montura: sacar la anterior y avisarle al cliente, igual que hace
+            // ToggleEquip con armas/armaduras. Sin esto la vieja quedaba marcada como
+            // equipada para siempre — y como el flag se guarda en el .chr
+            // (CharSaver: "Obj{slot}=indice-cantidad-equipado"), volvía tras reloguear.
+            if (cambioDeMontura)
+            {
+                u.Invent.Object[u.Invent.MonturaSlot].Equipped = false;
+                SendSlot(u, u.Invent.MonturaSlot);
+            }
             u.Char.body = (short)od.Ropaje;
             u.Char.Head = u.OrigChar.Head != 0 ? u.OrigChar.Head : u.Char.Head;
             u.Char.WeaponAnim = 0; // montado: sin arma a la vista
             u.flags.Montando = 1;
+            u.flags.Vuela = (byte)(od.Vuela == 1 ? 1 : 0); // monturas voladoras: ignoran paredes/agua-tierra (Movement.cs)
             item.Equipped = true;
             u.Invent.MonturaObjIndex = item.ObjIndex; u.Invent.MonturaSlot = slot;
-            BroadcastWaveArea(u, 133);
+            if (!cambioDeMontura) BroadcastWaveArea(u, 133);  // el relincho es al SUBIR, no al cambiar
         }
         else
         {
             u.flags.Montando = 0;
+            u.flags.Vuela = 0;
             RestaurarAparienciaAPie(u);
             item.Equipped = false;
             u.Invent.MonturaObjIndex = 0; u.Invent.MonturaSlot = 0;
         }
         BroadcastCharChange(u);
-        ServerPackets.MontateToggle(u.Conn);
+        // MontateToggle es un INTERRUPTOR del lado del cliente ("dalo vuelta"). En un cambio
+        // de montura seguís arriba, así que mandarlo lo dejaría creyendo que te bajaste:
+        // con la velocidad de scroll y el sonido de cascos equivocados. Solo al subir o bajar.
+        if (!cambioDeMontura) ServerPackets.MontateToggle(u.Conn);
     }
 
     /// <summary>
@@ -612,6 +720,12 @@ public static class Inventory
             // y quedaba estado mixto (montura+barca con "+" y el cliente creyendo que seguía montado).
             if (u.flags.Montando == 1)
             { ServerPackets.ConsoleMsg(u.Conn, "No puedes hacer eso mientras montas.", 1); return; }
+            // Alas (ShieldAnim=88): no se puede embarcar mientras están puestas (simétrico al bloqueo del Escudo case).
+            if (u.Invent.EscudoEqpObjIndex > 0 && ObjData.Get(u.Invent.EscudoEqpObjIndex).ShieldAnim == 88)
+            { ServerPackets.ConsoleMsg(u.Conn, "No puedes navegar mientras llevás puestas las Alas.", 1); return; }
+            // Metamorfoseado: igual que al montar, embarcar corta la transformación antes de
+            // pisar el body con el de la barca (ver comentario en DoEquita).
+            if (u.flags.Metamorfoseado == 1) Combat.RevertirMetamorfosis(u.id);
             // Muerto → barca fantasma (iFragataFantasmal=87); vivo → body del barco (Trabajo.bas:192).
             u.Char.body = u.flags.Muerto == 1 ? (short)87 : (short)(od.Ropaje > 0 ? od.Ropaje : 87);
             u.Char.Head = 0;
@@ -766,8 +880,11 @@ public static class Inventory
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == u.Pos.Map)
-                ServerPackets.PlayWave(o.Conn, wave, (byte)u.Pos.X, (byte)u.Pos.Y);
+            if (o.flags.UserLogged && o.Conn != null && (o.Pos.Map == u.Pos.Map || AreaVisibility.VePos(o, u.Pos.Map, u.Pos.X, u.Pos.Y)))
+            {
+                var (gx, gy) = Continuous.Rel(o.Pos.Map, u.Pos.Map, u.Pos.X, u.Pos.Y);
+                ServerPackets.PlayWave(o.Conn, wave, gx, gy);
+            }
         }
     }
 
@@ -777,7 +894,7 @@ public static class Inventory
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == u.Pos.Map)
+            if (o.flags.UserLogged && o.Conn != null && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                 ServerPackets.CreateFX(o.Conn, charIndex, fx, loops);
         }
     }
@@ -795,7 +912,19 @@ public static class Inventory
         ref var item = ref u.Invent.Object[slot];
         if (item.ObjIndex == 0) return;
 
+        // Slot fantasma: ver comentario homólogo en TirarItem/DropObj.
+        if (item.Amount <= 0)
+        {
+            item.ObjIndex = 0; item.Amount = 0; item.Equipped = false;
+            if (u.Invent.NroItems > 0) u.Invent.NroItems--;
+            SendSlot(u, slot);
+            return;
+        }
+
         var od = ObjData.Get(item.ObjIndex);
+        // Diagnóstico temporal instrumentos: rastrear si el USE llega y con qué tipo.
+        if (od.Type == ObjType.Instrumentos)
+            Console.WriteLine($"[UseItem] {u.Name} slot={slot} obj={item.ObjIndex} '{od.Name}' type={od.Type} muerto={u.flags.Muerto}");
         // Muerto: solo se permiten barcos (subir/bajar de la barca estando muerto) y la RUNA de
         // teletransporte (un muerto debe poder volver a su hogar/cementerio). El resto: DeadCheck.
         if (u.flags.Muerto == 1 && od.Type != ObjType.Barcos && od.Type != ObjType.Runa) return;
@@ -832,7 +961,9 @@ public static class Inventory
             // Fuegos artificiales (cañitas/cohetes/petardos): son ObjType=11 sin SubTipo de poción,
             // con un campo "Particula=" (partícula de terreno) o "FX=" (FX sobre el personaje) en obj.dat.
             // Al usarlos lanzan ese efecto y reproducen su sonido (Snd1) en el área. Se consume 1.
-            case ObjType.Pociones when od.Particula > 0 || od.FX > 0:
+            // El SubTipo==0 es parte de la condición: las pociones de partícula permanente (SubTipo=9)
+            // también traen "Particula=" y sin este chequeo caían acá y estallaban como una cañita.
+            case ObjType.Pociones when od.SubTipo == 0 && (od.Particula > 0 || od.FX > 0):
                 LanzarFuegoArtificial(u, od);
                 consumir = true;
                 break;
@@ -842,7 +973,7 @@ public static class Inventory
                 // autopot: antes el autopot lo salteaba y solo lo frenaba el rate-limit de 10/seg
                 // (~100ms), por lo que poteaba 4× más rápido que el uso manual.
                 if (!Intervals.PuedeGolpeUsar(u)) return;
-                consumir = UsarPocion(userIndex, u, od);
+                consumir = UsarPocion(userIndex, u, od, item.ObjIndex);
                 break;
 
             case ObjType.Runa:
@@ -922,24 +1053,35 @@ public static class Inventory
                 if (od.IndexCerrada > 0) AddItemToInventory(u, (short)od.IndexCerrada, 1); // botella vacía
                 return;
 
-            // otInstrumentos=26 (InvUsuario.bas:2033): toca el instrumento (Snd1) y duerme NPCs en radio 5.
+            // otInstrumentos=26 (InvUsuario.bas:2033): toca el instrumento (Snd1) y duerme los NPCs
+            // en radio 5 (Distancia Manhattan) que no sean inmunes (Inmunidad=1/AfectaParalisis).
+            // El NPC dormido no se mueve/ataca/castea y despierta al recibir daño o al expirar.
             case ObjType.Instrumentos:
             {
                 // Flauta → sonido 393 (custom). Otros instrumentos usan su Snd1 de obj.dat.
                 short sndInstr = od.Snd1 > 0 ? (short)od.Snd1 : (short)0;
                 if (od.Name != null && od.Name.Contains("Flauta", StringComparison.OrdinalIgnoreCase))
                     sndInstr = Sounds.FLAUTA;
+                // VB6: con AdminInvisible el sonido va solo al GM (no modelado en C#: se difunde al área).
                 if (sndInstr > 0) BroadcastWaveArea(u, sndInstr);
+                // Notas musicales sobre el músico (custom): el FX 999 no existe en fxs.ind, el
+                // cliente Godot lo intercepta y dibuja corcheas flotantes sobre la cabeza.
+                BroadcastFXArea(u, u.Char.CharIndex, 999, 0);
+                // DuracionEfecto en ms → segundos; sin definir o <30s, 60s por defecto (InvUsuario.bas:2052).
                 int dur = od.DuracionEfecto / 1000;
                 if (dur < 30) dur = 60;
-                double hasta = Environment.TickCount64 / 1000.0 + dur;
+                int dormidos = 0;
                 foreach (var n in NpcManager.GetMapNpcs(u.Pos.Map))
                 {
                     if (n.Dead) continue;
-                    if (Math.Max(Math.Abs(n.X - u.Pos.X), Math.Abs(n.Y - u.Pos.Y)) > 5) continue;
-                    n.ParalizadoHasta = hasta; // sin flag Dormido modelado: se reusa la parálisis (mismo efecto: NPC inmóvil)
-                    BroadcastFXArea(u, n.CharIndex, 64, 0);
+                    if (Math.Abs(n.X - u.Pos.X) + Math.Abs(n.Y - u.Pos.Y) > 5) continue; // Distancia (Matematicas.bas:51)
+                    if (n.AfectaParalisis) continue; // inmune a parálisis/dormir (InvUsuario.bas:2061)
+                    NpcManager.DormirNpc(n, dur);
+                    // Sin FX zZz sobre el NPC (VB6 mandaba FX 64; removido a pedido: quedaba un
+                    // efecto visible sobre los dormidos). El estado se ve con "(Dormido)" al clickear.
+                    dormidos++;
                 }
+                Console.WriteLine($"[Instrumento] {u.Name} tocó {od.Name} (obj {item.ObjIndex}) en mapa {u.Pos.Map} ({u.Pos.X},{u.Pos.Y}): snd={sndInstr}, dur={dur}s, NPCs dormidos={dormidos}");
                 return;
             }
 
@@ -1064,7 +1206,11 @@ public static class Inventory
                 return;
 
             default:
-                return; // pasajes, herramientas: requieren crafting (TODO)
+                // ObjType sin uso implementado (pasajes, herramientas, etc.). No se le avisa al
+                // jugador porque acá caen también los tipos que se "usan" equipándose (el doble
+                // clic manda EQUIP_ITEM), pero sí queda registrado para poder detectarlo.
+                Console.WriteLine($"[UseItem] SIN USO: {u.Name} usó '{od.Name}' (obj {item.ObjIndex}) ObjType={od.Type} — tipo no implementado en UseItem.");
+                return;
         }
 
         if (consumir)
@@ -1258,6 +1404,27 @@ public static class Inventory
     /// Guerrero/Gladiador/Mercenario) o ser GM. Si no lo tiene ya y hay slot libre, lo agrega,
     /// reenvía el slot (ChangeSpellSlot) y consume 1 pergamino.
     /// </summary>
+    /// <summary>
+    /// Le da un hechizo al usuario sin pergamino ni validación de clase: lo usa el sistema, no el
+    /// jugador (hoy, elegir la mascota compañera después de creado el personaje — ver
+    /// PacketHandler.HandlePetElegir). Si ya lo tiene devuelve true sin duplicarlo; false sólo si
+    /// no queda ningún slot libre. Notifica el slot al cliente, igual que AprenderHechizo.
+    /// </summary>
+    public static bool DarHechizo(User u, short hIndex)
+    {
+        if (u == null || hIndex <= 0) return false;
+        for (int k = 1; k <= Constants.MAXUSERHECHIZOS; k++)
+            if (u.Stats.UserHechizos[k] == hIndex) return true; // ya lo tenía
+        for (int j = 1; j <= Constants.MAXUSERHECHIZOS; j++)
+            if (u.Stats.UserHechizos[j] == 0)
+            {
+                u.Stats.UserHechizos[j] = hIndex;
+                ServerPackets.ChangeSpellSlot(u.Conn, (byte)j, hIndex, SpellData.GetName(hIndex));
+                return true;
+            }
+        return false;
+    }
+
     private static void AprenderHechizo(User u, byte slot, ObjData.Obj od)
     {
         int hIndex = od.HechizoIndex;
@@ -1318,14 +1485,17 @@ public static class Inventory
 
     /// <summary>
     /// HandleDropDestroy (Protocol.bas:2681) — tirar y DESTRUIR 'amount' del slot (no cae al piso).
-    /// No si navegando/muerto/montando/comerciando. Items faccionarios (Real/Caos/Milicia) nunca.
-    /// NoSeCae bloquea salvo Permanente==2 (newbies/mapas/runas confirmados). 1:1 con VB6.
+    /// No si muerto/comerciando (Drop() corta antes en esos estados, así que nunca hubo cartel).
+    /// Montado/navegando SÍ pueden destruir: Drop() les muestra el cartel de confirmación, y el VB6
+    /// ignoraba el paquete en silencio → cartel sin efecto (bug heredado, no se replica).
+    /// Items faccionarios (Real/Caos/Milicia) nunca.
+    /// NoSeCae bloquea salvo Permanente==2 (newbies/mapas/runas confirmados).
     /// </summary>
     public static void DropDestroy(int userIndex, byte slot, int amount)
     {
         var u = UserListManager.UserList[userIndex];
         if (!u.flags.UserLogged) return;
-        if (u.flags.Navegando || u.flags.Muerto == 1 || u.flags.Montando != 0 || u.Comerciando) return;
+        if (u.flags.Muerto == 1 || u.Comerciando) return;
         if (slot < 1 || slot > Constants.MAX_INVENTORY_SLOTS) return;
 
         ref var it = ref u.Invent.Object[slot];
@@ -1391,9 +1561,10 @@ public static class Inventory
         u.flags.TomoPocion = true;
         double dur = od.DuracionEfecto > 0 ? od.DuracionEfecto / 1000.0 : 50.0; // DuracionEfecto en ms (obj.dat=50000 → 50s)
         u.flags.AtributoEfectoExpira = Environment.TickCount64 / 1000.0 + dur;
+        Combat.LimpiarAvisoDopa(u); // si redopó durante el aviso, sacar el reloj de arena
     }
 
-    private static bool UsarPocion(int userIndex, User u, ObjData.Obj od)
+    private static bool UsarPocion(int userIndex, User u, ObjData.Obj od, short objIndex)
     {
         int mod() => od.MaxModificador >= od.MinModificador && od.MaxModificador > 0
             ? _rng.Next(od.MinModificador, od.MaxModificador + 1) : od.MinModificador;
@@ -1415,12 +1586,21 @@ public static class Inventory
             case 3: // Roja → vida
                 u.Stats.MinHP = (short)Math.Min(u.Stats.MaxHP, u.Stats.MinHP + mod());
                 ServerPackets.UpdateHP(u.Conn, u.Stats.MinHP);
+                // MEJORA-005: la barra de vida del grupo solo se mandaba UNA VEZ, al aceptar
+                // la invitación (PartySystem.AceptarInvitacion) — quedaba desactualizada
+                // apenas alguien tomaba una poción o recibía daño/cura. Reenviar acá cubre
+                // el caso puntual que pide el ticket.
+                if (u.PartyId > 0) PartySystem.SendPartyMemberHP(userIndex);
+                GmWatch.BroadcastHP(userIndex); // GM: ve la vida de cualquiera en vivo
                 break;
             case 4: // Azul → maná (fórmula exacta VB6: MinMAN + Porcentaje(MaxMAN,4) + ELV\2 + 40/ELV)
                 int elv = Math.Max(1, (int)u.Stats.ELV);
                 int rec = u.Stats.MaxMAN * 4 / 100 + elv / 2 + 40 / elv;
                 u.Stats.MinMAN = (short)Math.Min(u.Stats.MaxMAN, u.Stats.MinMAN + rec);
                 ServerPackets.UpdateMana(u.Conn, u.Stats.MinMAN);
+                // MEJORA-005: barra de maná del grupo (ver SendPartyMemberMana).
+                if (u.PartyId > 0) PartySystem.SendPartyMemberMana(userIndex);
+                GmWatch.BroadcastMana(userIndex); // GM: ve el maná de cualquiera en vivo
                 break;
             case 5: // Lanza hechizo sobre uno mismo (InvUsuario.bas:1798 → HechizoEstadoUsuario):
                     // remover parálisis, curar veneno, invisibilidad, desencantar. Si el efecto
@@ -1433,16 +1613,58 @@ public static class Inventory
                 Movement.WarpUser(userIndex, inter.Map, inter.X, inter.Y);
                 break;
             }
-            case 9: // Nareth: partícula 23 permanente sobre el personaje (InvUsuario.bas:1849).
+            case 10: // Scroll de Experiencia xN: CuantoAumento = multiplicador, DuracionEfecto en ms.
+                     // No existía en el VB6 (el Select no tenía Case 10 y el scroll se gastaba sin
+                     // efecto); implementado acá. Si ya hay uno activo NO se puede usar otro (no se consume).
+            {
+                double ahora = Environment.TickCount64 / 1000.0;
+                if (u.flags.ScrollExpMult > 1 && u.flags.ScrollExpExpira > ahora)
+                {
+                    int minRest = (int)Math.Ceiling((u.flags.ScrollExpExpira - ahora) / 60.0);
+                    ServerPackets.ConsoleMsg(u.Conn, $"Ya tienes un scroll de experiencia activo. Te quedan {minRest} minutos.", 1);
+                    return false; // no consumir el scroll
+                }
+                int mult = Math.Max(2, od.CuantoAumento);
+                double durS = od.DuracionEfecto > 0 ? od.DuracionEfecto / 1000.0 : 1800.0;
+                u.flags.ScrollExpMult = mult;
+                u.flags.ScrollExpExpira = ahora + durS;
+                ServerPackets.ScrollBuff(u.Conn, 1, (byte)mult, (int)durS); // chip con countdown en el HUD
+                ServerPackets.ConsoleMsg(u.Conn, $"¡Experiencia x{mult} activada por {(int)Math.Round(durS / 60.0)} minutos!", 3);
+                break;
+            }
+            case 11: // Scroll de Oro xN: ídem exp pero sobre el oro que sueltan los NPCs.
+            {
+                double ahora = Environment.TickCount64 / 1000.0;
+                if (u.flags.ScrollOroMult > 1 && u.flags.ScrollOroExpira > ahora)
+                {
+                    int minRest = (int)Math.Ceiling((u.flags.ScrollOroExpira - ahora) / 60.0);
+                    ServerPackets.ConsoleMsg(u.Conn, $"Ya tienes un scroll de oro activo. Te quedan {minRest} minutos.", 1);
+                    return false;
+                }
+                int mult = Math.Max(2, od.CuantoAumento);
+                double durS = od.DuracionEfecto > 0 ? od.DuracionEfecto / 1000.0 : 1800.0;
+                u.flags.ScrollOroMult = mult;
+                u.flags.ScrollOroExpira = ahora + durS;
+                ServerPackets.ScrollBuff(u.Conn, 2, (byte)mult, (int)durS);
+                ServerPackets.ConsoleMsg(u.Conn, $"¡Oro x{mult} activado por {(int)Math.Round(durS / 60.0)} minutos!", 3);
+                break;
+            }
+            case 9: // Nareth: partícula permanente sobre el personaje (InvUsuario.bas:1849).
+                    // La partícula sale de obj.dat ("Particula="); 23 es la de Nareth, que era la
+                    // única del VB6 y queda como valor por defecto para los objetos que no la traen.
+            {
                 if (u.Char.ParticulaFx != 0) return false; // ya tiene una partícula activa → no consumir
-                u.Char.ParticulaFx = 23;
+                short part = od.Particula > 0 ? (short)od.Particula : (short)23;
+                u.Char.ParticulaFx = part;
                 for (int i = 1; i <= UserListManager.LastUser; i++)
                 {
                     var o = UserListManager.UserList[i];
-                    if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
-                        ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, 23, -1, false);
+                    if (o?.flags.UserLogged == true && o.Conn != null
+                        && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
+                        ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, part, -1, false);
                 }
                 break;
+            }
             case 13: // Adquirir créditos de donación (InvUsuario.bas:1854).
                 if (od.CuantoAumento <= 0) return false;
                 u.CreditoDonador += od.CuantoAumento;
@@ -1450,6 +1672,157 @@ public static class Inventory
                 ServerPackets.UpdateCreditos(u.Conn, u.CreditoDonador);
                 ServerPackets.ConsoleMsg(u.Conn, $"¡Has obtenido {od.CuantoAumento} créditos! Total: {u.CreditoDonador}.", 3);
                 break;
+            // Scroll del Trueno (SubTipo 12, hermano de los scrolls 10/11): bonus temporal de daño
+            // (obj.dat "ExtraHIT" y "DuracionEfecto"). Si ya hay uno activo, no se consume.
+            case 12:
+            {
+                double durTrueno = od.DuracionEfecto > 0 ? od.DuracionEfecto / 1000.0 : 1800.0;
+                short bonus = (short)(od.ExtraHIT > 0 ? od.ExtraHIT : 0);
+                if (bonus <= 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "Este scroll no está configurado correctamente.", 1); return false; }
+                if (!Combat.AplicarScrollTrueno(u, bonus, durTrueno))
+                { ServerPackets.ConsoleMsg(u.Conn, "Ya tienes un Scroll del Trueno activo.", 1); return false; }
+                ServerPackets.ConsoleMsg(u.Conn,
+                    $"¡El trueno recorre tus armas! +{bonus} de daño por {(int)Math.Round(durTrueno / 60.0)} minutos.", 3);
+                break;
+            }
+
+            // Saco de Tiempo de Donador (SubTipo 18): marca al personaje como donador (la corona
+            // del cliente) de forma definitiva — antes solo lo prendía el GM y se perdía al reloguear.
+            case 18:
+                if (u.Char.Donador == 1)
+                { ServerPackets.ConsoleMsg(u.Conn, "Ya eres usuario donador.", 1); return false; }
+                u.Char.Donador = 1;
+                GuildManager.RefreshCharStatus(u);
+                ServerPackets.ConsoleMsg(u.Conn, "¡Ahora eres usuario Donador!", 28);
+                break;
+
+            // Poción de Tag (SubTipo 19): agrega un tag personal al lado del nombre (obj.dat "Tag").
+            case 19:
+            {
+                string tag = (od.Tag ?? "").Trim();
+                if (tag.Length == 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "Esta poción de tag no está configurada correctamente.", 1); return false; }
+                if (string.Equals(u.TagPersonal, tag, StringComparison.OrdinalIgnoreCase))
+                { ServerPackets.ConsoleMsg(u.Conn, $"Ya tienes el tag <{tag}>.", 1); return false; }
+                u.TagPersonal = tag;
+                GuildManager.RefreshCharStatus(u);
+                ServerPackets.ConsoleMsg(u.Conn, $"Ahora llevas el tag <{tag}> junto a tu nombre.", 28);
+                break;
+            }
+
+            // Scroll de teletransporte a un destino fijo de obj.dat (SubTipo 20): "MapaDestino",
+            // "DestinoX", "DestinoY". Es el genérico del que sale el Scroll a la Sala de Portales.
+            case 20:
+            {
+                if (od.MapaDestino <= 0 || od.DestinoX <= 0 || od.DestinoY <= 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "Este scroll no tiene destino configurado.", 1); return false; }
+                if (Jail.EstaPreso(u))
+                { ServerPackets.ConsoleMsg(u.Conn, "¡No puedes teletransportarte mientras cumples tu condena!", 1); return false; }
+                Movement.WarpUser(userIndex, (short)od.MapaDestino, (short)od.DestinoX, (short)od.DestinoY);
+                ServerPackets.ConsoleMsg(u.Conn, "Has sido teletransportado.", 1);
+                break;
+            }
+
+            // Poción de resucitar mascotas (SubTipo 21): vuelve a invocar la última criatura que
+            // tuvo el jugador (domada o invocada). Sin mascota previa o con el cupo lleno, no se consume.
+            case 21:
+            {
+                if (u.UltimaMascotaNpc <= 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "No tienes ninguna mascota que resucitar.", 1); return false; }
+                if (!Combat.InvocarMascotaDeItem(u, u.UltimaMascotaNpc, out string motivoRes))
+                { ServerPackets.ConsoleMsg(u.Conn, motivoRes, 1); return false; }
+                ServerPackets.ConsoleMsg(u.Conn, "Tu mascota vuelve a tu lado.", 28);
+                break;
+            }
+
+            // Poción de invocación de mascota (SubTipo 22): invoca la criatura de obj.dat "NumNpc".
+            case 22:
+            {
+                if (!Combat.InvocarMascotaDeItem(u, od.NumNpc, out string motivoInv))
+                { ServerPackets.ConsoleMsg(u.Conn, motivoInv, 1); return false; }
+                ServerPackets.ConsoleMsg(u.Conn, "Has invocado a tu nueva mascota.", 28);
+                break;
+            }
+
+            // Poción mágica de cambio de nombre (SubTipo 23): deja un "vale" y el cambio se hace
+            // con /nombre <nuevo>. No renombra acá porque hay que validar el nombre nuevo.
+            case 23:
+                if (u.PuedeRenombrar)
+                { ServerPackets.ConsoleMsg(u.Conn, "Ya tienes un cambio de nombre pendiente: usa /nombre <nuevo>.", 1); return false; }
+                u.PuedeRenombrar = true;
+                ServerPackets.ConsoleMsg(u.Conn, "Puedes cambiar tu nombre UNA vez: escribe /nombre <nuevo nombre>.", 28);
+                // MEJORA-008: además del mensaje de consola, abrir el formulario dedicado
+                // (mismo mecanismo genérico de ABRIR_FORMULARIOS que correo/oficios) para
+                // no depender de que el jugador sepa el comando de memoria.
+                ServerPackets.AbrirFormularios(u.Conn, 7); // frmCambioNombre
+                break;
+
+            // Metamorfosis (custom): transforma al que la toma en la criatura de obj.dat ("Body",
+            // "Cabeza") por DuracionEfecto, con el bonus de ExtraHIT/ExtraDEF, igual que los
+            // hechizos de metamorfosis. Si ya está transformado no se consume.
+            case 14:
+            {
+                if (od.MetamorfosisBody <= 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "Esta poción de metamorfosis no está configurada correctamente.", 1); return false; }
+                double durMeta = od.DuracionEfecto > 0 ? od.DuracionEfecto / 1000.0 : 60.0;
+                if (!Combat.AplicarMetamorfosis(u, (short)od.MetamorfosisBody, (short)od.MetamorfosisHead,
+                                                durMeta, (short)od.ExtraHIT, (short)od.ExtraDEF))
+                { ServerPackets.ConsoleMsg(u.Conn, "Ya estás transformado.", 1); return false; }
+                break;
+            }
+
+            // Cambio de facción (custom): "sin necesidad de pagar tu perdón". El destino sale del
+            // nombre del objeto, igual que las runas de transporte (UsarRunaTransporte).
+            case 15:
+            {
+                string nf = (od.Name ?? "").ToLowerInvariant();
+                byte destino = nf.Contains("republic") ? Facciones.REPUBLICANO : Facciones.CIUDADANO;
+                return Facciones.CambiarFaccionPorPocion(u, destino);
+            }
+
+            // Poción mágica de vida (custom): suma MinModificador..MaxModificador a la vida MÁXIMA,
+            // hasta CuantoAumento usos por personaje (default 3). Lo acumulado queda guardado aparte
+            // para que la poción de nacimiento (SubTipo 17) lo pueda devolver.
+            case 16:
+            {
+                int maxUsos = od.CuantoAumento > 0 ? od.CuantoAumento : 3;
+                if (u.Stats.PocionesVida >= maxUsos)
+                {
+                    ServerPackets.ConsoleMsg(u.Conn,
+                        $"Ya usaste las {maxUsos} pociones mágicas de vida de este personaje. Usa una poción de nacimiento para reiniciarlas.", 1);
+                    return false;
+                }
+                int suma = mod();
+                if (suma <= 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "Esta poción de vida no está configurada correctamente.", 1); return false; }
+                u.Stats.MaxHP = (short)Math.Min(short.MaxValue, u.Stats.MaxHP + suma);
+                u.Stats.MinHP = (short)Math.Min(u.Stats.MaxHP, u.Stats.MinHP + suma);
+                u.Stats.PocionesVida++;
+                u.Stats.BonusVidaPociones += suma;
+                ServerPackets.UpdateUserStats(u.Conn, u);
+                ServerPackets.ConsoleMsg(u.Conn,
+                    $"¡Tu vida máxima aumentó en {suma} puntos! ({u.Stats.PocionesVida}/{maxUsos} pociones usadas)", 28);
+                break;
+            }
+
+            // Poción de nacimiento (custom): devuelve la vida que dieron las pociones mágicas y pone
+            // el contador en cero para poder volver a tirar. Si no tomó ninguna, no se consume.
+            case 17:
+            {
+                if (u.Stats.PocionesVida <= 0 && u.Stats.BonusVidaPociones <= 0)
+                { ServerPackets.ConsoleMsg(u.Conn, "No has usado ninguna poción mágica de vida todavía.", 1); return false; }
+                int devuelve = u.Stats.BonusVidaPociones;
+                u.Stats.MaxHP = (short)Math.Max(1, u.Stats.MaxHP - devuelve);
+                if (u.Stats.MinHP > u.Stats.MaxHP) u.Stats.MinHP = u.Stats.MaxHP;
+                u.Stats.PocionesVida = 0;
+                u.Stats.BonusVidaPociones = 0;
+                ServerPackets.UpdateUserStats(u.Conn, u);
+                ServerPackets.ConsoleMsg(u.Conn,
+                    $"Tu vida volvió al valor de nacimiento (-{devuelve}). Puedes volver a usar las pociones mágicas de vida.", 28);
+                break;
+            }
+
             case 7: // Cambio de cara (InvUsuario.bas:1822 → ChangeHead)
                 if (u.flags.Navegando) { ServerPackets.LocaleMsg(u.Conn, 20); return false; }
                 if (u.flags.Montando == 1) { ServerPackets.LocaleMsg(u.Conn, 21); return false; }
@@ -1461,7 +1834,13 @@ public static class Inventory
                 DarCuerpoNuevo(u);
                 break;
             default:
-                return false; // subtipos no usados
+                // SubTipo sin efecto implementado (o poción de obj.dat a la que le falta el SubTipo):
+                // antes se devolvía false en silencio, así que el jugador la "quemaba" sin que pasara
+                // nada Y sin que se descontara del inventario, sin ninguna pista de por qué.
+                // Ahora avisa y queda registrado en la consola del server con el ObjIndex a corregir.
+                ServerPackets.ConsoleMsg(u.Conn, "Esta poción todavía no tiene ningún efecto en este servidor.", 1);
+                Console.WriteLine($"[UsarPocion] SIN EFECTO: {u.Name} usó '{od.Name}' (obj {objIndex}) SubTipo={od.SubTipo} — falta configurarlo en obj.dat o implementar el SubTipo.");
+                return false;
         }
         return true;
     }
@@ -1655,7 +2034,7 @@ public static class Inventory
         u.flags.Desnudo = 1;
     }
 
-    private static void BroadcastCharChange(User u)
+    public static void BroadcastCharChange(User u)
     {
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
@@ -1713,11 +2092,8 @@ public static class Inventory
 
     private static void SendSlot(User u, int slot)
     {
-        var o = u.Invent.Object[slot];
-        // PuedeUsar: el cliente pinta el item en rojo si es 0 (no usable por clase/raza/nivel/sexo).
-        byte puedeUsar = 1;
-        if (o.ObjIndex > 0) puedeUsar = PuedeUsarObjeto(u, ObjData.Get(o.ObjIndex), out _) ? (byte)1 : (byte)0;
-        ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, o.ObjIndex, o.Amount, o.Equipped, 0f, puedeUsar);
+        // La sobrecarga con User calcula PuedeUsar (el cliente pinta el item en rojo si es 0).
+        ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
     }
 
     /// <summary>Reenvía TODOS los slots del inventario al cliente. Se usa tras desequipar al morir

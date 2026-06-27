@@ -12,7 +12,7 @@ namespace ServidorCS.Game;
 public static class CharCreator
 {
     public static void LoginNewChar(Connection conn, string cuenta, string nombre,
-        byte raza, byte genero, byte clase, byte hogar, short head)
+        byte raza, byte genero, byte clase, byte hogar, short head, byte petTipoElegido = 0, string petNombreElegido = "")
     {
         var u = UserListManager.UserList[conn.UserIndex];
         nombre = nombre.Trim();
@@ -52,7 +52,7 @@ public static class CharCreator
         Macros.Delete(nombre);
 
         // Escribir el .chr nuevo con secciones mínimas.
-        CrearCharfile(file, nombre, cuenta, raza, genero, clase, hogar, body, head, pos, faccionStatus);
+        CrearCharfile(file, nombre, cuenta, raza, genero, clase, hogar, body, head, pos, faccionStatus, petTipoElegido, petNombreElegido);
 
         // Asociar el personaje a la cuenta (.cnt [PJS]).
         AsociarACuenta(cuenta, nombre);
@@ -68,7 +68,7 @@ public static class CharCreator
         }
     }
 
-    private static bool NombreValido(string n)
+    internal static bool NombreValido(string n)
     {
         if (n.Length < 1 || n.Length > 30) return false;
         foreach (char c in n)
@@ -140,7 +140,7 @@ public static class CharCreator
 
     private static void CrearCharfile(string file, string nombre, string cuenta,
         byte raza, byte genero, byte clase, byte hogar, short body, short head, (short map, short x, short y) pos,
-        byte faccionStatus)
+        byte faccionStatus, byte petTipoElegido, string petNombreElegido)
     {
         var sb = new System.Text.StringBuilder();
         void Sec(string s) => sb.Append('[').Append(s).Append("]\r\n");
@@ -177,6 +177,21 @@ public static class CharCreator
         int maxMAN = ClaseMagica(clase) ? ManaInicial(raza, clase) : 0;
         short hechizo1 = ClaseMagica(clase) ? (short)2 : (short)0; // Dardo Mágico
 
+        // Mascota compañera persistente (NUEVO, PetLeveling.cs): el jugador la ELIGE (tipo + nombre)
+        // en el panel de creación de personaje y queda fijada PARA SIEMPRE desde que nace — Tipo/
+        // Nivel/Exp/Nombre se graban directo en [MASCOTA] del .chr nuevo, no solo el hechizo de
+        // invocar. Si mandó un tipo inválido para su clase o un nombre inválido (cliente viejo,
+        // manipulación, o clase sin mascota) no recibe ninguna — puede aprenderla después con el
+        // pergamino normal (sin nombre propio, tendría que ponérselo por otra vía más adelante).
+        petNombreElegido = (petNombreElegido ?? "").Trim();
+        bool petNombreValido = petNombreElegido.Length is >= 1 and <= 20
+            && petNombreElegido.All(c => char.IsLetter(c) || c == ' ');
+        var petTipo = (PetLeveling.PetTipo)petTipoElegido;
+        bool tienePet = PetLeveling.ClasePuedeTener(clase, petTipo) && petNombreValido;
+        short[] hechizosMascota = tienePet
+            ? new short[] { (short)PetLeveling.HechizoInvocarFor(petTipo) }
+            : System.Array.Empty<short>();
+
         Sec("FLAGS"); Kv("Muerto", 0); Kv("Navegando", 0);
         Sec("INIT");
         Kv("Genero", genero); Kv("Raza", raza); Kv("Hogar", hogar); Kv("Clase", clase);
@@ -193,7 +208,23 @@ public static class CharCreator
         // AT1=Fuerza, AT2=Agilidad, AT3=Inteligencia, AT4=Carisma, AT5=Constitución (eAtributos).
         Kv("AT1", atF); Kv("AT2", atA); Kv("AT3", atI); Kv("AT4", atC); Kv("AT5", atCo);
         Sec("HECHIZOS");
-        for (int h = 1; h <= Constants.MAXUSERHECHIZOS; h++) Kv("H" + h, h == 1 ? hechizo1 : 0);
+        var hechizosIniciales = new short[Constants.MAXUSERHECHIZOS + 1];
+        int slotH = 1;
+        if (hechizo1 > 0) hechizosIniciales[slotH++] = hechizo1;
+        foreach (var hm in hechizosMascota)
+        {
+            if (slotH > Constants.MAXUSERHECHIZOS) break;
+            hechizosIniciales[slotH++] = hm;
+        }
+        for (int h = 1; h <= Constants.MAXUSERHECHIZOS; h++) Kv("H" + h, hechizosIniciales[h]);
+
+        // Mascota compañera: identidad fijada desde que nace el PJ (ver comentario más arriba).
+        // CharSaver reescribe esta misma sección en cada guardado normal (Tipo/Nivel/Exp/Nombre).
+        Sec("MASCOTA");
+        Kv("Tipo", tienePet ? petTipoElegido : 0);
+        Kv("Nivel", 1);
+        Kv("Exp", 0);
+        Kv("Nombre", tienePet ? petNombreElegido : "");
 
         Sec("Inventory");
         Kv("CantidadItems", nroItems);

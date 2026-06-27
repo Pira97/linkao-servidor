@@ -9,7 +9,11 @@ namespace ServidorCS.Game;
 /// </summary>
 public static class Backup
 {
-    /// <summary>BackupProgramado: graba los online y copia todos los .chr a un snapshot fechado.</summary>
+    /// <summary>BackupProgramado: graba los online y copia todos los .chr a un snapshot fechado.
+    /// Síncrono e inmediato — no usado por el tick periódico (ver PersistenceWorker/GameServer,
+    /// que arman el mismo resultado a partir de un snapshot capturado bajo el GameLock y llaman a
+    /// CopyAndCleanup para el paso de I/O puro). Se deja intacto por si algún llamador futuro
+    /// (comando de GM, etc.) necesita un backup inmediato y bloqueante.</summary>
     public static void Snapshot()
     {
         try
@@ -17,48 +21,60 @@ public static class Backup
             // 1) Asegurar que los .chr estén al día (GuardarUsuarios → SaveUser de cada online).
             CharSaver.SaveAllOnline();
             BattlePass.SaveAll(); // progreso del pase de temporada al día antes del snapshot
+            Achievements.SaveAll(); // progreso de logros al día antes del snapshot
+            QuestSystem.SaveAll();  // progreso de misiones al día antes del snapshot
 
-            // 2) Copiar todos los .chr a Backups\Auto_<timestamp>\Charfile\.
-            string charDir = CharLoader.CharPath;
-            if (!Directory.Exists(charDir)) return;
-
-            string backupsRoot = BackupsRoot();
-            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmm");
-            string dest = Path.Combine(backupsRoot, "Auto_" + stamp, "Charfile");
-            Directory.CreateDirectory(dest);
-
-            int copied = 0;
-            foreach (var f in Directory.GetFiles(charDir, "*.chr"))
-            {
-                try { File.Copy(f, Path.Combine(dest, Path.GetFileName(f)), overwrite: true); copied++; }
-                catch { /* archivo en uso: omitir */ }
-            }
-
-            // 3) Copiar el progreso del pase de temporada (BattlePass\*.json) al snapshot.
-            int bpCopied = 0;
-            try
-            {
-                string bpDir = string.IsNullOrEmpty(DataPaths.Root) ? "BattlePass" : DataPaths.Sub("BattlePass");
-                if (Directory.Exists(bpDir))
-                {
-                    string bpDest = Path.Combine(backupsRoot, "Auto_" + stamp, "BattlePass");
-                    Directory.CreateDirectory(bpDest);
-                    foreach (var f in Directory.GetFiles(bpDir, "*.json"))
-                    {
-                        try { File.Copy(f, Path.Combine(bpDest, Path.GetFileName(f)), overwrite: true); bpCopied++; }
-                        catch { /* archivo en uso: omitir */ }
-                    }
-                }
-            }
-            catch { /* no romper el backup de personajes por el pase */ }
-
-            CleanupOld(backupsRoot);
-            Console.WriteLine($"[Backup] Snapshot Auto_{stamp} completado ({copied} personajes, {bpCopied} pases).");
+            // 2) Copiar .chr + BattlePass y limpiar snapshots antiguos.
+            CopyAndCleanup();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Backup] Error en Snapshot: {ex.Message}");
         }
+    }
+
+    /// <summary>Copia todos los .chr y el progreso de BattlePass a Backups\Auto_&lt;timestamp&gt;\,
+    /// y purga snapshots viejos. Puramente I/O de disco (enumera archivos ya escritos): no lee ni
+    /// escribe ningún estado mutable del mundo, así que es seguro llamarla desde cualquier hilo,
+    /// SIEMPRE que se llame después de que los .chr/*.json ya estén al día en disco (el llamador
+    /// es responsable de ese orden — ver PersistenceWorker.ProcessBackup).</summary>
+    public static void CopyAndCleanup()
+    {
+        string charDir = CharLoader.CharPath;
+        if (!Directory.Exists(charDir)) return;
+
+        string backupsRoot = BackupsRoot();
+        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmm");
+        string dest = Path.Combine(backupsRoot, "Auto_" + stamp, "Charfile");
+        Directory.CreateDirectory(dest);
+
+        int copied = 0;
+        foreach (var f in Directory.GetFiles(charDir, "*.chr"))
+        {
+            try { File.Copy(f, Path.Combine(dest, Path.GetFileName(f)), overwrite: true); copied++; }
+            catch { /* archivo en uso: omitir */ }
+        }
+
+        // Copiar el progreso del pase de temporada (BattlePass\*.json) al snapshot.
+        int bpCopied = 0;
+        try
+        {
+            string bpDir = string.IsNullOrEmpty(DataPaths.Root) ? "BattlePass" : DataPaths.Sub("BattlePass");
+            if (Directory.Exists(bpDir))
+            {
+                string bpDest = Path.Combine(backupsRoot, "Auto_" + stamp, "BattlePass");
+                Directory.CreateDirectory(bpDest);
+                foreach (var f in Directory.GetFiles(bpDir, "*.json"))
+                {
+                    try { File.Copy(f, Path.Combine(bpDest, Path.GetFileName(f)), overwrite: true); bpCopied++; }
+                    catch { /* archivo en uso: omitir */ }
+                }
+            }
+        }
+        catch { /* no romper el backup de personajes por el pase */ }
+
+        CleanupOld(backupsRoot);
+        Console.WriteLine($"[Backup] Snapshot Auto_{stamp} completado ({copied} personajes, {bpCopied} pases).");
     }
 
     /// <summary>LimpiarBackupsAntiguos: deja solo los últimos MaxBackupsGuardados snapshots Auto_*.</summary>

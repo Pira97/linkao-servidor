@@ -92,6 +92,17 @@ public static class BattlePass
         ? "BattlePass" + Path.DirectorySeparatorChar
         : DataPaths.Sub("BattlePass");
 
+    /// <summary>Mueve el progreso de un personaje a otro nombre (poción de cambio de nombre).</summary>
+    public static void RenombrarProgreso(string viejo, string nuevo)
+    {
+        try
+        {
+            string a = ProgressPath(viejo), b = ProgressPath(nuevo);
+            if (File.Exists(a)) File.Move(a, b, true);
+        }
+        catch (Exception ex) { Console.WriteLine($"[RenombrarProgreso] {viejo}->{nuevo}: {ex.Message}"); }
+    }
+
     private static string ProgressPath(string name)
         => Path.Combine(Dir, SafeName(name) + ".json");
 
@@ -200,19 +211,26 @@ public static class BattlePass
     private static void SaveProgress(User u)
     {
         if (u?.BattlePass == null || string.IsNullOrEmpty(u.Name)) return;
+        WriteProgressJson(u.Name, JsonSerializer.Serialize(u.BattlePass, _json));
+    }
+
+    /// <summary>Escribe a disco un JSON de progreso ya serializado. No toca ningún User: seguro
+    /// para llamar desde el worker de persistencia, fuera del GameLock.</summary>
+    public static void WriteProgressJson(string name, string json)
+    {
         try
         {
             Directory.CreateDirectory(Dir);
-            File.WriteAllText(ProgressPath(u.Name), JsonSerializer.Serialize(u.BattlePass, _json));
+            File.WriteAllText(ProgressPath(name), json);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[BattlePass] Error al guardar progreso de {u.Name}: {ex.Message}");
+            Console.WriteLine($"[BattlePass] Error al guardar progreso de {name}: {ex.Message}");
         }
     }
 
     /// <summary>Guarda el progreso del pase de TODOS los jugadores online. Se llama en el cierre
-    /// del server y en el backup periódico, como red de seguridad ante caídas.</summary>
+    /// del server, de forma síncrona (el game loop ya paró, no hay lock que liberar rápido).</summary>
     public static int SaveAll()
     {
         int n = 0;
@@ -226,6 +244,23 @@ public static class BattlePass
             }
         }
         return n;
+    }
+
+    /// <summary>Serializa a JSON (en memoria, sin tocar disco) el progreso de todos los online.
+    /// Pensado para llamarse bajo el GameLock desde el backup periódico: la serialización de un
+    /// objeto Progress chico es una operación de CPU rápida seleccionada deliberadamente para NO
+    /// necesitar clonar el objeto — solo se copia su representación de texto, ya independiente del
+    /// User. El File.WriteAllText real se hace después, fuera del lock, con WriteProgressJson.</summary>
+    public static Dictionary<string, string> CaptureAllOnlineJson()
+    {
+        var result = new Dictionary<string, string>();
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var u = UserListManager.UserList[i];
+            if (u != null && u.flags.UserLogged && u.BattlePass != null && !string.IsNullOrEmpty(u.Name))
+                result[u.Name] = JsonSerializer.Serialize(u.BattlePass, _json);
+        }
+        return result;
     }
 
     // ============================================================

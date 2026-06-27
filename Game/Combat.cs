@@ -1,4 +1,4 @@
-using ServidorCS.Network;
+﻿using ServidorCS.Network;
 
 namespace ServidorCS.Game;
 
@@ -13,6 +13,14 @@ namespace ServidorCS.Game;
 public static class Combat
 {
     private static readonly Random _rng = new();
+
+    /// <summary>
+    /// Probabilidad (%) de que un golpe con EfectoMagico=Paraliza(11) equipado (Orbe Acuática,
+    /// espadas de Tierra/Sable Wivern) paralice. Tirada independiente por golpe: en promedio
+    /// 1 de cada 10, pero aleatoria — no cada 10 golpes exactos.
+    /// El VB6 original usaba 60, que en la práctica dejaba al rival paralizado casi permanentemente.
+    /// </summary>
+    private const int OrbeParalizaProb = 10;
 
     // Hechizos de leveo con curva de daño lineal propia por nivel (NO usan el escalado global
     // EscalaMagia×ELV). Clave = índice de hechizo, valor = crecimiento de daño por nivel sobre
@@ -30,7 +38,10 @@ public static class Combat
         var u = UserListManager.UserList[userIndex];
         if (u.flags.Muerto == 1) return;
         if (u.flags.Meditando) return;
-        if (u.flags.Paralizado == 1) return;
+        // BUG-014: la parálisis traba el MOVIMIENTO (ver client.state.paralyzed en
+        // game.html, que solo deja girar), no el combate — igual que Inmovilizado, que
+        // nunca bloqueó atacar acá. Antes un jugador paralizado por un NPC (o por otro
+        // jugador) no podía ni defenderse pegándole de vuelta.
         if (u.flags.Maldecido == 1)
         { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "¡Estás maldecido! No puedes atacar.", 1); return; }
 
@@ -72,8 +83,10 @@ public static class Combat
 
         // VB6 UsuarioAtaca: busca primero usuario en tile, luego NPC
         // Buscar usuario en el tile
+        // [[b4_usersbymap]] atk.Map == u.Pos.Map siempre (HeadtoPos solo mueve X/Y, no el mapa):
+        // antes recorría LastUser completo, ahora solo los usuarios de ese mapa.
         int targetUserIdx = -1;
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(atk.Map))
         {
             var t = UserListManager.UserList[i];
             if (i != userIndex && t.flags.UserLogged && t.flags.Muerto == 0
@@ -97,7 +110,7 @@ public static class Combat
         {
             // VB6: golpe al aire → PrepareMessagePlayWave(SND_SWING=2, X, Y) al área
             const short SND_SWING = 2;
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
             {
                 var o = UserListManager.UserList[i];
                 if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -108,14 +121,16 @@ public static class Combat
 
         // VB6 PuedeAtacarNPC: NPCs no atacables (Attackable=0: mercaderes, sacerdotes, etc.) intocables;
         // guardias: Rinkel intocable para todos, en el resto solo guardias enemigos de la facción.
+        // motivo vacío = el chequeo ya avisó por su cuenta (mascota de otro jugador: el motivo
+        // real lo explica PuedeAtacar). Mandarlo igual dejaba una línea en blanco en la consola.
         if (!NpcManager.UsuarioPuedeAtacarNpc(u, npc, out string motGuardia))
-        { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, motGuardia, 1); return; }
+        { if (u.Conn != null && !string.IsNullOrEmpty(motGuardia)) ServerPackets.ConsoleMsg(u.Conn, motGuardia, 1); return; }
 
         // VB6 UserImpactoNpc: chance de impacto (poder de ataque vs evasión del NPC). Falla → swing al aire.
         if (!UserImpactoNpc(userIndex, npc))
         {
             const short SND_SWING2 = 2;
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
             {
                 var o = UserListManager.UserList[i];
                 if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -129,6 +144,9 @@ public static class Combat
         BroadcastFX(npc.Map, npc.CharIndex, FX_GOLPE_ACIERTO, 0);    // FX de acierto sobre el NPC (todos lo ven)
         int dano = CalcularDanio(u, npc); // PvE (usa MinHIT/MaxHITPVE + especiales)
 
+        // Magos: golpe de báculo (PvE) con daño propio, en vez del físico normal (SistemaCombate.bas:500).
+        if (u.Clase == 2 && EsStaff(u.Invent.WeaponEqpObjIndex)) dano = DanoGolpeBaculo(u.Stats.ELV);
+
         // VB6: sistema de apuñalamiento (Asesino/Ladrón con daga, 20% prob)
         if (PuedeApunalar(u))
         {
@@ -136,8 +154,8 @@ public static class Combat
             ServerPackets.ConsoleMsg(u.Conn, $"¡Has apuñalado a la criatura por {dano}!", 2); // font 2 = rojo + tab Combate
             BroadcastFX(npc.Map, npc.CharIndex, FX_APUNALAR, 0);  // FX/logo de daga sobre el objetivo
         }
-        // Número de daño azul sobre el NPC + "Golpeás por X" en consola (lo arma el cliente).
-        DanoInfligido(u, npc.CharIndex, dano);
+        // Número de daño azul sobre el NPC + "Golpeás por X con <arma>" en consola (lo arma el cliente).
+        DanoInfligidoFisico(u, npc.CharIndex, dano);
         // Sonido de impacto cuerpo a cuerpo (SistemaCombate.bas UsuarioAtacaNpc: SND_IMPACTO=86).
         BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.IMPACTO);
         // Espada Mata Dragones golpeando a un dragón: sonido especial (149).
@@ -149,7 +167,9 @@ public static class Combat
         }
         GolpeParalizaNpc(u, npc);         // parálisis de artes marciales (Gladiador/Bardo con nudillos/manos)
         GolpeOrbeNpc(u, npc);             // Orbe Acuática/espadas con Paraliza(11): 60% de paralizar 60s
+        int prevTarget = npc.TargetUser; // [[FIX4]] target antes de provocar, para detectar "atacante nuevo"
         NpcManager.ProvocarNpc(npc, u);   // aggro: el NPC se vuelve hostil/persigue y registra atacante
+        NpcManager.ReaccionInmediataANuevoAtacante(npc, u, prevTarget); // [[FIX4]] no esperar al próximo TickAI
 
         // EXP proporcional al daño (CalcularDarExp), antes de restar HP (cap interno a MinHP).
         CalcularDarExp(userIndex, npc, dano);
@@ -165,10 +185,11 @@ public static class Combat
     /// arrojadiza=true: daga/shuriken (arma SubTipo 5, se consume el arma). false: arco+flecha
     /// (Proyectil=1 + munición Flechas, se consume la flecha). Apunta al tile (x,y); pega a user o NPC.
     /// </summary>
-    public static void AtaqueADistancia(int userIndex, byte x, byte y, bool arrojadiza)
+    public static void AtaqueADistancia(int userIndex, byte x, byte y, bool arrojadiza, int targetMap = 0)
     {
         var u = UserListManager.UserList[userIndex];
-        if (u == null || u.flags.Muerto == 1 || u.flags.Meditando || u.flags.Paralizado == 1) return;
+        if (u == null || u.flags.Muerto == 1 || u.flags.Meditando) return;
+        // BUG-014: ídem UsuarioAtaca — la parálisis no bloquea atacar, solo moverse.
         if (u.flags.Maldecido == 1)
         { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "¡Estás maldecido! No puedes atacar.", 1); return; }
 
@@ -217,8 +238,9 @@ public static class Combat
 
         RevelarOculto(u);
 
-        // Apuntar al tile clickeado (LookatTile fija TargetUser/NPC).
-        Commerce.LeftClick(userIndex, x, y);
+        // Apuntar al tile clickeado (LookatTile fija TargetUser/NPC). targetMap = mapa vecino si el
+        // disparo cruza el borde (mundo continuo); 0 = mapa actual (clásico). LeftClick fija u.TargetMap.
+        Commerce.LeftClick(userIndex, x, y, targetMap);
 
         bool atacado = false;
         if (u.TargetUserCharIndex > 0)
@@ -227,7 +249,10 @@ public static class Combat
             if (vic > 0 && vic != userIndex)
             {
                 var v = UserListManager.UserList[vic];
-                if (Math.Abs(v.Pos.Y - u.Pos.Y) > RANGO_VISION_Y_DIST)
+                int distYd = (v.Pos.Map == u.Pos.Map)
+                    ? Math.Abs(v.Pos.Y - u.Pos.Y)
+                    : (RegionLayout.TryGlobalDelta(u.Pos.Map, u.Pos.X, u.Pos.Y, v.Pos.Map, v.Pos.X, v.Pos.Y, out _, out int gdyd) ? Math.Abs(gdyd) : 999);
+                if (distYd > RANGO_VISION_Y_DIST)
                     ServerPackets.ConsoleMsg(u.Conn, "Está demasiado lejos.", 1);
                 else if (PuedeAtacar(userIndex, vic))
                 { UsuarioAtacaUsuario(userIndex, vic, u); atacado = true; }
@@ -235,7 +260,9 @@ public static class Combat
         }
         else if (u.TargetNpcCharIndex > 0)
         {
-            var npc = NpcManager.NpcByCharIndex(u.Pos.Map, u.TargetNpcCharIndex);
+            // Mundo continuo: el NPC objetivo puede estar en el mapa vecino → buscar por u.TargetMap
+            // (que LeftClick fijó al mapa clickeado), no por u.Pos.Map. Same-map: u.TargetMap == u.Pos.Map.
+            var npc = NpcManager.NpcByCharIndex(u.TargetMap, u.TargetNpcCharIndex);
             if (npc != null && !npc.Dead)
             {
                 GolpearNpcADistancia(userIndex, u, npc);
@@ -251,8 +278,7 @@ public static class Combat
             // WeaponEqpSlot=0, y el refresh quedaría en el slot 0 (el cliente nunca veía el consumo).
             byte ws = inv.WeaponEqpSlot;
             Inventory.QuitarUserInvItem(u, ws, 1);
-            ServerPackets.ChangeInventorySlot(u.Conn, ws,
-                inv.Object[ws].ObjIndex, inv.Object[ws].Amount, inv.Object[ws].Equipped);
+            ServerPackets.ChangeInventorySlot(u.Conn, u, ws);
         }
         else if (usaMunicion)
         {
@@ -264,8 +290,7 @@ public static class Combat
                 if (inv.Object[ms].Amount > 0)
                 { inv.MunicionEqpSlot = ms; inv.MunicionEqpObjIndex = inv.Object[ms].ObjIndex; inv.Object[ms].Equipped = true; }
                 else { inv.MunicionEqpSlot = 0; inv.MunicionEqpObjIndex = 0; }
-                ServerPackets.ChangeInventorySlot(u.Conn, ms,
-                    inv.Object[ms].ObjIndex, inv.Object[ms].Amount, inv.Object[ms].Equipped);
+                ServerPackets.ChangeInventorySlot(u.Conn, u, ms);
             }
         }
         else
@@ -280,8 +305,7 @@ public static class Combat
                 if (inv.Object[ws].Amount > 0)
                 { inv.WeaponEqpSlot = ws; inv.WeaponEqpObjIndex = inv.Object[ws].ObjIndex; inv.Object[ws].Equipped = true; }
                 else { inv.WeaponEqpSlot = 0; inv.WeaponEqpObjIndex = 0; }
-                ServerPackets.ChangeInventorySlot(u.Conn, ws,
-                    inv.Object[ws].ObjIndex, inv.Object[ws].Amount, inv.Object[ws].Equipped);
+                ServerPackets.ChangeInventorySlot(u.Conn, u, ws);
             }
         }
     }
@@ -296,8 +320,38 @@ public static class Combat
     /// sobre la cabeza del que pega, no sobre la víctima.)</summary>
     private static void DanoInfligido(User dealer, short victimaChar, int dano)
     { if (dealer?.Conn != null) ServerPackets.ChatOverHeadLocale(dealer.Conn, dealer.Char.CharIndex, dano, 3); }
+    /// <summary>Igual que DanoInfligido pero modo 5: golpe FÍSICO (melee/distancia/PvP). El cliente
+    /// Godot agrega en consola el arma con la que se pegó ("Golpeás por X con Y"); los hechizos
+    /// siguen usando modo 3 para no nombrar un arma que no se usó.</summary>
+    private static void DanoInfligidoFisico(User dealer, short victimaChar, int dano)
+    { if (dealer?.Conn != null) ServerPackets.ChatOverHeadLocale(dealer.Conn, dealer.Char.CharIndex, dano, 5); }
     private static void DanoRecibido(User victima, short atacanteChar, int dano)
-    { if (victima?.Conn != null) ServerPackets.ChatOverHeadLocale(victima.Conn, atacanteChar, dano, 2); }
+    {
+        DesmontarPorDanio(victima);
+        if (victima?.Conn != null) ServerPackets.ChatOverHeadLocale(victima.Conn, atacanteChar, dano, 2);
+        // MEJORA-005: la barra de vida del grupo (ver PartySystem.SendPartyMemberHP) solo se
+        // actualizaba al aceptar la invitación — con esto también refleja el daño recibido en
+        // combate, no solo el que se corrige puntualmente al tomar una poción (Inventory.cs).
+        if (victima != null && victima.PartyId > 0) PartySystem.SendPartyMemberHP(victima.id);
+        if (victima != null) GmWatch.BroadcastHP(victima.id); // GM: ve la vida de cualquiera en vivo
+    }
+
+    /// <summary>BUG-006: recibir daño desequipa Alas/montura, salvo que el jugador quedaría
+    /// varado (sobre agua o encima de una estructura sin poder pisar) — mismo criterio que
+    /// ya usa Inventory.Desequipar para las Alas (Movement.PosicionLegalAPie). La barca
+    /// (Navegando) no se toca: sigue funcionando igual que antes. Se llama desde
+    /// DanoRecibido, que ya cubre TODOS los caminos de daño a un usuario (físico, mágico,
+    /// flechas, NPC).</summary>
+    private static void DesmontarPorDanio(User victima)
+    {
+        if (victima == null || victima.flags.Navegando) return;
+        if (!Movement.PosicionLegalAPie(victima)) return;   // quedaría varado: no lo desmonta
+        if (victima.flags.Montando == 1 && victima.Invent.MonturaSlot > 0)
+            Inventory.Desequipar(victima, victima.Invent.MonturaSlot);
+        int escudo = victima.Invent.EscudoEqpObjIndex;
+        if (escudo > 0 && victima.Invent.EscudoEqpSlot > 0 && ObjData.Get(escudo).ShieldAnim == 88)
+            Inventory.Desequipar(victima, victima.Invent.EscudoEqpSlot);
+    }
     /// <summary>"¡Fallas!" flotante sobre la cabeza del propio atacante (VB6: WriteChatOverHeadLocale(...,0,2)
     /// sobre la cabeza del atacante). id=0 → el cliente lo renderiza como "Fallas" y lo loguea en Combate.</summary>
     private static void FalloPropio(User atk)
@@ -351,7 +405,7 @@ public static class Combat
         if (arma > 0 && ObjData.Get(arma).Proyectil == 1 && atk.Invent.MunicionEqpObjIndex > 0)
         {
             var ammo = ObjData.Get(atk.Invent.MunicionEqpObjIndex);
-            BroadcastArrow(map, atk.Char.CharIndex, vic.Char.CharIndex, atk.Pos.X, atk.Pos.Y, vic.Pos.X, vic.Pos.Y, (short)ammo.GrhIndex);
+            BroadcastArrow(map, vic.Pos.Map, atk.Char.CharIndex, vic.Char.CharIndex, atk.Pos.X, atk.Pos.Y, vic.Pos.X, vic.Pos.Y, (short)ammo.GrhIndex);
             if (ammo.Snd1 > 0) BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, (short)ammo.Snd1);
             if (ammo.Snd2 > 0) BroadcastFX(map, vic.Char.CharIndex, (short)ammo.Snd2, 0);
             if (atk.Conn != null) ServerPackets.PlayWave(atk.Conn, Sounds.IMPACTO3, (byte)atk.Pos.X, (byte)atk.Pos.Y);
@@ -359,7 +413,7 @@ public static class Combat
         }
         else if (arma > 0 && ObjData.Get(arma).Proyectil == 2)
         {
-            BroadcastArrow(map, atk.Char.CharIndex, vic.Char.CharIndex, atk.Pos.X, atk.Pos.Y, vic.Pos.X, vic.Pos.Y, (short)ObjData.Get(arma).GrhIndex);
+            BroadcastArrow(map, vic.Pos.Map, atk.Char.CharIndex, vic.Char.CharIndex, atk.Pos.X, atk.Pos.Y, vic.Pos.X, vic.Pos.Y, (short)ObjData.Get(arma).GrhIndex);
             BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, Sounds.ARROJADIZA);
         }
         else
@@ -429,8 +483,10 @@ public static class Combat
     private static void GolpearNpcADistancia(int userIndex, User u, NpcManager.NpcInstance npc)
     {
         // VB6 PuedeAtacarNPC: Attackable=0 intocable; guardias por reglas de facción (Rinkel intocable).
+        // motivo vacío = el chequeo ya avisó por su cuenta (mascota de otro jugador: el motivo
+        // real lo explica PuedeAtacar). Mandarlo igual dejaba una línea en blanco en la consola.
         if (!NpcManager.UsuarioPuedeAtacarNpc(u, npc, out string motGuardia))
-        { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, motGuardia, 1); return; }
+        { if (u.Conn != null && !string.IsNullOrEmpty(motGuardia)) ServerPackets.ConsoleMsg(u.Conn, motGuardia, 1); return; }
 
         if (!UserImpactoNpc(userIndex, npc))
         {
@@ -440,7 +496,7 @@ public static class Combat
         }
         BroadcastFX(npc.Map, npc.CharIndex, FX_GOLPE_ACIERTO, 0);    // FX de acierto sobre el NPC (todos lo ven)
         int dano = CalcularDanio(u, npc);
-        DanoInfligido(u, npc.CharIndex, dano);
+        DanoInfligidoFisico(u, npc.CharIndex, dano);
         // Sonido del disparo (UsuarioAtacaNpc proyectil): arco → Snd1 de la munición + IMPACTO3;
         // arrojadiza (proyectil 2) → sonido 68.
         var arma = u.Invent.WeaponEqpObjIndex > 0 ? ObjData.Get(u.Invent.WeaponEqpObjIndex) : default;
@@ -448,7 +504,7 @@ public static class Combat
         {
             var ammo = ObjData.Get(u.Invent.MunicionEqpObjIndex);
             // Flecha animada origen→destino (SistemaCombate.bas:1148, GrhIndex de la munición).
-            BroadcastArrow(npc.Map, u.Char.CharIndex, npc.CharIndex, u.Pos.X, u.Pos.Y, npc.X, npc.Y, (short)ammo.GrhIndex);
+            BroadcastArrow(u.Pos.Map, npc.Map, u.Char.CharIndex, npc.CharIndex, u.Pos.X, u.Pos.Y, npc.X, npc.Y, (short)ammo.GrhIndex);
             if (ammo.Snd1 > 0) BroadcastWaveArea(npc.Map, npc.X, npc.Y, (short)ammo.Snd1);
             BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.IMPACTO3);
             // FX de impacto de la munición (ammo.Snd2 se usa como GrhFX en VB6) y efectos especiales.
@@ -458,13 +514,15 @@ public static class Combat
         else if (arma.Proyectil == 2)
         {
             // Arma arrojadiza animada (SistemaCombate.bas:1205, GrhIndex del arma) + sonido 68.
-            BroadcastArrow(npc.Map, u.Char.CharIndex, npc.CharIndex, u.Pos.X, u.Pos.Y, npc.X, npc.Y, (short)arma.GrhIndex);
+            BroadcastArrow(u.Pos.Map, npc.Map, u.Char.CharIndex, npc.CharIndex, u.Pos.X, u.Pos.Y, npc.X, npc.Y, (short)arma.GrhIndex);
             BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.ARROJADIZA);
         }
         else
             BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.IMPACTO);
         GolpeOrbeNpc(u, npc);             // Orbe Acuática/espadas con Paraliza(11) también a distancia
+        int prevTarget = npc.TargetUser; // [[FIX4]] target antes de provocar, para detectar "atacante nuevo"
         NpcManager.ProvocarNpc(npc, u);   // aggro a distancia
+        NpcManager.ReaccionInmediataANuevoAtacante(npc, u, prevTarget); // [[FIX4]] no esperar al próximo TickAI
         CalcularDarExp(userIndex, npc, dano);
         npc.MinHP -= dano;
         if (npc.MinHP <= 0) MatarNpc(u, npc);
@@ -473,15 +531,21 @@ public static class Combat
     /// <summary>
     /// GolpeParalizaNPC, rama OBJ869 (SistemaCombate.bas:3602): la Orbe Acuática equipada
     /// (EfectoMagico=Paraliza(11), también espadas de Tierra/Sable Wivern) paraliza a la
-    /// criatura al golpear: 60% de probabilidad, 60 segundos.
+    /// criatura al golpear: <see cref="OrbeParalizaProb"/>% de probabilidad, 60 segundos.
     /// </summary>
     private static void GolpeOrbeNpc(User u, NpcManager.NpcInstance npc)
     {
         if (!Inventory.TieneEfectoMagico(u, 11, incluirArma: true)) return;
+        // BUG-013: el NPC inmune (mismo flag que ya respeta el hechizo Paralizar, ver la
+        // rama de HechizoEstadoNPC más arriba) no debe poder paralizarse por ESTA vía
+        // tampoco — antes solo el hechizo lo chequeaba y la orbe lo paralizaba igual.
+        if (npc.AfectaParalisis) return;
         // Doble parálisis permitida contra NPC: aunque ya esté paralizado, re-aplica y refresca el timer.
-        if (_rng.Next(1, 101) > 60) return;
+        if (_rng.Next(1, 101) > OrbeParalizaProb) return;
         NpcManager.ParalizarNpc(npc, 60.0); // VB6: Contadores.Paralisis = 60 segundos
-        BroadcastWaveArea(npc.Map, npc.X, npc.Y, 17);  // VB6 PlayWave(17)
+        // BUG-012: sonido correcto del hechizo Paralizar (Hechizos.dat WAV=203), no el 17
+        // que se usaba antes (sonido genérico, no el de paralizar).
+        BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.PARALIZAR);
         BroadcastFX(npc.Map, npc.CharIndex, 8, 0);     // VB6 CreateFX(8)
         if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "¡Tu golpe paraliza a la criatura!", 2);
     }
@@ -544,6 +608,8 @@ public static class Combat
     private static void GolpeParalizaNpc(User u, NpcManager.NpcInstance npc)
     {
         if (u.Clase != 8 && u.Clase != 6 && u.Clase != 3) return;
+        // BUG-013: mismo criterio de inmunidad que respeta el hechizo Paralizar.
+        if (npc.AfectaParalisis) return;
         // Doble parálisis permitida contra NPC: aunque ya esté paralizado, re-aplica y refresca el timer.
         int divisor = u.Clase == 3 ? 3 : 1; // Guerrero: probabilidad baja (un tercio de la normal)
         int prob;
@@ -553,7 +619,8 @@ public static class Combat
         if (prob <= 0 || _rng.Next(1, 101) > prob) return;
 
         NpcManager.ParalizarNpc(npc, 60.0); // VB6 Contadores.Paralisis = 60 segundos
-        BroadcastWaveArea(npc.Map, npc.X, npc.Y, 17);           // VB6 PlayWave(17)
+        // BUG-012: sonido correcto del hechizo Paralizar (antes 17, genérico).
+        BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.PARALIZAR);
         BroadcastFX(npc.Map, npc.CharIndex, 8, 0);              // VB6 CreateFX(8)
         if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "Tu golpe ha paralizado a la criatura.", 1);
     }
@@ -604,10 +671,16 @@ public static class Combat
             ServerPackets.UpdateUserStats(u.Conn, u);
             ServerPackets.ConsoleMsg(u.Conn, $"¡Has subido al nivel {u.Stats.ELV}!", 1);
             BroadcastWaveArea(u.Pos.Map, u.Pos.X, u.Pos.Y, Sounds.NIVEL_NUEVO); // sonido de subir nivel (72, custom)
+            BroadcastLevelUpFx(u.Pos.Map, u.Char.CharIndex, u.Stats.ELV);       // efecto visible para todo el que lo vea
             BattlePass.OnLevelUp(u.id); // puntos de pase por subir nivel de personaje
+            Achievements.OnLevelUp(u.id, u.Stats.ELV); // logros de nivel (scrolls exp/oro)
 
             // Nivel 15: deja de ser newbie → el Dungeon Newbie lo expulsa a la ciudad de su facción.
             Facciones.SalirDungeonNewbie(u, warpear: true);
+
+            // Zonas con tope de nivel (mapas 205 y 207): al pasarse de la franja se lo devuelve
+            // a su ciudad en el acto, sin esperar a que salga por su cuenta.
+            MapasPorNivel.ExpulsarSiNoCorresponde(u, warpear: true);
         }
     }
 
@@ -655,11 +728,14 @@ public static class Combat
     /// Lanza el hechizo pendiente sobre el tile (x,y). Lo invoca WorkLeftClick con skill=Magia.
     /// Aplica cura/daño según Hechizos.dat, descuenta maná, muestra FX y maneja muerte.
     /// </summary>
-    public static void LanzarHechizoEn(int userIndex, byte x, byte y)
+    public static void LanzarHechizoEn(int userIndex, byte x, byte y, int targetMap = 0)
     {
         var u = UserListManager.UserList[userIndex];
         if (u.flags.Muerto == 1) return;
         if (u.SpellPendiente == 0) return;
+        // Mundo continuo: el objetivo del hechizo puede estar en el mapa vecino. targetMap>0 → ese mapa;
+        // 0 → mapa actual (clásico). Se usa para el lookup del NPC/usuario apuntado (abajo).
+        int spellMap = targetMap > 0 ? targetMap : u.Pos.Map;
 
         // Intervalos de casteo (HandleWorkLeftClick magia, Protocol.bas:3649 1:1):
         //  arco read-only, GolpeMagia (¿pasó el tiempo desde el último golpe?); si no, cae al cooldown de casteo.
@@ -724,7 +800,11 @@ public static class Combat
             return;
         }
         // Objeto requerido por el hechizo (ItemRequerido + CantidadRequerida).
-        if (!esGm && sp.ItemRequerido > 0)
+        // Los hechizos especiales de guerrero (115-120) usan ItemRequerido para apuntar al
+        // pergamino que ENSEÑA el hechizo (otPergaminos), no a un reactivo que haya que
+        // conservar para lanzarlo: se consume al aprenderlo, así que ya no está en el
+        // inventario cuando el jugador lo lanza. No validar tenencia para estos.
+        if (!esGm && !esHechizoEspecial && sp.ItemRequerido > 0)
         {
             int cantReq = Math.Max(1, sp.CantidadRequerida);
             if (Inventory.ContarObjeto(u, sp.ItemRequerido) < cantReq)
@@ -784,8 +864,8 @@ public static class Combat
 
         // Determinar objetivo en (x,y). Incluye al propio usuario: hacer clic sobre uno mismo
         // es un target válido para hechizos de soporte (VB6 LookatTile no excluye al propio).
-        var npc = NpcManager.NpcAt(u.Pos.Map, x, y);
-        int targetUser = UserAt(u.Pos.Map, x, y, -1);
+        var npc = NpcManager.NpcAt(spellMap, x, y);
+        int targetUser = UserAt(spellMap, x, y, -1);
 
         // VB6 HandleCastSpell (Protocol.bas:2825): SOLO los hechizos AutoLanzar apuntan a uno
         // mismo automáticamente. El resto requiere apuntar a un objetivo (no se auto-lanzan).
@@ -806,6 +886,17 @@ public static class Combat
             && UserListManager.UserList[targetUser].flags.Muerto == 1 && !sp.Revivir)
         {
             ServerPackets.ConsoleMsg(u.Conn, "No puedes lanzar hechizos sobre un personaje muerto.", 1);
+            return;
+        }
+        // BUG-017: caso inverso — Resucitar/Resurrección sobre alguien VIVO. UserAt (arriba)
+        // no devuelve casters muertos, así que targetUser>0 acá significa que hay un vivo en
+        // el tile: sin este corte, el maná/stamina se descontaban más abajo (línea ~971,
+        // común a todo hechizo) y el casteo no hacía nada — la rama sp.Revivir (que sí
+        // revisa Muerto==1) usa UserAtIncluyeMuerto aparte y simplemente no encontraba a
+        // nadie para revivir. Se gastaba el hechizo sin avisar y sin efecto.
+        if (sp.Revivir && targetUser > 0)
+        {
+            ServerPackets.ConsoleMsg(u.Conn, "Ese personaje no está muerto.", 1);
             return;
         }
 
@@ -851,7 +942,7 @@ public static class Combat
         // (intocables) o de la propia facción/aliados. ANTES de gastar maná. Los GM saltan la restricción.
         if (!esGm && npc != null && ofensivo
             && !NpcManager.UsuarioPuedeAtacarNpc(u, npc, out string motGuardiaSpell))
-        { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, motGuardiaSpell, 1); return; }
+        { if (u.Conn != null && !string.IsNullOrEmpty(motGuardiaSpell)) ServerPackets.ConsoleMsg(u.Conn, motGuardiaSpell, 1); return; }
 
         // Seguridad/criminalidad sobre OTRO usuario, ANTES de gastar maná (1:1: PuedeAtacar para
         // ofensivos, PuedeAyudar para soporte; ambos ya muestran su propio mensaje al denegar).
@@ -880,6 +971,16 @@ public static class Combat
                 ServerPackets.ConsoleMsg(u.Conn, "El objetivo no está paralizado.", 1);
                 return;
             }
+        }
+
+        // Desencantar sólo se puede lanzar sobre un objetivo metamorfoseado. Si no lo está, no se
+        // castea (ni se gasta maná/ítem ni salen las palabras mágicas) — antes esto se validaba
+        // recién después de gastar los recursos, dejando lanzar el hechizo "en vacío".
+        if (sp.Desencantar && targetUser > 0
+            && UserListManager.UserList[targetUser].flags.Metamorfoseado == 0)
+        {
+            ServerPackets.ConsoleMsg(u.Conn, "El objetivo no está bajo ningún efecto de metamorfosis.", 1);
+            return;
         }
 
         // Paralizar/Inmovilizar: la "doble parálisis" (re-aplicar sobre un objetivo ya paralizado,
@@ -912,6 +1013,49 @@ public static class Combat
             magnitud = sp.MaxHP >= sp.MinHP && sp.MaxHP > 0 ? _rng.Next(sp.MinHP, sp.MaxHP + 1) : sp.MinHP;
         }
 
+        // Mascota compañera persistente (HECHIZO26/27/28/123/124/125): se valida TODO acá, ANTES de
+        // gastar maná/stamina, para que un intento fallido (muerta/zona segura/sin zona despejada)
+        // no consuma el hechizo. Si pasa, el bloque de más abajo (sección "Invocación de criaturas")
+        // solo tiene que invocar — la validación ya está hecha.
+        PetLeveling.PetTipo? petTipoPedidoTmp = hechizoIndex switch
+        {
+            26 => PetLeveling.PetTipo.ElementalFuego,
+            27 => PetLeveling.PetTipo.ElementalAgua,
+            28 => PetLeveling.PetTipo.ElementalTierra,
+            123 => PetLeveling.PetTipo.Ely,
+            124 => PetLeveling.PetTipo.Lobo,
+            125 => PetLeveling.PetTipo.OsoPardo,
+            _ => null,
+        };
+        if (petTipoPedidoTmp.HasValue)
+        {
+            if (u.PetDead)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "Tu mascota está muerta. Llevala a la Veterinaria para revivirla.", 1);
+                return;
+            }
+            // Descansando en el hogar (la mandaste con la mochila): no se puede reinvocar hasta
+            // que termine. Va acá arriba, con el resto de las validaciones, para no gastar maná.
+            double faltaHogar = u.PetHogarHasta - Environment.TickCount64 / 1000.0;
+            if (faltaHogar > 0)
+            {
+                int min = (int)(faltaHogar / 60), seg = (int)(faltaHogar % 60);
+                ServerPackets.ConsoleMsg(u.Conn,
+                    $"Tu mascota está descansando en el hogar. Podrás invocarla en {(min > 0 ? min + " min " : "")}{seg} s.", 1);
+                return;
+            }
+            if (EnZonaSegura(u.Pos.Map, u.Pos.X, u.Pos.Y))
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "No puedes invocar a tu mascota en zona segura.", 1);
+                return;
+            }
+            if (npc != null || targetUser > 0)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "Debes invocar a tu mascota en una zona despejada, sin personajes.", 1);
+                return;
+            }
+        }
+
         // Descontar maná y stamina (los GMs no consumen) y mostrar palabras mágicas.
         if (!esGm)
         {
@@ -937,6 +1081,29 @@ public static class Combat
         // Sonido del hechizo (VB6 LanzarHechizo: PrepareMessagePlayWave(Hechizos(Spell).WAV, x, y) si WAV<>0).
         // Centralizado: cubre cura/daño/estados/área/self. Se reproduce en la posición casteada (x,y).
         if (sp.WAV > 0) BroadcastWaveArea(u.Pos.Map, x, y, (short)sp.WAV);
+
+        // Rayo de casteo (NUEVO, no VB6): arco eléctrico del lanzador al objetivo, visible para
+        // todos los del área. Solo cuando hay un objetivo DISTINTO del propio lanzador (un beam
+        // hacia uno mismo se vería raro): NPC, otro usuario, o el tile de un hechizo de área.
+        {
+            byte tipoBeam = sp.Paraliza || sp.Inmoviliza ? (byte)2
+                : sp.Envenena > 0 ? (byte)4
+                : ofensivo ? (byte)1
+                : sp.SubeHP == 1 || sp.RemoverParalisis || sp.Revivir ? (byte)3
+                : (byte)0;
+            if (npc != null)
+                BroadcastSpellBeam(u.Pos.Map, npc.Map, u.Char.CharIndex, npc.CharIndex,
+                    u.Pos.X, u.Pos.Y, npc.X, npc.Y, tipoBeam);
+            else if (targetUser > 0 && targetUser != userIndex)
+            {
+                var tb = UserListManager.UserList[targetUser];
+                BroadcastSpellBeam(u.Pos.Map, tb.Pos.Map, u.Char.CharIndex, tb.Char.CharIndex,
+                    u.Pos.X, u.Pos.Y, tb.Pos.X, tb.Pos.Y, tipoBeam);
+            }
+            else if (sp.HechizoDeArea && (x != u.Pos.X || y != u.Pos.Y))
+                BroadcastSpellBeam(u.Pos.Map, spellMap, u.Char.CharIndex, 0,
+                    u.Pos.X, u.Pos.Y, x, y, tipoBeam);
+        }
 
         // Partícula del hechizo (InfoHechizo, modHechizos.bas:2149): sobre el objetivo si es de un
         // solo target (usuario/NPC), o sobre el tile si es de área. TimeParticula = duración.
@@ -965,7 +1132,7 @@ public static class Combat
         // enemigos (NPCs y otros usuarios); cura/buffs van a usuarios (incluido el lanzador).
         if (sp.HechizoDeArea)
         {
-            AplicarHechizoArea(u, sp, x, y, fx, fxLoops, ofensivo);
+            AplicarHechizoArea(u, sp, x, y, fx, fxLoops, ofensivo, spellMap);
             return;
         }
 
@@ -975,6 +1142,8 @@ public static class Combat
             int sana = magnitud + Porcentaje(magnitud, 3 * u.Stats.ELV);
             tgt.Stats.MinHP = (short)Math.Min(tgt.Stats.MaxHP, tgt.Stats.MinHP + sana);
             if (tgt.Conn != null) ServerPackets.UpdateHP(tgt.Conn, tgt.Stats.MinHP);
+            if (tgt.PartyId > 0) PartySystem.SendPartyMemberHP(tgt.id); // MEJORA-005
+            GmWatch.BroadcastHP(tgt.id); // GM: ve la vida de cualquiera en vivo
             BroadcastFX(u.Pos.Map, tgt.Char.CharIndex, fx, fxLoops);
             // El sonido ya se reprodujo arriba con el WAV del hechizo (sp.WAV). Si el dat no trae WAV
             // para la cura, caer al SND_SANAR clásico para no quedar sin sonido.
@@ -985,28 +1154,45 @@ public static class Combat
         {
             if (npc != null)
             {
-                // Daño a NPC: escala 3*ELV + bonus de báculo (HechizoPropNPC, modHechizos.bas:2110).
-                // Hechizos de leveo (esLeveo): magnitud YA es el daño final de la curva por nivel.
-                int dano = (esLeveo ? magnitud : magnitud + Porcentaje(magnitud, BalanceData.Combate.EscalaMagiaPvE * u.Stats.ELV)) + BonusBaculoMagico(u);
+                // Daño a NPC: escala EscalaNivelPvE*ELV + Inteligencia + bonus de báculo (HechizoPropNPC,
+                // modHechizos.bas:2110, extendido con INT y raza). Hechizos de leveo (esLeveo): magnitud
+                // YA es el daño final de la curva por nivel (no se le vuelve a aplicar el escalado de nivel).
+                int dano = esLeveo ? magnitud : magnitud + Porcentaje(magnitud, EscalaNivelHechizo(sp, pve: true) * u.Stats.ELV);
+                dano += BonusIntMagico(sp, magnitud, u.Stats.UserAtributos[3]);
+                dano += BonusBaculoMagico(u);
+                double multRazaPve = BalanceData.RazaDanoMagicoPve(u.raza);
+                if (multRazaPve != 1) dano = (int)(dano * multRazaPve);
+                dano = ClampDanoMagico(sp, dano, pve: true);
                 if (dano < 0) dano = 0;
                 BroadcastFX(u.Pos.Map, npc.CharIndex, fx, fxLoops);
                 CalcularDarExp(userIndex, npc, dano); // exp proporcional por daño mágico
                 npc.MinHP -= dano;
                 DanoInfligido(u, npc.CharIndex, dano);
+                int prevTarget = npc.TargetUser; // [[FIX4]] target antes de provocar, para detectar "atacante nuevo"
                 NpcManager.ProvocarNpc(npc, u);   // aggro por hechizo
+                NpcManager.ReaccionInmediataANuevoAtacante(npc, u, prevTarget); // [[FIX4]] no esperar al próximo TickAI
                 if (npc.MinHP <= 0) MatarNpc(u, npc);
             }
             else if (targetUser > 0)
             {
-                // Daño a usuario: escala 2*ELV + bonus báculo - ResistenciaMágica del equipo del objetivo
-                // (HechizoEstadoUsuario, modHechizos.bas:1879). El objetivo sube skill Resistencia.
+                // Daño a usuario: escala EscalaNivelPvP*ELV + Inteligencia + bonus báculo + multiplicador
+                // racial del lanzador, menos ResistenciaMágica del equipo + resistencia racial del objetivo
+                // (HechizoEstadoUsuario, modHechizos.bas:1879, extendido con INT/raza). Sube skill Resistencia.
                 var tgt = UserListManager.UserList[targetUser];
+                // Las mascotas de la víctima defienden al amo también contra hechizos PvP.
+                NpcManager.CheckPetsVsUsuario(userIndex, targetUser);
                 // Hechizos de leveo (esLeveo): magnitud YA es el daño final de la curva por nivel.
-                int dano = (esLeveo ? magnitud : magnitud + Porcentaje(magnitud, BalanceData.Combate.EscalaMagiaPvP * u.Stats.ELV)) + BonusBaculoMagico(u)
-                           - ResistenciaMagicaEquipo(tgt);
+                int dano = esLeveo ? magnitud : magnitud + Porcentaje(magnitud, EscalaNivelHechizo(sp, pve: false) * u.Stats.ELV);
+                dano += BonusIntMagico(sp, magnitud, u.Stats.UserAtributos[3]);
+                dano += BonusBaculoMagico(u);
+                double multRazaPvp = BalanceData.RazaDanoMagicoPvp(u.raza);
+                if (multRazaPvp != 1) dano = (int)(dano * multRazaPvp);
+                dano -= ResistenciaMagicaEquipo(tgt);
+                dano -= BalanceData.RazaResistenciaMagica(tgt.raza);
                 // Anillo de Defensa Mágica (708, DisminuyeGolpe(7)): reduce el daño mágico en CuantoAumento%.
                 int redPct = Inventory.CuantoEfectoMagico(tgt, 7);
                 if (redPct > 0) dano -= dano * redPct / 100;
+                dano = ClampDanoMagico(sp, dano, pve: false);
                 if (dano < 0) dano = 0;
                 Skills.SubirSkill(targetUser, 9); // eSkill.Resistencia = 9
                 BroadcastFX(u.Pos.Map, tgt.Char.CharIndex, fx, fxLoops);
@@ -1079,12 +1265,18 @@ public static class Combat
 
         // --- Invocación de criaturas (Invoca: NumNpc criaturas, Cant veces) ---
         // VB6 (modHechizos.bas:671): no se invocan criaturas en zonas seguras (mapa no-PK o ZONASEGURA).
-        var mapInv = MapLoader.Get(u.Pos.Map);
-        bool zonaSeguraInvoca = mapInv != null &&
-            (!mapInv.Info.Pk || mapInv.GetTrigger(u.Pos.X, u.Pos.Y) == eTrigger.ZONASEGURA);
+        bool zonaSeguraInvoca = EnZonaSegura(u.Pos.Map, u.Pos.X, u.Pos.Y);
         // VB6 (modHechizos.bas:687): si el hechizo de invocación tiene Warp=1, en vez de invocar
         // acerca al amo su mascota más lejana (WarpMascota).
-        if (sp.Invoca == 1 && sp.Warp)
+        // Mascota compañera persistente: validación completa (muerta/zona segura/zona despejada)
+        // ya se hizo ANTES de gastar maná (petTipoPedidoTmp más arriba) — acá solo arranca el
+        // CONJURO. La mascota no aparece en este instante: la trae TickInvocarMascota cuando el
+        // casteo termina (ver IniciarCasteoMascota).
+        if (petTipoPedidoTmp.HasValue)
+        {
+            IniciarCasteoMascota(u, petTipoPedidoTmp.Value);
+        }
+        else if (sp.Invoca == 1 && sp.Warp)
         {
             NpcManager.WarpFarthestPet(userIndex, u.Pos.Map, (byte)u.Pos.X, (byte)u.Pos.Y);
         }
@@ -1137,6 +1329,13 @@ public static class Combat
         // --- Efectos de estado sobre NPC (HechizoEstadoNPC, modHechizos.bas:1963) ---
         if (npc != null && (sp.Paraliza || sp.Inmoviliza))
         {
+            // VB6 HechizoEstadoNPC (modHechizos.bas:1980): NPC con Inmunidad=1 (AfectaParalisis)
+            // no puede ser paralizado/inmovilizado → mensaje 399 y sin efecto.
+            if (npc.AfectaParalisis)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, "¡La criatura es inmune a este hechizo!", 1);
+                return;
+            }
             // Bot de sparring: INMOVILIZAR (no paralizar) NO lo remueve: queda quieto pero sigue pegando
             // (para poder darle golpes al aire si te acercás). Sólo PARALIZAR lo remueve (fin del test).
             if (npc.IsBot && npc.BotSpar && sp.Inmoviliza && !sp.Paraliza)
@@ -1148,9 +1347,12 @@ public static class Combat
             }
             else
             {
-                NpcManager.ParalizarNpc(npc, 60.0);   // VB6 Contadores.Paralisis = 60 segundos
+                // Inmoviliza puro → visual de telaraña (tipo 2); el NPC igual queda paralizado (1:1 VB6).
+                NpcManager.ParalizarNpc(npc, 60.0,   // VB6 Contadores.Paralisis = 60 segundos
+                    tipo: (byte)(sp.Inmoviliza && !sp.Paraliza ? 2 : 1));
                 BroadcastFX(u.Pos.Map, npc.CharIndex, fx, fxLoops);
-                ServerPackets.ConsoleMsg(u.Conn, $"Has paralizado a {npc.Name}.", 1);
+                ServerPackets.ConsoleMsg(u.Conn, sp.Inmoviliza && !sp.Paraliza
+                    ? $"Has inmovilizado a {npc.Name}." : $"Has paralizado a {npc.Name}.", 1);
             }
         }
         // RemoverParalisis a un NPC: solo si es tu mascota (MaestroUser == lanzador).
@@ -1187,7 +1389,7 @@ public static class Combat
                 {
                     tgt.flags.Inmovilizado = 1; tgt.flags.ParalisisExpira = ahora + DuracionParalisisUsuario;
                     if (tgt.Conn != null) { ServerPackets.ParalizeOK(tgt.Conn); ServerPackets.ConsoleMsg(tgt.Conn, $"{u.Name} te ha inmovilizado.", 1); }
-                    DifundirParalisisUsuario(tgt, DuracionParalisisUsuario);
+                    DifundirParalisisUsuario(tgt, DuracionParalisisUsuario, tipo: 2);
                 }
             }
             if (sp.Ceguera)
@@ -1237,7 +1439,7 @@ public static class Combat
             if (sp.Invisibilidad)
             {
                 // Invisibilidad mágica: difundir SetInvisible(true) al área del objetivo.
-                for (int i = 1; i <= UserListManager.LastUser; i++)
+                foreach (int i in UsersByMapIndex.Get(tgt.Pos.Map))
                 {
                     var o = UserListManager.UserList[i];
                     if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == tgt.Pos.Map)
@@ -1267,42 +1469,21 @@ public static class Combat
                 BroadcastFX(u.Pos.Map, tgt.Char.CharIndex, fx, fxLoops);
                 if (tgt.Conn != null) ServerPackets.ConsoleMsg(tgt.Conn, "Te has sanado.", 1);
             }
-            // --- Desencantar: remueve la metamorfosis del objetivo (modHechizos.bas:1576) ---
+            // --- Desencantar: remueve la metamorfosis del objetivo (modHechizos.bas:1576). Ya se
+            // validó más arriba que el objetivo esté metamorfoseado antes de gastar maná/ítem. ---
             if (sp.Desencantar)
             {
-                if (tgt.flags.Metamorfoseado == 0)
-                    ServerPackets.ConsoleMsg(u.Conn, "El objetivo no está bajo ningún efecto de metamorfosis.", 1);
-                else
-                {
-                    RevertirMetamorfosis(targetUser);
-                    if (tgt.Conn != null) ServerPackets.ConsoleMsg(tgt.Conn, "Tu metamorfosis ha sido desencantada.", 1);
-                }
+                RevertirMetamorfosis(targetUser);
+                BroadcastFX(u.Pos.Map, tgt.Char.CharIndex, fx, fxLoops);
+                if (tgt.Conn != null) ServerPackets.ConsoleMsg(tgt.Conn, "Tu metamorfosis ha sido desencantada.", 1);
             }
             // --- Metamorfosis: transforma el body del lanzador (modHechizos.bas:1663). AutoLanzar=1,
             //     así el objetivo es siempre uno mismo (UserIndex == TargetIndex). ---
             if (sp.Metamorfosis && targetUser == userIndex)
             {
-                if (tgt.flags.Metamorfoseado == 1)
+                // 60s (Counters.Metamorfosis = 60), sin cabeza: los bodies de criatura no la tienen.
+                if (!AplicarMetamorfosis(tgt, (short)sp.Body, 0, 60.0, (short)sp.ExtraHIT, (short)sp.ExtraDEF))
                     ServerPackets.ConsoleMsg(u.Conn, "Ya estás transformado. Usa el hechizo Desencantar para sacarte el efecto.", 1);
-                else
-                {
-                    // Guardar apariencia original (si no estaba guardada).
-                    if (tgt.flags.OrigBody == 0) tgt.flags.OrigBody = tgt.Char.body;
-                    if (tgt.flags.OrigHead == 0) tgt.flags.OrigHead = tgt.Char.Head;
-                    tgt.flags.Metamorfoseado = 1;
-                    tgt.flags.MetamorfosisBody = (short)sp.Body;
-                    tgt.flags.MetamorfosisHead = 0;
-                    tgt.Char.body = (short)sp.Body;
-                    tgt.Char.Head = 0;
-                    // Bonus de stats (se revierten al terminar).
-                    if (sp.ExtraHIT > 0)
-                    { tgt.Stats.ExtraHIT += (short)sp.ExtraHIT; tgt.flags.MetamorfosisExtraHIT = (short)sp.ExtraHIT; }
-                    if (sp.ExtraDEF > 0)
-                    { tgt.Stats.ExtraDEF += (short)sp.ExtraDEF; tgt.flags.MetamorfosisExtraDEF = (short)sp.ExtraDEF; }
-                    tgt.flags.MetamorfosisExpira = ahora + 60.0; // 60s (Counters.Metamorfosis = 60)
-                    BroadcastCharacterChange(tgt);
-                    if (tgt.Conn != null) ServerPackets.ConsoleMsg(tgt.Conn, "Te has transformado.", 1);
-                }
             }
         }
     }
@@ -1318,15 +1499,16 @@ public static class Combat
     public const double DuracionParalisisUsuario = 60.0;
 
     /// <summary>Difunde la barra de progreso de parálisis del usuario a todos los del mapa
-    /// (se dibuja bajo el personaje, igual que la de los NPCs).</summary>
-    public static void DifundirParalisisUsuario(User u, double segundos)
+    /// (se dibuja bajo el personaje, igual que la de los NPCs). tipo: 1 = parálisis
+    /// (petrificado), 2 = inmovilización (enredaderas verdes).</summary>
+    public static void DifundirParalisisUsuario(User u, double segundos, byte tipo = 1)
     {
         byte segs = (byte)Math.Min(255, (int)Math.Ceiling(segundos));
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
         {
             var o = UserListManager.UserList[i];
             if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
-                ServerPackets.NpcParalysisProgress(o.Conn, u.Char.CharIndex, segs);
+                ServerPackets.NpcParalysisProgress(o.Conn, u.Char.CharIndex, segs, tipo);
         }
     }
 
@@ -1338,13 +1520,43 @@ public static class Combat
         short weapon = meta ? (short)0 : t.Char.WeaponAnim;
         short shield = meta ? (short)0 : t.Char.ShieldAnim;
         short casco  = meta ? (short)0 : t.Char.CascoAnim;
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(t.Pos.Map))
         {
             var o = UserListManager.UserList[i];
             if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == t.Pos.Map)
                 ServerPackets.CharacterChange(o.Conn, t.Char.CharIndex, t.Char.body, t.Char.Head,
                     t.Char.heading, weapon, shield, casco, t.Char.FX, t.Char.Loops, 0);
         }
+    }
+
+    /// <summary>
+    /// Transforma al usuario en otro body por un tiempo (modHechizos.bas:1663). Lo usan los hechizos
+    /// de metamorfosis y las pociones de metamorfosis (obj.dat SubTipo 14). Guarda la apariencia
+    /// original, aplica el bonus temporal de ataque/defensa y arma el vencimiento que levanta el
+    /// tick de Combat. Devuelve false si ya estaba transformado (el efecto no se aplica).
+    /// head=0 para los bodies de criatura, que no tienen cabeza aparte del cuerpo.
+    /// </summary>
+    public static bool AplicarMetamorfosis(User tgt, short body, short head, double segundos,
+                                           short extraHit, short extraDef)
+    {
+        if (tgt == null || body <= 0) return false;
+        if (tgt.flags.Metamorfoseado == 1) return false;
+
+        // Guardar apariencia original (si no estaba guardada).
+        if (tgt.flags.OrigBody == 0) tgt.flags.OrigBody = tgt.Char.body;
+        if (tgt.flags.OrigHead == 0) tgt.flags.OrigHead = tgt.Char.Head;
+        tgt.flags.Metamorfoseado = 1;
+        tgt.flags.MetamorfosisBody = body;
+        tgt.flags.MetamorfosisHead = head;
+        tgt.Char.body = body;
+        tgt.Char.Head = head;
+        // Bonus de stats (se revierten al terminar).
+        if (extraHit > 0) { tgt.Stats.ExtraHIT += extraHit; tgt.flags.MetamorfosisExtraHIT = extraHit; }
+        if (extraDef > 0) { tgt.Stats.ExtraDEF += extraDef; tgt.flags.MetamorfosisExtraDEF = extraDef; }
+        tgt.flags.MetamorfosisExpira = Environment.TickCount64 / 1000.0 + segundos;
+        BroadcastCharacterChange(tgt);
+        if (tgt.Conn != null) ServerPackets.ConsoleMsg(tgt.Conn, "Te has transformado.", 1);
+        return true;
     }
 
     /// <summary>
@@ -1540,16 +1752,29 @@ public static class Combat
     /// ±1 (3x3) centrado en el tile clickeado (cx,cy), igual que VB6 — NO usa AreaEfecto como
     /// radio (ese campo solo indica que el hechizo ES de área).
     /// </summary>
-    private static void AplicarHechizoArea(User u, SpellData.Spell sp, byte cx, byte cy, short fx, short fxLoops, bool ofensivo)
+    private static void AplicarHechizoArea(User u, SpellData.Spell sp, byte cx, byte cy, short fx, short fxLoops, bool ofensivo, int centerMap = 0)
     {
         const int radio = 1; // 3x3 fijo (VB6: PosCasteadaX-1..+1)
-        int map = u.Pos.Map;
+        int map = centerMap > 0 ? centerMap : u.Pos.Map;
+        // Mundo continuo: el 3x3 puede cruzar la costura → se compara en coords GLOBALES (el centro y
+        // cada objetivo), así el área abarca tiles del mapa vecino. Sin el flag, distancia local 1:1.
+        bool cont = Continuous.Enabled && RegionLayout.InRegion(map)
+                    && RegionLayout.TryLocalToGlobal(map, cx, cy, out int gcx0, out int gcy0);
+        int gcx = 0, gcy = 0;
+        if (cont) RegionLayout.TryLocalToGlobal(map, cx, cy, out gcx, out gcy);
+
+        bool InRadio(int tmap, int tx, int ty)
+        {
+            if (cont && RegionLayout.TryLocalToGlobal(tmap, tx, ty, out int tgx, out int tgy))
+                return Math.Abs(tgx - gcx) <= radio && Math.Abs(tgy - gcy) <= radio;
+            return tmap == map && Math.Abs(tx - cx) <= radio && Math.Abs(ty - cy) <= radio;
+        }
 
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var t = UserListManager.UserList[i];
-            if (!t.flags.UserLogged || t.Pos.Map != map || t.flags.Muerto == 1) continue;
-            if (Math.Abs(t.Pos.X - cx) > radio || Math.Abs(t.Pos.Y - cy) > radio) continue;
+            if (!t.flags.UserLogged || t.flags.Muerto == 1) continue;
+            if (!InRadio(t.Pos.Map, t.Pos.X, t.Pos.Y)) continue;
             if (ofensivo && i == u.id) continue;       // el daño no se aplica al lanzador
             if (i != u.id)                             // a otros usuarios, validar seguridad (sin spamear)
             {
@@ -1561,15 +1786,16 @@ public static class Combat
 
         if (ofensivo || sp.SubeHP == 2)
         {
-            foreach (var n in NpcManager.GetMapNpcs(map).ToArray())
-            {
-                if (n.Dead || n.MaestroUser > 0) continue;
-                if (Math.Abs(n.X - cx) > radio || Math.Abs(n.Y - cy) > radio) continue;
-                // Mismas reglas que el objetivo único: Attackable=0 y guardias aliados/Rinkel
-                // no reciben el daño de área (sin spamear mensajes por cada NPC excluido).
-                if (!NpcManager.UsuarioPuedeAtacarNpc(u, n, out _)) continue;
-                AplicarEfectoNpc(u, sp, n, fx, fxLoops);
-            }
+            // NPCs del mapa del centro + (mundo continuo) los mapas vecinos, filtrados por InRadio global.
+            var npcMaps = cont ? RegionLayout.NearbyMaps(map) : (System.Collections.Generic.IReadOnlyList<int>)new[] { map };
+            foreach (int nm in npcMaps)
+                foreach (var n in NpcManager.GetMapNpcs(nm).ToArray())
+                {
+                    if (n.Dead || n.MaestroUser > 0) continue;
+                    if (!InRadio(n.Map, n.X, n.Y)) continue;
+                    if (!NpcManager.UsuarioPuedeAtacarNpc(u, n, out _)) continue;
+                    AplicarEfectoNpc(u, sp, n, fx, fxLoops);
+                }
         }
         ServerPackets.ConsoleMsg(u.Conn, "Lanzas un hechizo de área.", 1);
     }
@@ -1595,6 +1821,8 @@ public static class Combat
             if (t.Stats.MinHP <= 0) { t.Stats.MinHP = 0; if (t.Conn != null) ServerPackets.UpdateHP(t.Conn, 0); Facciones.ContarMuerte(targetIdx, caster.id); UserDie(targetIdx); return; }
             if (t.Conn != null) ServerPackets.UpdateHP(t.Conn, t.Stats.MinHP);
         }
+        if ((sp.SubeHP == 1 || sp.SubeHP == 2) && t.PartyId > 0) PartySystem.SendPartyMemberHP(targetIdx); // MEJORA-005
+        if (sp.SubeHP == 1 || sp.SubeHP == 2) GmWatch.BroadcastHP(targetIdx); // GM: ve la vida de cualquiera en vivo
         if (sp.SubeSta > 0)
         {
             int m = sp.MaxSta >= sp.MinSta && sp.MaxSta > 0 ? _rng.Next(sp.MinSta, sp.MaxSta + 1) : sp.MinSta;
@@ -1605,21 +1833,21 @@ public static class Combat
         {
             int m = sp.MaxFuerza >= sp.MinFuerza && sp.MaxFuerza > 0 ? _rng.Next(sp.MinFuerza, sp.MaxFuerza + 1) : sp.MinFuerza;
             t.Stats.UserAtributos[1] = (byte)Math.Min(MAXATRIB, t.Stats.UserAtributos[1] + m);
-            t.flags.AtributoEfectoExpira = ahora + 120.0; t.flags.TomoPocion = true;
+            t.flags.AtributoEfectoExpira = ahora + 120.0; t.flags.TomoPocion = true; LimpiarAvisoDopa(t);
             if (t.Conn != null) ServerPackets.UpdateStrenght(t.Conn, t.Stats.UserAtributos[1]);
         }
         if (sp.SubeAgilidad == 1)
         {
             int m = sp.MaxAgilidad >= sp.MinAgilidad && sp.MaxAgilidad > 0 ? _rng.Next(sp.MinAgilidad, sp.MaxAgilidad + 1) : sp.MinAgilidad;
             t.Stats.UserAtributos[2] = (byte)Math.Min(MAXATRIB, t.Stats.UserAtributos[2] + m);
-            t.flags.AtributoEfectoExpira = ahora + 120.0; t.flags.TomoPocion = true;
+            t.flags.AtributoEfectoExpira = ahora + 120.0; t.flags.TomoPocion = true; LimpiarAvisoDopa(t);
             if (t.Conn != null) ServerPackets.UpdateDexterity(t.Conn, t.Stats.UserAtributos[2]);
         }
         // No re-aplicar si ya está paralizado/inmovilizado (ParalizeOK es toggle en cliente).
         if ((sp.Paraliza || sp.Inmoviliza) && t.flags.Paralizado == 0 && t.flags.Inmovilizado == 0)
         {
             if (sp.Paraliza) { t.flags.Paralizado = 1; t.flags.ParalisisExpira = ahora + DuracionParalisisUsuario; if (t.Conn != null) ServerPackets.ParalizeOK(t.Conn); DifundirParalisisUsuario(t, DuracionParalisisUsuario); }
-            if (sp.Inmoviliza) { t.flags.Inmovilizado = 1; t.flags.ParalisisExpira = ahora + DuracionParalisisUsuario; if (t.Conn != null) ServerPackets.ParalizeOK(t.Conn); DifundirParalisisUsuario(t, DuracionParalisisUsuario); }
+            if (sp.Inmoviliza) { t.flags.Inmovilizado = 1; t.flags.ParalisisExpira = ahora + DuracionParalisisUsuario; if (t.Conn != null) ServerPackets.ParalizeOK(t.Conn); DifundirParalisisUsuario(t, DuracionParalisisUsuario, tipo: 2); }
         }
         if (sp.Ceguera) { t.flags.Ciego = 1; t.flags.CegueraExpira = ahora + 6.0; if (t.Conn != null) ServerPackets.Blind(t.Conn); }
         if (sp.Envenena > 0) { t.flags.Envenenado = 1; t.flags.NivelVeneno = sp.Envenena; }
@@ -1632,12 +1860,15 @@ public static class Combat
     private static void AplicarEfectoNpc(User caster, SpellData.Spell sp, NpcManager.NpcInstance n, short fx, short fxLoops)
     {
         BroadcastFX(caster.Pos.Map, n.CharIndex, fx, fxLoops);
-        if (sp.Paraliza || sp.Inmoviliza) NpcManager.ParalizarNpc(n, 8.0);
+        if (sp.Paraliza || sp.Inmoviliza)
+            NpcManager.ParalizarNpc(n, 8.0, tipo: (byte)(sp.Inmoviliza && !sp.Paraliza ? 2 : 1));
         if (sp.SubeHP == 2)
         {
             int m = sp.MaxHP >= sp.MinHP && sp.MaxHP > 0 ? _rng.Next(sp.MinHP, sp.MaxHP + 1) : sp.MinHP;
             m += Porcentaje(m, 3 * caster.Stats.ELV); // escala con nivel (igual que single-target)
+            int prevTarget = n.TargetUser;             // [[FIX4]] target antes de provocar, para detectar "atacante nuevo"
             NpcManager.ProvocarNpc(n, caster);         // aggro por hechizo de área
+            NpcManager.ReaccionInmediataANuevoAtacante(n, caster, prevTarget); // [[FIX4]] no esperar al próximo TickAI
             CalcularDarExp(caster.id, n, m);           // exp proporcional al daño de área
             n.MinHP -= m;
             if (n.MinHP <= 0) MatarNpc(caster, n);
@@ -1674,13 +1905,389 @@ public static class Combat
         for (int i = 1; i <= Constants.MAXMASCOTAS; i++)
             if (u.MascotasCharIndex[i] == 0) { u.MascotasCharIndex[i] = n.CharIndex; break; }
         u.NroMascotas++;
+        u.UltimaMascotaNpc = npcIndex; // para la poción de resucitar mascotas
         return n;
+    }
+
+    /// <summary>Cuánto dura el conjuro de invocación de la mascota. Entre el casteo de Resurrección
+    /// (3 s) y nada: traer a la compañera tiene que costar quedarse quieto, pero no tanto como
+    /// revivir a alguien.</summary>
+    public const double PET_SEGUNDOS_CASTEO = 2.2;
+
+    /// <summary>FX del CONJURO de invocación (sobre el lanzador, mientras castea). Como el 200, es
+    /// un id nuevo que sólo dibuja el motor nuevo; el cliente lo alias-ea al FX 7.</summary>
+    public const short FX_CASTEO_MASCOTA = 201;
+
+    /// <summary>
+    /// Arranca el conjuro de invocación de la mascota compañera. NO la invoca: fija el estado de
+    /// casteo (posición y momento de fin) y difunde el FX del conjuro sobre el lanzador. La trae
+    /// TickInvocarMascota al completarse, y CancelarCasteoMascota lo corta si se mueve o muere.
+    /// El maná ya se descontó en CastSpell: igual que el casteo de resucitar, si te movés lo
+    /// perdiste — es el riesgo que hace que el conjuro se sienta como tal.
+    /// </summary>
+    private static void IniciarCasteoMascota(User u, PetLeveling.PetTipo tipo)
+    {
+        u.InvocandoPetHasta = Environment.TickCount64 / 1000.0 + PET_SEGUNDOS_CASTEO;
+        u.InvocandoPetTipo = (byte)tipo;
+        u.InvocandoPetX = (byte)u.Pos.X; u.InvocandoPetY = (byte)u.Pos.Y;
+        u.InvocandoPetMap = (short)u.Pos.Map;
+        BroadcastFX(u.Pos.Map, u.Char.CharIndex, FX_CASTEO_MASCOTA, 1);
+        ServerPackets.ConsoleMsg(u.Conn, "Comenzás a tejer el vínculo con tu mascota. No te muevas.", 1);
+    }
+
+    /// <summary>Avanza el conjuro de invocación. Se cancela si el lanzador se mueve, muere, cambia
+    /// de mapa o queda en zona segura; al completarse invoca la mascota donde está parado.</summary>
+    public static void TickInvocarMascota(int userIndex, User u)
+    {
+        bool cancelar = u.flags.Muerto == 1
+            || u.Pos.Map != u.InvocandoPetMap
+            || u.Pos.X != u.InvocandoPetX || u.Pos.Y != u.InvocandoPetY
+            || EnZonaSegura(u.Pos.Map, u.Pos.X, u.Pos.Y);
+        if (cancelar)
+        {
+            CancelarCasteoMascota(u, avisar: true);
+            return;
+        }
+        if (Environment.TickCount64 / 1000.0 < u.InvocandoPetHasta) return; // sigue casteando
+
+        var tipo = (PetLeveling.PetTipo)u.InvocandoPetTipo;
+        u.InvocandoPetHasta = 0; u.InvocandoPetTipo = 0;
+        InvocarMascotaPersistente(u, tipo, (byte)u.Pos.X, (byte)u.Pos.Y);
+    }
+
+    /// <summary>Corta el conjuro de invocación (movimiento, muerte, ataque recibido). No devuelve
+    /// el maná, igual que el casteo de resucitar.</summary>
+    public static void CancelarCasteoMascota(User u, bool avisar)
+    {
+        if (u == null || u.InvocandoPetHasta <= 0) return;
+        u.InvocandoPetHasta = 0; u.InvocandoPetTipo = 0;
+        if (avisar && u.Conn != null)
+            ServerPackets.ConsoleMsg(u.Conn, "El vínculo se cortó: la invocación se interrumpió.", 1);
+    }
+
+    /// <summary>FX de la invocación de la mascota compañera. Es un id NUEVO, fuera de fxs.json a
+    /// propósito: no existe ningún gráfico animado para él, lo dibuja el VFX Engine del cliente
+    /// (preset "pet_summon", sello rúnico procedural). El cliente lo alias-ea al FX 7 si el motor
+    /// nuevo está apagado, así un cliente viejo ve la invocación de siempre en vez de nada.</summary>
+    /// <summary>Cuánto dura la parálisis que lanza un NPC (o una mascota) sobre otro NPC. Corta a
+    /// propósito comparada con los 60 s del hechizo de un jugador: acá el que paraliza es la IA y
+    /// encima puede repetirlo, así que 60 s dejaría al bicho fuera de la pelea para siempre.</summary>
+    public const double DURACION_PARALISIS_NPC_HECHIZO = 8.0;
+
+    public const short FX_INVOCAR_MASCOTA = 200;
+
+    /// <summary>
+    /// Invoca/reinvoca la mascota compañera PERSISTENTE del jugador (elemental/Ely para Mago-
+    /// Nigromante, lobo/oso pardo para Cazador). Distinta de InvocarCriatura: recalcula sus stats
+    /// según el nivel guardado en vez de usar los crudos del .dat, solo permite una viva a la vez
+    /// (invocar otra reemplaza a la anterior), y persiste entre reconexiones (User.PetTipo/Nivel/Exp).
+    /// Elegir un tipo distinto al que ya tenía reinicia su progreso (es una mascota nueva).
+    /// Público: también lo usa la Veterinaria (Accion.cs) para revivirla sin pasar por un hechizo.
+    /// </summary>
+    public static void InvocarMascotaPersistente(User u, PetLeveling.PetTipo tipo, byte x, byte y)
+    {
+        if (u.PetCharIndex > 0)
+        {
+            var actual = NpcManager.NpcByCharIndex(u.Pos.Map, u.PetCharIndex);
+            if (actual != null) NpcManager.RemoveNpc(actual);
+            u.PetCharIndex = 0;
+        }
+
+        if ((byte)tipo != u.PetTipo) { u.PetTipo = (byte)tipo; u.PetNivel = 1; u.PetExp = 0; }
+
+        // AL LADO del jugador, nunca encima: (x,y) llega siendo la posición del propio dueño
+        // (tanto desde el conjuro como desde la Veterinaria), y spawnear ahí dejaba a la mascota
+        // pisando el mismo tile que el amo — se veían superpuestos y el pathfinding de la mascota
+        // arranca "atascado" (el movimiento se niega a pisar a un usuario, ver evitarUsuarios).
+        // TileLibreAlLado prueba primero el tile que el jugador tiene ENFRENTE.
+        if (NpcManager.TileLibreAlLado(u.Pos.Map, x, y, u.Char.heading, out int px, out int py))
+        { x = (byte)px; y = (byte)py; }
+
+        int npcIndex = PetLeveling.NpcIndexFor(tipo);
+        var n = NpcManager.SpawnAt(u.Pos.Map, npcIndex, x, y);
+        if (n == null) return;
+
+        n.PetOfPlayer = true;
+        n.PetTipo = (byte)tipo;
+        n.PetNivel = u.PetNivel;
+        n.PetExp = u.PetExp;
+        n.PetNombre = u.PetNombre;
+        n.MaestroUser = u.id;
+        n.Movement = 8; // SigueAmo
+        n.NoRespawn = true; // compañera: no revive sola, se reinvoca con el hechizo
+
+        RecalcularStatsMascota(n);
+        u.PetCharIndex = n.CharIndex;
+        u.PetDead = false;
+        // FX propio de la invocación, SOBRE LA MASCOTA (no sobre el que castea): el sello se
+        // dibuja en el piso donde el bicho aparece. Es el segundo tiempo del efecto — el primero
+        // es FX_CASTEO_MASCOTA sobre el lanzador mientras conjura.
+        // OJO: el FXgrh 7 del hechizo NO se difunde en este camino. El FX genérico de invocación
+        // lo manda InvocarCriatura (sobre la criatura), y la mascota compañera no pasa por ahí:
+        // si no fuera por estas dos líneas, invocarla no mostraría absolutamente nada.
+        BroadcastFX(u.Pos.Map, (short)n.CharIndex, FX_INVOCAR_MASCOTA, 1);
+        string nombreMostrar = !string.IsNullOrEmpty(n.PetNombre) ? n.PetNombre : n.Name;
+        ServerPackets.ConsoleMsg(u.Conn, $"Has invocado a {nombreMostrar} (nivel {n.PetNivel}).", 1);
+        EnviarPetInfo(u);
+    }
+
+    /// <summary>Recalcula HP/daño/poder de la mascota compañera para su PetNivel actual (PetLeveling),
+    /// misma idea que Bots.SubirNivelBot pero con la tabla propia (más floja) de PetLeveling.</summary>
+    private static void RecalcularStatsMascota(NpcManager.NpcInstance pet)
+    {
+        var tipo = (PetLeveling.PetTipo)pet.PetTipo;
+        int hpNuevo = PetLeveling.VidaFijaPorNivel(tipo, pet.PetNivel);
+        pet.MaxHP = hpNuevo;
+        if (pet.MinHP <= 0 || pet.MinHP > hpNuevo) pet.MinHP = hpNuevo;
+        var (minHit, maxHit) = PetLeveling.DanoPorNivel(tipo, pet.PetNivel);
+        pet.MinHIT = minHit; pet.MaxHIT = maxHit;
+        var (poderAtaque, poderEvasion) = PetLeveling.PoderPorNivel(tipo, pet.PetNivel);
+        pet.PoderAtaque = poderAtaque; pet.PoderEvasion = poderEvasion;
+
+        // Hechizos por nivel (ej. Ely: Proyectil Mágico 1-9, Descarga Eléctrica desde 10).
+        // null = no tiene progresión propia, conserva lo que ya tenía (Lobo/Oso no castean).
+        var spells = PetLeveling.SpellsPorNivel(tipo, pet.PetNivel);
+        if (spells != null) pet.Spells = spells;
+    }
+
+    /// <summary>Manda al dueño el estado de su mascota para el panel del cliente (nivel/exp,
+    /// HP, hechizos a este nivel), esté o no invocada AHORA MISMO — el panel se puede
+    /// previsualizar con los datos guardados (Tipo/Nivel/Exp/Nombre) sin tener que salir a
+    /// invocarla primero. Si está viva de verdad usa su HP/hechizos en vivo (combate);
+    /// si no, muestra el HP máximo "en reposo" calculado para su nivel guardado.
+    /// Se llama al entrar al mundo (LoginFlow), al invocar, subir de nivel, morir, y cuando
+    /// cambia su HP en combate (ver TickMascota).</summary>
+    public static void EnviarPetInfo(User u)
+    {
+        if (u?.Conn == null) return;
+        // Sin mascota TODAVÍA: se mandan las opciones que su clase podría elegir. Es el caso de
+        // los personajes creados antes de que la mascota fuera parte de la creación — el panel
+        // les muestra el elegidor en vez del texto de "no tenés ninguna" (ver PetElegir).
+        if (u.PetTipo == 0)
+        {
+            var elegibles = PetLeveling.OpcionesPara(u.Clase);
+            var bytes = new byte[elegibles.Length];
+            for (int i = 0; i < elegibles.Length; i++) bytes[i] = (byte)elegibles[i];
+            ServerPackets.PetInfo(u.Conn, 0, 0, 0, 0, 0, 0, "", null, false, false, opcionesElegibles: bytes);
+            return;
+        }
+
+        var tipo = (PetLeveling.PetTipo)u.PetTipo;
+        var pet = u.PetCharIndex > 0 ? NpcManager.NpcByCharIndex(u.Pos.Map, u.PetCharIndex) : null;
+        int expSiguiente = u.PetNivel < Leveling.STAT_MAXELV ? Leveling.ELU(u.PetNivel) : 0;
+
+        if (pet != null && !pet.Dead)
+        {
+            var (spMinVivo, spMaxVivo) = DanoDeHechizoMascota(pet.Spells);
+            ServerPackets.PetInfo(u.Conn, u.PetTipo, u.PetNivel, u.PetExp, expSiguiente,
+                Math.Max(0, pet.MinHP), pet.MaxHP, u.PetNombre, pet.Spells, invocada: true, muerta: false,
+                minHit: pet.MinHIT, maxHit: pet.MaxHIT, spellMin: spMinVivo, spellMax: spMaxVivo,
+                charIndex: pet.CharIndex);
+        }
+        else
+        {
+            // No invocada ahora: vista previa con el HP "en reposo" (máximo) de su nivel guardado,
+            // salvo que esté muerta (PetDead) — ahí se muestra en 0 hasta que la revivan (Veterinaria
+            // o recastear el hechizo).
+            int hpMax = PetLeveling.VidaFijaPorNivel(tipo, u.PetNivel);
+            var spells = PetLeveling.SpellsPorNivel(tipo, u.PetNivel);
+            var (minHitPrev, maxHitPrev) = PetLeveling.DanoPorNivel(tipo, u.PetNivel);
+            var (spMinPrev, spMaxPrev) = DanoDeHechizoMascota(spells);
+            ServerPackets.PetInfo(u.Conn, u.PetTipo, u.PetNivel, u.PetExp, expSiguiente,
+                u.PetDead ? 0 : hpMax, hpMax, u.PetNombre, spells, invocada: false, muerta: u.PetDead,
+                minHit: minHitPrev, maxHit: maxHitPrev, spellMin: spMinPrev, spellMax: spMaxPrev);
+        }
+    }
+
+    /// <summary>Daño (Hechizos.dat MinHP/MaxHP) del hechizo que la mascota lanza HOY, para el panel.
+    /// (0,0) si no castea. Ojo: ese daño lo fija el hechizo, NO escala con el nivel de la mascota
+    /// — sólo cambia cuando aprende otro hechizo (Ely: Proyectil Mágico → Descarga Eléctrica en 10).
+    /// Se toma el primero de la lista: hoy ninguna mascota tiene más de uno a la vez.</summary>
+    private static (int min, int max) DanoDeHechizoMascota(short[] spells)
+    {
+        if (spells == null || spells.Length == 0) return (0, 0);
+        var sp = SpellData.Get(spells[0]); // struct: si el id no existe vuelve default (SubeHP 0)
+        if (sp.SubeHP != 2) return (0, 0);  // != 2 → no es un hechizo que dañe
+        int min = sp.MinHP, max = sp.MaxHP < sp.MinHP ? sp.MinHP : sp.MaxHP;
+        return max > 0 ? (min, max) : (0, 0);
+    }
+
+    /// <summary>Le da experiencia a la mascota compañera del jugador (fracción de la exp del amo,
+    /// CalcularDarExp) y la sube de nivel si corresponde, hasta el tope PetLeveling (50).</summary>
+    private static void DarExpAMascota(User u, int exp)
+    {
+        if (u.PetCharIndex <= 0 || exp <= 0) return;
+        var pet = NpcManager.NpcByCharIndex(u.Pos.Map, u.PetCharIndex);
+        if (pet == null || pet.Dead || !pet.PetOfPlayer) return;
+
+        const int PET_EXP_FRACCION = 4; // la mascota gana 1/4 de la exp que gana el amo
+        int petExp = exp / PET_EXP_FRACCION;
+        AplicarExpMascota(u, pet, petExp);
+    }
+
+    /// <summary>Núcleo compartido: aplica 'petExp' YA CALCULADA a la mascota (sube de nivel si
+    /// corresponde) y sincroniza User+panel. Lo usan DarExpAMascota (fracción de la exp del amo,
+    /// cuando pega ÉL) y CalcularDarExpMascota (cuando la que pega es la mascota).</summary>
+    private static void AplicarExpMascota(User u, NpcManager.NpcInstance pet, int petExp)
+    {
+        if (petExp <= 0) return;
+
+        pet.PetExp += petExp;
+        bool subio = false;
+        while (pet.PetNivel < Leveling.STAT_MAXELV && pet.PetExp >= Leveling.ELU(pet.PetNivel))
+        {
+            pet.PetExp -= Leveling.ELU(pet.PetNivel);
+            pet.PetNivel++;
+            subio = true;
+        }
+        if (subio)
+        {
+            RecalcularStatsMascota(pet);
+            // Subir de nivel la cura por completo (mismo espíritu que el level-up del jugador, que
+            // deja la vida llena): premia pelear y evita tener que ir a curarla tras cada nivel.
+            pet.MinHP = pet.MaxHP;
+            pet.PetHPUltimoAvisado = pet.MinHP; // el panel ya se refresca acá abajo con EnviarPetInfo
+            string nombreMostrar = !string.IsNullOrEmpty(pet.PetNombre) ? pet.PetNombre : pet.Name;
+            if (u.Conn != null)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, $"¡{nombreMostrar} subió al nivel {pet.PetNivel}!", 1);
+                // "pega X-Y" es el golpe cuerpo a cuerpo: para una mascota casteadora (Ely) eso es
+                // sólo una parte de su daño, así que se aclara que el hechizo va aparte.
+                var (spMin, spMax) = DanoDeHechizoMascota(pet.Spells);
+                string comoPega = spMax > 0
+                    ? $"su golpe cuerpo a cuerpo hace {pet.MinHIT}-{pet.MaxHIT} (su hechizo, {spMin}-{spMax}, no cambia con el nivel)"
+                    : $"ahora pega {pet.MinHIT}-{pet.MaxHIT}";
+                ServerPackets.ConsoleMsg(u.Conn, $"{nombreMostrar} recuperó toda su vida ({pet.MaxHP}) y {comoPega}.", 1);
+            }
+        }
+        // Reflejar el progreso en el User para que persista aunque la mascota se despawnee después.
+        u.PetNivel = pet.PetNivel; u.PetExp = pet.PetExp;
+        EnviarPetInfo(u); // refresca la barra de progreso del panel (subió de nivel o no)
+    }
+
+    /// <summary>Exp cuando quien dañó al NPC fue la MASCOTA (no el dueño): mismo mecanismo que
+    /// CalcularDarExp (proporcional al daño, tomada del pool ExpCount del NPC) pero repartida mitad
+    /// para la progresión de la mascota y mitad para el dueño — "gana experiencia y reparte con el
+    /// dueño" (pedido explícito). Se llama desde NpcAtacaNpc/NpcLanzaSpellANpc cuando el atacante
+    /// es una mascota compañera (PetOfPlayer).</summary>
+    public static void CalcularDarExpMascota(NpcManager.NpcInstance pet, NpcManager.NpcInstance npc, int elDano)
+    {
+        if (elDano <= 0 || npc.MaxHP <= 0 || npc.ExpCount <= 0 || pet.MaestroUser <= 0) return;
+        if (elDano > npc.MinHP) elDano = Math.Max(0, npc.MinHP);
+
+        int expaDar = (int)((long)elDano * npc.GiveEXP / npc.MaxHP);
+        if (expaDar <= 0) return;
+        if (expaDar > npc.ExpCount) { expaDar = npc.ExpCount; npc.ExpCount = 0; }
+        else npc.ExpCount -= expaDar;
+        expaDar = (int)(expaDar * BalanceData.Exp.TasaGlobal);
+        expaDar *= Math.Max(1, Events.ExpMultiplicador);
+
+        var u = UserListManager.UserList[pet.MaestroUser];
+        if (u == null) return;
+
+        int paraMascota = expaDar / 2;
+        int paraDueño = expaDar - paraMascota;
+
+        if (paraDueño > 0)
+        {
+            u.Stats.Exp += paraDueño;
+            if (u.Conn != null)
+            {
+                ServerPackets.ConsoleMsg(u.Conn, $"Tu mascota consiguió {paraDueño} puntos de experiencia para vos.", 13);
+                ServerPackets.UpdateExp(u.Conn, (int)u.Stats.Exp);
+            }
+            CheckUserLevel(u);
+        }
+        if (paraMascota > 0 && pet.PetOfPlayer) AplicarExpMascota(u, pet, paraMascota);
+    }
+
+    /// <summary>Despawnea (sin perder progreso) la mascota compañera del jugador: se llama al
+    /// desconectar/volver al panel de personajes para que no quede huérfana vagando en el mapa.
+    /// Tipo/Nivel/Exp quedan intactos en el User para reinvocarla igual al reconectar.</summary>
+    public static void DespawnMascotaPersistente(User u)
+    {
+        if (u.PetCharIndex <= 0) return;
+        var pet = NpcManager.NpcByCharIndex(u.Pos.Map, u.PetCharIndex);
+        if (pet != null) NpcManager.RemoveNpc(pet);
+        u.PetCharIndex = 0;
+    }
+
+    /// <summary>Zona segura (VB6 modHechizos.bas:671): mapa no-PK o tile con trigger ZONASEGURA.
+    /// Es la misma condición que prohíbe invocar criaturas/mascotas.</summary>
+    public static bool EnZonaSegura(int map, int x, int y)
+    {
+        var md = MapLoader.Get(map);
+        return md != null && (!md.Info.Pk || md.GetTrigger(x, y) == eTrigger.ZONASEGURA);
+    }
+
+    /// <summary>La mascota compañera no puede estar en zona segura: si el dueño entra a una
+    /// (cambio de mapa a uno no-PK, o pisando un tile ZONASEGURA dentro de un mapa inseguro),
+    /// se desinvoca en vez de seguirlo adentro. No muere ni pierde progreso: se reinvoca con el
+    /// hechizo al volver a zona insegura. Devuelve true si la desinvocó.
+    /// Complementa el bloqueo que ya existía al INVOCARLA en zona segura (CastSpell).</summary>
+    public static bool ChequearMascotaZonaSegura(User u)
+    {
+        if (u == null || u.PetCharIndex <= 0) return false;
+        if (!EnZonaSegura(u.Pos.Map, u.Pos.X, u.Pos.Y)) return false;
+        DespawnMascotaPersistente(u);
+        if (u.Conn != null)
+            ServerPackets.ConsoleMsg(u.Conn, "Tu mascota no puede entrar en zona segura. Invocala de nuevo al salir.", 1);
+        EnviarPetInfo(u);
+        return true;
+    }
+
+    /// <summary>
+    /// Invoca una criatura como mascota al lado del jugador, sin hechizo: la usan las pociones
+    /// de invocar (SubTipo 22) y de resucitar mascotas (SubTipo 21). Respeta el tope de mascotas
+    /// y no funciona en zona segura, igual que los hechizos de invocación. Devuelve el motivo
+    /// del fallo en 'motivo' para poder avisarlo por consola y no consumir el ítem.
+    /// </summary>
+    public static bool InvocarMascotaDeItem(User u, int npcIndex, out string motivo)
+    {
+        motivo = null;
+        if (npcIndex <= 0) { motivo = "Este objeto no tiene ninguna criatura configurada."; return false; }
+        if (u.NroMascotas >= Constants.MAXMASCOTAS)
+        { motivo = "No puedes controlar más criaturas."; return false; }
+
+        if (EnZonaSegura(u.Pos.Map, u.Pos.X, u.Pos.Y))
+        { motivo = "No puedes invocar criaturas en zona segura."; return false; }
+
+        if (InvocarCriatura(u, npcIndex, (byte)u.Pos.X, (byte)u.Pos.Y) == null)
+        { motivo = "No se pudo invocar la criatura aquí."; return false; }
+        return true;
+    }
+
+    /// <summary>
+    /// Scroll del Trueno (obj.dat SubTipo 12): bonus temporal de daño. Si ya hay uno activo no se
+    /// re-aplica (devuelve false y el scroll no se consume), para que no se apilen indefinidamente.
+    /// </summary>
+    public static bool AplicarScrollTrueno(User u, short bonus, double segundos)
+    {
+        if (bonus <= 0) return false;
+        double ahora = Environment.TickCount64 / 1000.0;
+        if (u.flags.ScrollHitBonus > 0 && u.flags.ScrollHitExpira > ahora) return false;
+        u.Stats.ExtraHIT += bonus;
+        u.flags.ScrollHitBonus = bonus;
+        u.flags.ScrollHitExpira = ahora + segundos;
+        return true;
+    }
+
+    /// <summary>Quita el bonus del Scroll del Trueno (al vencer, al morir y al desloguear).</summary>
+    public static void QuitarScrollTrueno(User u, bool avisar = true)
+    {
+        if (u == null || u.flags.ScrollHitBonus <= 0) return;
+        u.Stats.ExtraHIT -= u.flags.ScrollHitBonus;
+        if (u.Stats.ExtraHIT < 0) u.Stats.ExtraHIT = 0;
+        u.flags.ScrollHitBonus = 0;
+        u.flags.ScrollHitExpira = 0;
+        if (avisar && u.Conn != null)
+            ServerPackets.ConsoleMsg(u.Conn, "El poder del Scroll del Trueno se ha desvanecido.", 1);
     }
 
     /// <summary>userIndex en (x,y) incluyendo muertos (para Revivir). 0 si no hay.</summary>
     private static int UserAtIncluyeMuerto(int map, int x, int y)
     {
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(map))
         {
             var o = UserListManager.UserList[i];
             if (o.flags.UserLogged && o.Pos.Map == map && o.Pos.X == x && o.Pos.Y == y) return i;
@@ -1689,16 +2296,20 @@ public static class Combat
     }
 
     /// <summary>Revela a los ocultos/invisibles en el área del lanzador (hechizo RemueveInvis).</summary>
+    // [[b4_usersbymap]] Antes O(n²): loop externo × loop interno, ambos sobre LastUser completo.
+    // Ambos loops ya filtraban por Pos.Map (externo: o.Pos.Map != u.Pos.Map; interno: p.Pos.Map ==
+    // o.Pos.Map, que es el MISMO mapa que u.Pos.Map por construcción del filtro externo) — quedó
+    // O(usuarios_del_mapa²) en el peor caso, en vez de O(usuarios_totales²).
     private static void RevelarArea(User u)
     {
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
         {
             var o = UserListManager.UserList[i];
             if (!o.flags.UserLogged || o.Conn == null || o.Pos.Map != u.Pos.Map) continue;
             if (Math.Abs(o.Pos.X - u.Pos.X) > 8 || Math.Abs(o.Pos.Y - u.Pos.Y) > 8) continue;
             if (o.flags.Oculto != 1) continue;
             o.flags.Oculto = 0;
-            for (int j = 1; j <= UserListManager.LastUser; j++)
+            foreach (int j in UsersByMapIndex.Get(o.Pos.Map))
             {
                 var p = UserListManager.UserList[j];
                 if (p?.flags.UserLogged == true && p.Conn != null && p.Pos.Map == o.Pos.Map)
@@ -1711,6 +2322,11 @@ public static class Combat
 
     /// <summary>
     /// Expira los efectos de estado vencidos de todos los usuarios. Lo llama un timer.
+    /// [[b4_usersbymap]] El loop EXTERNO (abajo) NO se migra a UsersByMapIndex a propósito: cada
+    /// usuario online tiene que revisar SUS PROPIOS timers (parálisis, ceguera, veneno, invisibilidad,
+    /// etc.) sin importar en qué mapa esté — no hay ningún "mapa" por el cual filtrar de antemano,
+    /// así que hace falta recorrer a TODOS los logueados igual que antes. Sólo el loop INTERNO de la
+    /// rama de invisibilidad (más abajo) se migró, porque ESE sí difunde solo al mapa del usuario.
     /// </summary>
     public static void TickEstados()
     {
@@ -1788,7 +2404,10 @@ public static class Combat
                 if (u.flags.Invisible == 1)
                 {
                     u.flags.Invisible = 0;
-                    for (int p = 1; p <= UserListManager.LastUser; p++)
+                    // [[b4_usersbymap]] Este loop era el segundo brazo del O(n²) de TickEstados (el
+                    // externo NO se migra: necesita recorrer TODOS los usuarios online para chequear
+                    // sus propios timers, sin importar el mapa — ver comentario en TickEstados).
+                    foreach (int p in UsersByMapIndex.Get(u.Pos.Map))
                     {
                         var o = UserListManager.UserList[p];
                         if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -1810,6 +2429,20 @@ public static class Combat
             if (u.flags.MetamorfosisExpira > 0 && ahora >= u.flags.MetamorfosisExpira)
                 RevertirMetamorfosis(i);
 
+            // Scroll del Trueno: al vencer se saca el bonus de daño.
+            if (u.flags.ScrollHitBonus > 0 && ahora >= u.flags.ScrollHitExpira)
+                QuitarScrollTrueno(u);
+
+            // Buff/debuff de atributos: en los últimos segundos, reloj de arena sobre el char
+            // como aviso de que la dopa está por vencer (se limpia en RestaurarAtributos).
+            if (u.flags.TomoPocion && !u.flags.AtributoEfectoAvisado && u.flags.AtributoEfectoExpira > 0
+                && ahora >= u.flags.AtributoEfectoExpira - SEGUNDOS_AVISO_DOPA)
+            {
+                u.flags.AtributoEfectoAvisado = true;
+                BroadcastParticulaChar(u.Pos.Map, u.Char.CharIndex, PARTICULA_DOPA_POR_VENCER, -1);
+                ServerPackets.ConsoleMsg(u.Conn, "El efecto de la poción está por desvanecerse.", 1);
+            }
+
             // Buff/debuff de atributos: al expirar, restaurar atributos base (General.bas:1475).
             if (u.flags.TomoPocion && u.flags.AtributoEfectoExpira > 0 && ahora >= u.flags.AtributoEfectoExpira)
                 RestaurarAtributos(u);
@@ -1820,7 +2453,45 @@ public static class Combat
                 u.flags.FurorIgneo = false;
                 ServerPackets.ConsoleMsg(u.Conn, "El Furor Ígneo se ha desvanecido.", 1);
             }
+
+            // Scrolls de EXP/Oro: avisar cuando termina el efecto, limpiar el flag y apagar el chip del HUD.
+            if (u.flags.ScrollExpMult > 1 && ahora >= u.flags.ScrollExpExpira)
+            {
+                u.flags.ScrollExpMult = 0; u.flags.ScrollExpExpira = 0;
+                ServerPackets.ScrollBuff(u.Conn, 1, 0, 0);
+                ServerPackets.ConsoleMsg(u.Conn, "El efecto del scroll de experiencia ha terminado.", 1);
+            }
+            if (u.flags.ScrollOroMult > 1 && ahora >= u.flags.ScrollOroExpira)
+            {
+                u.flags.ScrollOroMult = 0; u.flags.ScrollOroExpira = 0;
+                ServerPackets.ScrollBuff(u.Conn, 2, 0, 0);
+                ServerPackets.ConsoleMsg(u.Conn, "El efecto del scroll de oro ha terminado.", 1);
+            }
         }
+    }
+
+    /// <summary>Multiplicador del scroll de EXP si está vigente; 1 si no hay efecto.</summary>
+    public static int ScrollExpMultActivo(User u)
+        => u.flags.ScrollExpMult > 1 && Environment.TickCount64 / 1000.0 < u.flags.ScrollExpExpira
+            ? u.flags.ScrollExpMult : 1;
+
+    /// <summary>Multiplicador del scroll de Oro si está vigente; 1 si no hay efecto.</summary>
+    public static int ScrollOroMultActivo(User u)
+        => u.flags.ScrollOroMult > 1 && Environment.TickCount64 / 1000.0 < u.flags.ScrollOroExpira
+            ? u.flags.ScrollOroMult : 1;
+
+    // ID centinela 999 (fuera del rango de particles.ini): el cliente Godot no crea partícula,
+    // activa el VFX de pulso dorado "dopa por vencer" (tile_engine._dopa_warning_color), 10s antes.
+    private const short PARTICULA_DOPA_POR_VENCER = 999;
+    private const double SEGUNDOS_AVISO_DOPA = 10.0;
+
+    /// <summary>Si el aviso de dopa por vencer está activo, saca el reloj de arena y rearma el
+    /// aviso (se llama al renovar el buff con otra poción/hechizo dentro de la ventana).</summary>
+    public static void LimpiarAvisoDopa(User u)
+    {
+        if (!u.flags.AtributoEfectoAvisado) return;
+        u.flags.AtributoEfectoAvisado = false;
+        BroadcastParticulaChar(u.Pos.Map, u.Char.CharIndex, PARTICULA_DOPA_POR_VENCER, 0, remove: true);
     }
 
     /// <summary>Restaura UserAtributos al BackUP base y limpia el efecto temporal (DuracionEfecto a 0).</summary>
@@ -1828,6 +2499,7 @@ public static class Combat
     {
         u.flags.TomoPocion = false;
         u.flags.AtributoEfectoExpira = 0;
+        LimpiarAvisoDopa(u);
         for (int a = 1; a <= Constants.NUMATRIBUTOS; a++)
             u.Stats.UserAtributos[a] = u.Stats.UserAtributosBackUP[a];
         if (u.Conn != null)
@@ -1966,7 +2638,7 @@ public static class Combat
         {
             if (u.flags.Invisible == 1)
             { ServerPackets.ConsoleMsg(u.Conn, "Ya estás invisible.", 1); return false; }
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
             {
                 var o = UserListManager.UserList[i];
                 if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -2095,6 +2767,40 @@ public static class Combat
     /// <summary>Porcentaje(valor, p) = valor * p / 100. Usado para escalar daño/cura mágico con el nivel.</summary>
     private static int Porcentaje(int valor, int p) => valor * p / 100;
 
+    /// <summary>Escala de nivel a usar para ESTE hechizo (override propio del .dat si &gt; 0, si no el default global).</summary>
+    private static int EscalaNivelHechizo(in SpellData.Spell sp, bool pve)
+    {
+        var cc = BalanceData.Combate;
+        return pve
+            ? (sp.EscalaNivelPvE > 0 ? sp.EscalaNivelPvE : cc.EscalaMagiaPvE)
+            : (sp.EscalaNivelPvP > 0 ? sp.EscalaNivelPvP : cc.EscalaMagiaPvP);
+    }
+
+    /// <summary>Bonus de daño mágico por Inteligencia del lanzador: Porcentaje(magnitud, escala*INT).
+    /// Escala = override del hechizo (EscalaINT) si &gt; 0, si no EscalaMagiaINT global. SinEscalaINT lo desactiva
+    /// (p.ej. hechizos de leveo con curva propia fija).</summary>
+    private static int BonusIntMagico(in SpellData.Spell sp, int magnitud, int inteligencia)
+    {
+        if (sp.SinEscalaINT || inteligencia <= 0) return 0;
+        double escala = sp.EscalaINT > 0 ? sp.EscalaINT : BalanceData.Combate.EscalaMagiaINT;
+        if (escala <= 0) return 0;
+        return (int)(magnitud * escala * inteligencia / 100.0);
+    }
+
+    /// <summary>Aplica el piso/techo de daño mágico configurable (Balance.dat [COMBATE], u override del
+    /// propio hechizo vía DanoMagicoMin/Max en Hechizos.dat). 0 = sin piso/techo (compatibilidad histórica).</summary>
+    private static int ClampDanoMagico(in SpellData.Spell sp, int dano, bool pve)
+    {
+        var cc = BalanceData.Combate;
+        int min = pve ? cc.DanoMagicoMinPvE : cc.DanoMagicoMinPvP;
+        int max = pve ? cc.DanoMagicoMaxPvE : cc.DanoMagicoMaxPvP;
+        if (sp.DanoMagicoMin > 0) min = sp.DanoMagicoMin;
+        if (sp.DanoMagicoMax > 0) max = sp.DanoMagicoMax;
+        if (min > 0 && dano < min) dano = min;
+        if (max > 0 && dano > max) dano = max;
+        return dano;
+    }
+
     /// <summary>DecirPalabrasMagicas (modHechizos.bas:294): burbuja con las palabras mágicas al castear,
     /// salvo que el lanzador tenga equipado un ítem con EfectoMagico Silencio(16) (Amuleto del Silencio 755):
     /// castea en silencio, sin delatar el hechizo.</summary>
@@ -2112,6 +2818,45 @@ public static class Combat
         if (u.Invent.WeaponEqpObjIndex <= 0) return 0;
         var w = ObjData.Get(u.Invent.WeaponEqpObjIndex);
         return w.EfectoMagico == 14 ? w.CuantoAumento : 0;   // eMagicType.dañoMagico = 14
+    }
+
+    /// <summary>Desglose de daño mágico para el editor de balance (GM panel, pestaña "Daño"): mismos pasos
+    /// que las ramas PvE/PvP de AplicarHechizo (líneas ~1146-1189), sin tocar HP ni estado de nadie.</summary>
+    public struct DamageBreakdown
+    {
+        public int BaseMagnitud, LevelScaling, IntBonus, StaffBonus, Final;
+        public double RazaMult;
+        public int Resistencia, ReduccionAnillo;
+    }
+
+    /// <summary>Calcula el daño mágico final igual que AplicarHechizo, para previsualizar en el editor de
+    /// balance sin castear nada de verdad. targetResistencia/targetRazaResistencia solo aplican en PvP.</summary>
+    public static DamageBreakdown PreviewSpellDamage(in SpellData.Spell sp, int magnitud, int casterLevel,
+        int casterINT, int staffBonus, bool isPvP, int casterRaza, int targetResistencia = 0,
+        int targetRazaResistencia = 0, int targetAnilloReduccionPct = 0)
+    {
+        var b = new DamageBreakdown { BaseMagnitud = magnitud };
+        int dano = magnitud + Porcentaje(magnitud, EscalaNivelHechizo(sp, pve: !isPvP) * casterLevel);
+        b.LevelScaling = dano - magnitud;
+        int intBonus = BonusIntMagico(sp, magnitud, casterINT);
+        b.IntBonus = intBonus;
+        dano += intBonus;
+        dano += staffBonus;
+        b.StaffBonus = staffBonus;
+        double razaMult = isPvP ? BalanceData.RazaDanoMagicoPvp(casterRaza) : BalanceData.RazaDanoMagicoPve(casterRaza);
+        b.RazaMult = razaMult;
+        if (razaMult != 1) dano = (int)(dano * razaMult);
+        if (isPvP)
+        {
+            dano -= targetResistencia;
+            dano -= targetRazaResistencia;
+            b.Resistencia = targetResistencia + targetRazaResistencia;
+            if (targetAnilloReduccionPct > 0) { int red = dano * targetAnilloReduccionPct / 100; dano -= red; b.ReduccionAnillo = red; }
+        }
+        dano = ClampDanoMagico(sp, dano, pve: !isPvP);
+        if (dano < 0) dano = 0;
+        b.Final = dano;
+        return b;
     }
 
     /// <summary>Resistencia mágica total del equipo del objetivo (casco+escudo+armadura+montura+anillo).</summary>
@@ -2138,9 +2883,12 @@ public static class Combat
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == map)
+            if (o?.flags.UserLogged == true && o.Conn != null
+                && AreaVisibility.VeChar(o, map, charIndex))
                 ServerPackets.EfectoCharParticula(o.Conn, charIndex, particle, time, remove);
         }
+        Espia.ParaObservadoresDeChar(map, charIndex,
+            c => ServerPackets.EfectoCharParticula(c, charIndex, particle, time, remove));
     }
 
     // Cola de partículas sobre personajes a borrar cuando termina su duración. El cliente
@@ -2171,7 +2919,7 @@ public static class Combat
     /// <summary>Difunde una partícula sobre un tile a todos los del mapa (EfectoTerrenoParticula).</summary>
     private static void BroadcastParticulaTerreno(int map, short particle, byte x, byte y, int time)
     {
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(map))
         {
             var o = UserListManager.UserList[i];
             if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == map)
@@ -2188,21 +2936,70 @@ public static class Combat
         => BroadcastParticulaTerreno(map, 0, x, y, 0);
 
     /// <summary>Difunde un FX sobre un personaje a todos los del mapa.</summary>
-    private static void BroadcastFX(int map, short charIndex, short fx, short fxLoops)
+    /// <summary>
+    /// ¿El observador ve al personaje charIndex del mapa 'map'? Mismo mapa = sí (clásico). Mundo
+    /// continuo = también si lo tiene visible desde el mapa vecino (VisibleNpcs / VisibleUsers). Para
+    /// difundir FX anclados a un personaje (hechizos, impactos) a través del borde. El cliente ubica el
+    /// FX sobre el char (sin traducir coords), así que sólo hay que extender a quién le llega.
+    /// </summary>
+    private static bool ObsVeChar(User o, int map, short charIndex)
+    {
+        if (o.Pos.Map == map) return true;
+        if (!Continuous.Enabled) return false;
+        if (o.VisibleNpcs.Contains(charIndex)) return true;
+        int ui = FindUserByCharIndex(charIndex);
+        return ui > 0 && o.VisibleUsers.Contains(ui);
+    }
+
+    // Público: lo usa NpcManager.NpcAtacaNpc para la animación de golpe/fallo de mascotas (FX_GOLPE_*).
+    // [[b4_usersbymap]] NO MIGRADO A PROPÓSITO (B4.8): filtra con ObsVeChar, que en mundo continuo
+    // (Server.ini MundoContinuo=1, ACTIVO en este deployment) también entrega a observadores de un
+    // MAPA VECINO que ya tienen este charIndex en su VisibleNpcs/VisibleUsers — UsersByMapIndex.Get(map)
+    // NO incluye a esos observadores cross-map, así que reemplazar el loop acá rompería el FX de golpes/
+    // hechizos para cualquiera parado cerca de un borde entre mapas. Migrable en una ronda futura
+    // iterando RegionLayout.NearbyMaps(map) además de map cuando Continuous.Enabled, pero requiere
+    // cobertura de test del mundo continuo que hoy no existe — se prefirió no migrarlo a ciegas.
+    public static void BroadcastFX(int map, short charIndex, short fx, short fxLoops)
     {
         if (fx <= 0) return;
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == map)
+            if (o.flags.UserLogged && o.Conn != null && ObsVeChar(o, map, charIndex))
                 ServerPackets.CreateFX(o.Conn, charIndex, fx, fxLoops);
+        }
+        Espia.ParaObservadoresDeChar(map, charIndex, c => ServerPackets.CreateFX(c, charIndex, fx, fxLoops));
+    }
+
+    /// <summary>Efecto de subir de nivel (sonido + partícula visible) para CUALQUIER personaje,
+    /// no sólo jugadores — mismo mecanismo que CheckUserLevel (Sounds.NIVEL_NUEVO +
+    /// BroadcastLevelUpFx). Lo usan los bots "progresivos" al subir de nivel matando NPCs
+    /// (Bots.SubirNivelBot, Game/Bots.cs).</summary>
+    public static void LevelUpEffect(int map, int x, int y, short charIndex, int nivel)
+    {
+        BroadcastWaveArea(map, x, y, Sounds.NIVEL_NUEVO);
+        BroadcastLevelUpFx(map, charIndex, nivel);
+    }
+
+    /// <summary>
+    /// Difunde el efecto de subida de nivel al que sube Y a todos los que lo ven (mismo
+    /// mapa o vecino en mundo continuo). El sonido ya se difunde aparte; esto es la parte
+    /// visual. ServerPackets.LevelUpFx descarta solo a los clientes que no lo entienden.
+    /// </summary>
+    private static void BroadcastLevelUpFx(int map, short charIndex, int nivel)
+    {
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o?.flags.UserLogged == true && o.Conn != null && ObsVeChar(o, map, charIndex))
+                ServerPackets.LevelUpFx(o.Conn, charIndex, nivel);
         }
     }
 
     /// <summary>Devuelve el userIndex parado en (map,x,y) distinto de 'excepto', o 0.</summary>
     private static int UserAt(int map, int x, int y, int excepto)
     {
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(map))
         {
             if (i == excepto) continue;
             var u = UserListManager.UserList[i];
@@ -2226,7 +3023,7 @@ public static class Combat
         }
         else
         {
-            npc.RespawnAt = Environment.TickCount64 / 1000.0 + NpcManager.RespawnSeconds;
+            npc.RespawnAt = Environment.TickCount64 / 1000.0 + NpcManager.RespawnSecondsFor(npc);
         }
         // Quitar el NPC de la vista (limpia ADEMÁS los sets VisibleNpcs de los observadores; usar el
         // loop manual dejaba el CharIndex "pegado" en esos sets y, al reciclarse, el NPC nuevo con ese
@@ -2238,14 +3035,26 @@ public static class Combat
         // la porción final. NO dar exp acá para no duplicar (VB6: MuereNpc no re-otorga el total).
         if (npc.GiveGLD > 0)
         {
-            // Boost de oro personal del Battle Pass sobre el oro soltado por el NPC.
-            int gld = (int)(npc.GiveGLD * BattlePass.OroMult(u));
+            // Boost de oro personal del Battle Pass + evento global ORO xN (/orox2) + scroll de
+            // oro personal (poción SubTipo 11) sobre el oro soltado por el NPC.
+            int gldBase = (int)(npc.GiveGLD * BalanceData.Exp.TasaGlobalOro * BattlePass.OroMult(u) * Math.Max(1, Events.OroMultiplicador));
+            int oroMult = ScrollOroMultActivo(u);
+            int gld = gldBase * oroMult;
             u.Stats.GLD += gld;
+            // VB6 NPCTirarOro: WriteLocaleMsg(29) "¡Has ganado #1 monedas de oro!". Se manda como
+            // ConsoleMsg font 62 (dorada, exclusiva del cliente Godot) → pestaña Combate.
+            // Con scroll de oro activo se desglosa base + bonificación (mismo formato que la exp).
+            string msgOro = oroMult > 1
+                ? $"¡Has ganado {gld} monedas de oro ({gldBase} + {gld - gldBase} de bonificación x{oroMult})!"
+                : $"¡Has ganado {gld} monedas de oro!";
+            ServerPackets.ConsoleMsg(u.Conn, msgOro, 62);
             ServerPackets.UpdateGold(u.Conn, u.Stats.GLD);
         }
 
         // Battle Pass: puntos de pase por matar un NPC, escalados por dificultad (MaxHP) + misiones.
         BattlePass.OnNpcKilled(u.id, npc.MaxHP, npc.Name, npc.NpcIndex);
+        Achievements.OnNpcKilled(u.id, npc.NpcIndex, npc.Name); // logros de caza (pieles)
+        QuestSystem.OnNpcKilled(u.id, npc.NpcIndex, npc.Name);  // misiones de caza activas
 
         // VB6 NPC_TIRAR_ITEMS: tirar drops al piso según probabilidad (Drops.dat)
         TirarDrops(npc, u);
@@ -2262,7 +3071,7 @@ public static class Combat
     /// Cada drop cae si prob >= 100 (siempre) o si Rnd()*100 <= prob.
     /// Lo deja en un tile libre cerca de la muerte y difunde ObjectCreate al área.
     /// </summary>
-    private static void TirarDrops(NpcManager.NpcInstance npc, User killer)
+    internal static void TirarDrops(NpcManager.NpcInstance npc, User killer)
     {
         if (npc.Drops == null || npc.Drops.Length == 0) return;
         var map = MapLoader.Get(npc.Map);
@@ -2270,14 +3079,12 @@ public static class Combat
 
         const short SND_DROP = Sounds.DROP; // 132 (antes 14 = sonido de pescar, incorrecto)
         // Anillo Dorado de drop (1607 +100% / 1610 +20%, EfectoMagico=8): el matador con el anillo
-        // equipado multiplica la probabilidad de cada drop por (1 + CuantoAumento/100). Acumulable
-        // con el multiplicador de la Ruleta.
+        // equipado multiplica la probabilidad de cada drop por (1 + CuantoAumento/100).
         int bonusDrop = killer != null ? Inventory.CuantoEfectoMagico(killer, 8) : 0;
         foreach (var (objIndex, amount, prob) in npc.Drops)
         {
             if (objIndex <= 0) continue;
-            // Ruleta DROP x2: duplica la probabilidad de caída durante el evento.
-            double probEvento = prob * Ruleta.MultiplicadorDrop();
+            double probEvento = prob;
             if (bonusDrop > 0) probEvento *= 1.0 + bonusDrop / 100.0;
             bool cae = probEvento >= 100 || (_rng.NextDouble() * 100.0 <= probEvento);
             if (!cae) continue;
@@ -2295,19 +3102,32 @@ public static class Combat
         }
     }
 
-    /// <summary>Busca un tile sin objeto cerca de (x,y), priorizando el propio tile. Radio 1.</summary>
+    /// <summary>Busca un tile sin objeto cerca de (x,y), priorizando el propio tile y expandiendo
+    /// en anillos concéntricos hasta encontrar uno libre.</summary>
     private static bool TileLibreParaObj(MapData map, int x, int y, out int tx, out int ty)
     {
-        // VB6 Tilelibre: primero el tile exacto, luego espiral de adyacentes.
-        for (int r = 0; r <= 2; r++)
-        for (int dx = -r; dx <= r; dx++)
-        for (int dy = -r; dy <= r; dy++)
+        bool libre(int nx, int ny) => nx >= 1 && nx <= 100 && ny >= 1 && ny <= 100
+                                       && !map.Blocked[nx, ny] && map.FloorObj[nx, ny] == 0;
+        if (libre(x, y)) { tx = x; ty = y; return true; }
+        // VB6 Tilelibre: tile exacto primero, después anillos cada vez más lejos (solo el
+        // BORDE de cada anillo, no todo el cuadrado de nuevo — así no se re-chequean los
+        // mismos tiles en cada vuelta). BUG-016: el radio máximo estaba fijo en 2 (a lo
+        // sumo 24 tiles alrededor); con "Tirar todo" y un inventario lleno (25 slots) más
+        // cualquier tile ya ocupado por otro objeto/bloqueo cerca, se quedaba sin lugar
+        // para los últimos ítems y esos quedaban SIN tirar (seguían en el inventario).
+        // Hasta 100 corre lejos de sobra sin poder agotarse en un mapa de 100x100.
+        for (int r = 1; r <= 100; r++)
         {
-            int nx = x + dx, ny = y + dy;
-            if (nx < 1 || nx > 100 || ny < 1 || ny > 100) continue;
-            if (map.Blocked[nx, ny]) continue;
-            if (map.FloorObj[nx, ny] != 0) continue;
-            tx = nx; ty = ny; return true;
+            for (int dx = -r; dx <= r; dx++)
+            {
+                if (libre(x + dx, y - r)) { tx = x + dx; ty = y - r; return true; }
+                if (libre(x + dx, y + r)) { tx = x + dx; ty = y + r; return true; }
+            }
+            for (int dy = -r + 1; dy <= r - 1; dy++)
+            {
+                if (libre(x - r, y + dy)) { tx = x - r; ty = y + dy; return true; }
+                if (libre(x + r, y + dy)) { tx = x + r; ty = y + dy; return true; }
+            }
         }
         tx = ty = 0; return false;
     }
@@ -2337,6 +3157,8 @@ public static class Combat
     {
         var u = UserListManager.UserList[userIndex];
         if (u.flags.Muerto == 1 || u.Conn == null) return;
+        // VB6 NpcAtacaUser (SistemaCombate.bas:852): dormido por instrumento no puede atacar.
+        if (npc.DormidoHasta > Environment.TickCount64 / 1000.0) return;
         // Bots: el golpe cuerpo a cuerpo SÓLO conecta si el usuario está en un tile vecino (no pega "en
         // área" ni a distancia). Los hechizos sí pueden ir de lejos; el golpe es estrictamente al lado.
         if (npc.IsBot && (Math.Abs(u.Pos.X - npc.X) > 1 || Math.Abs(u.Pos.Y - npc.Y) > 1)) return;
@@ -2349,10 +3171,11 @@ public static class Combat
         if (npc.IsBot) { if (userIndex == npc.OwnerUserIndex && !npc.BotSpar) return; }
         else if (NpcManager.EsGmIntocable(u)) return;
 
-        // Intervalo de ataque. Bots: timer de GOLPE propio + cruce con la magia (como un jugador).
-        // Resto de NPCs: IntervaloPermiteAtacarNpc (3000ms; guardias 2000ms), compartido con el casteo.
+        // Intervalo de ataque FÍSICO. Bots: timer de GOLPE propio + cruce con la magia (como un jugador).
+        // Resto de NPCs: IntervaloPermiteAtacarNpc (3000ms; guardias 2000ms). [[FIX3]] Timer propio del
+        // golpe, independiente del timer de hechizo (antes compartían un único TimerAtaque).
         if (npc.IsBot) { if (!NpcManager.BotPuedeGolpear(npc)) return; }
-        else if (!Intervals.PuedeAtacarNpc(ref npc.TimerAtaque, NpcManager.AttackIntervalFor(npc))) return;
+        else if (!Intervals.PuedeAtacarNpc(ref npc.TimerAtaqueFisico, NpcManager.AttackIntervalFor(npc))) return;
 
         // VB6 NpcAtacaUser (SistemaCombate.bas:900): registrar qué NPC lo ataca (para el reset al morir).
         if (u.flags.AtacadoPorNpc == 0) u.flags.AtacadoPorNpc = npc.CharIndex;
@@ -2390,7 +3213,7 @@ public static class Combat
     private static bool NpcImpacto(NpcManager.NpcInstance npc, User u)
     {
         long userEvasion = PoderEvasion(u);
-        long npcPoderAtaque = npc.PoderAtaque;
+        long npcPoderAtaque = NpcManager.PoderAtaqueEfectivo(npc);
         long poderEvasionEscudo = PoderEvasionEscudo(u);
         int skillTacticas = u.Stats.UserSkills[SK_TACTICAS];
         int skillDefensa = u.Stats.UserSkills[SK_DEFENSA];
@@ -2426,7 +3249,8 @@ public static class Combat
     private static void Npcdano(NpcManager.NpcInstance npc, int userIndex)
     {
         var u = UserListManager.UserList[userIndex];
-        int dano = RangoOMin(npc.MinHIT, npc.MaxHIT);
+        var (hitMin, hitMax) = NpcManager.HitEfectivo(npc);
+        int dano = RangoOMin(hitMin, hitMax);
 
         int defbarco = 0, defmontura = 0;
         if (u.flags.Navegando && u.Invent.BarcoObjIndex > 0)
@@ -2479,6 +3303,7 @@ public static class Combat
             u.Stats.MinHP = 0;
             if (u.Conn != null) ServerPackets.UpdateHP(u.Conn, 0);
             UserDie(userIndex);
+            if (npc.IsBot) NpcManager.SonarKillstreakBot(npc);
         }
         else if (u.Conn != null)
         {
@@ -2492,37 +3317,75 @@ public static class Combat
     /// <summary>Difunde un PlayWave a todos los usuarios del mapa (placeholder de ToNPCArea/ToPCArea).</summary>
     private static void BroadcastWaveArea(int map, int x, int y, short wave)
     {
+        // Mundo continuo: coord en el espacio LOCAL-RELATIVO de cada observador (los senders directos de
+        // sonido ya mandan local del mapa actual; acá también llega a quien ve la posición desde el mapa
+        // vecino). El `map` que pasan los callers ES el de la posición.
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == map)
-                ServerPackets.PlayWave(o.Conn, wave, (byte)x, (byte)y);
+            if (o?.flags.UserLogged == true && o.Conn != null && (o.Pos.Map == map || AreaVisibility.VePos(o, map, x, y)))
+            {
+                var (gx, gy) = Continuous.Rel(o.Pos.Map, map, x, y);
+                ServerPackets.PlayWave(o.Conn, wave, gx, gy);
+            }
         }
+        Espia.ParaObservadoresDe(map, x, y, c => ServerPackets.PlayWave(c, wave, x, y));
     }
 
     /// <summary>Difunde un CreateArrowProjectile (flecha/arma arrojadiza animada) a todos los del mapa.</summary>
-    private static void BroadcastArrow(int map, short charOrigen, short charDestino,
+    private static void BroadcastArrow(int origMap, int destMap, short charOrigen, short charDestino,
         int xOrigen, int yOrigen, int xDestino, int yDestino, short grhIndex)
     {
         if (grhIndex <= 0) return;
+        // Mundo continuo: cada extremo se traduce a global con SU propio mapa (el disparo puede cruzar
+        // el borde: origen en un mapa, destino en el vecino). El cliente reconvierte a su mapa. Llega
+        // a quien ve cualquiera de los dos extremos.
+        var (gox, goy) = Continuous.Pos(origMap, xOrigen, yOrigen);
+        var (gdx, gdy) = Continuous.Pos(destMap, xDestino, yDestino);
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == map)
+            if (o?.flags.UserLogged == true && o.Conn != null &&
+                (o.Pos.Map == origMap || o.Pos.Map == destMap
+                 || AreaVisibility.VePos(o, origMap, xOrigen, yOrigen) || AreaVisibility.VePos(o, destMap, xDestino, yDestino)))
                 ServerPackets.CreateArrowProjectile(o.Conn, charOrigen, charDestino,
-                    (short)xOrigen, (short)yOrigen, (short)xDestino, (short)yDestino, grhIndex);
+                    (short)gox, (short)goy, (short)gdx, (short)gdy, grhIndex);
         }
     }
 
-    /// <summary>Difunde un CreateFX a todos los usuarios del mapa.</summary>
+    /// <summary>Difunde un SpellBeam (arco eléctrico de casteo) a todos los que ven algún extremo.
+    /// Mismo patrón de mundo continuo que BroadcastArrow: extremos en coordenadas globales.</summary>
+    private static void BroadcastSpellBeam(int origMap, int destMap, short charOrigen, short charDestino,
+        int xOrigen, int yOrigen, int xDestino, int yDestino, byte tipo)
+    {
+        var (gox, goy) = Continuous.Pos(origMap, xOrigen, yOrigen);
+        var (gdx, gdy) = Continuous.Pos(destMap, xDestino, yDestino);
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o?.flags.UserLogged == true && o.Conn != null &&
+                (o.Pos.Map == origMap || o.Pos.Map == destMap
+                 || AreaVisibility.VePos(o, origMap, xOrigen, yOrigen) || AreaVisibility.VePos(o, destMap, xDestino, yDestino)))
+                ServerPackets.SpellBeam(o.Conn, charOrigen, charDestino,
+                    (short)gox, (short)goy, (short)gdx, (short)gdy, tipo);
+        }
+        // Y a quien esté mirando por los ojos de un bot cerca de cualquiera de los dos extremos
+        // (ver Espia.ParaObservadoresDe: sin esto, en el medio del mundo no hay ningún usuario
+        // que reciba el rayo y la pelea se veía muda).
+        Espia.ParaObservadoresDe(origMap, xOrigen, yOrigen, c => ServerPackets.SpellBeam(
+            c, charOrigen, charDestino, (short)gox, (short)goy, (short)gdx, (short)gdy, tipo));
+    }
+
+    /// <summary>Difunde un CreateFX a los que ven al personaje (mismo mapa + vecinos en mundo continuo).</summary>
     private static void BroadcastFxArea(int map, short charIndex, short fx, short loops)
     {
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == map)
+            if (o?.flags.UserLogged == true && o.Conn != null && ObsVeChar(o, map, charIndex))
                 ServerPackets.CreateFX(o.Conn, charIndex, fx, loops);
         }
+        Espia.ParaObservadoresDeChar(map, charIndex, c => ServerPackets.CreateFX(c, charIndex, fx, loops));
     }
 
     /// <summary>
@@ -2535,31 +3398,88 @@ public static class Combat
     /// Lo usan los bots para castear también a las criaturas, no solo a usuarios.</summary>
     public static bool NpcLanzaSpellANpc(NpcManager.NpcInstance npc, NpcManager.NpcInstance victima)
     {
+        // VB6 NpcLanzaUnSpellSobreNpc (AI_NPC.bas:2008): dormido por instrumento no lanza hechizos.
+        if (npc.DormidoHasta > Environment.TickCount64 / 1000.0) return false;
         if (npc.Spells == null || npc.Spells.Length == 0) return false;
         if (victima == null || victima.Dead) return false;
         if (MapLoader.Get(npc.Map)?.Info?.NoMagia == true) return false;
-        if (!Intervals.PuedeAtacarNpc(ref npc.TimerAtaque, NpcManager.AttackIntervalFor(npc))) return false;
+        // [[FIX3]] Timer propio del hechizo, independiente del timer de golpe físico.
+        if (!Intervals.PuedeAtacarNpc(ref npc.TimerAtaqueHechizo, NpcManager.AttackIntervalFor(npc))) return false;
 
         short spellIndex = npc.Spells[_rng.Next(npc.Spells.Length)];
         var sp = SpellData.Get(spellIndex);
         if (string.IsNullOrEmpty(sp.Nombre)) return false;
+
+        // Palabras mágicas sobre la cabeza (igual que NpcLanzaSpell contra un jugador): sin esto,
+        // una pelea entre bots caster casteaba en silencio, sin ninguna burbuja.
+        if (npc.IsBot) NpcManager.NpcDicePalabrasMagicas(npc, sp.PalabrasMagicas);
 
         short fx = (short)sp.FXgrh, loops = (short)Math.Max(0, sp.Loops);
         int map = npc.Map;
         if (sp.WAV > 0) BroadcastWaveArea(map, victima.X, victima.Y, (short)sp.WAV);
         if (sp.Particle > 0) BroadcastParticulaChar(map, victima.CharIndex, (short)sp.Particle, sp.TimeParticula);
         BroadcastFX(map, victima.CharIndex, fx, loops);
+        // Rayo de casteo para los BOTS: el VB6 solo lo dibujaba cuando casteaba un JUGADOR, así
+        // que una batalla entre bots caster se veía sin ningún rayo, solo el FX en la víctima.
+        // Limitado a bots a propósito: darle beam a TODA criatura caster del juego cambiaría cómo
+        // se ve el mundo entero, y eso no es parte de esto. Mismo criterio de color que el usuario.
+        if (npc.IsBot) BroadcastSpellBeam(map, victima.Map, (short)npc.CharIndex, (short)victima.CharIndex,
+            npc.X, npc.Y, victima.X, victima.Y,
+            sp.Paraliza || sp.Inmoviliza ? (byte)2 : sp.Envenena > 0 ? (byte)4
+            : sp.SubeHP == 1 || sp.RemoverParalisis || sp.Revivir ? (byte)3 : (byte)1);
 
         if (sp.SubeHP == 2) // DAÑA
         {
             int dano = sp.MaxHP >= sp.MinHP && sp.MaxHP > 0 ? _rng.Next(sp.MinHP, sp.MaxHP + 1) : sp.MinHP;
             if (dano < 0) dano = 0;
+            NpcManager.DespertarNpc(victima); // VB6: la víctima dormida despierta al recibir daño
+            if (npc.PetOfPlayer) CalcularDarExpMascota(npc, victima, dano); // exp repartida, antes de restar HP
             victima.MinHP -= dano;
-            if (victima.MinHP <= 0) NpcManager.MatarNpcInstance(victima);
+            if (npc.IsBot) NpcManager.BroadcastChatOverHead(map, dano.ToString(), npc.CharIndex, 5);
+            if (victima.MinHP <= 0) NpcManager.MatarNpcInstance(victima, npc);
         }
         else if (sp.Paraliza || sp.Inmoviliza)
         {
-            victima.ParalizadoHasta = Environment.TickCount64 / 1000.0 + 8;
+            // 🔴 Tiene que pasar por ParalizarNpc, NO seteando ParalizadoHasta a mano. La
+            // asignación directa dejaba el hechizo a medias — se veía el FX y nada más:
+            //   · no difundía el estado al cliente (DifundirParalisisNpc), así que el jugador no
+            //     veía ninguna barra ni el efecto de petrificado: parecía que no había pasado nada;
+            //   · no marcaba EstadoParalisisTick, y como BotCleanseParalisis mide contra ese sello,
+            //     un BOT se sacaba la parálisis en el PRIMER tick (la ventana de reacción daba
+            //     siempre por cumplida). Contra un bot la parálisis duraba literalmente cero;
+            //   · ignoraba la inmunidad (NPCs.dat "Inmunidad" → AfectaParalisis).
+            // Es el mismo camino que usa el hechizo de un JUGADOR sobre un NPC (más arriba).
+            if (!victima.AfectaParalisis)
+                NpcManager.ParalizarNpc(victima, DURACION_PARALISIS_NPC_HECHIZO,
+                    tipo: (byte)(sp.Inmoviliza && !sp.Paraliza ? 2 : 1));
+        }
+        else if (sp.SubeFuerza > 0)
+        {
+            // El NPC no tiene un atributo Fuerza separado como UserModel (Combat.cs:1132-1170): se
+            // traduce directo a un % temporal sobre MinHIT/MaxHIT/PoderAtaque (lazy-read, ver
+            // NpcManager.HitEfectivo/PoderAtaqueEfectivo). Mismo esquema de duración que el buff de
+            // usuario: 120s si sube, 70s si baja (Combat.cs:1143/1150).
+            double now = Environment.TickCount64 / 1000.0;
+            victima.BuffFuerzaDelta = sp.SubeFuerza == 1 ? NpcManager.BOT_BUFF_FUERZA_PCT : -NpcManager.BOT_BUFF_FUERZA_PCT;
+            victima.BuffFuerzaHasta = now + (sp.SubeFuerza == 1 ? 120.0 : 70.0);
+        }
+        else if (sp.SubeAgilidad > 0)
+        {
+            double now = Environment.TickCount64 / 1000.0;
+            victima.BuffAgilidadDelta = sp.SubeAgilidad == 1 ? NpcManager.BOT_BUFF_AGILIDAD_PCT : -NpcManager.BOT_BUFF_AGILIDAD_PCT;
+            victima.BuffAgilidadHasta = now + (sp.SubeAgilidad == 1 ? 120.0 : 70.0);
+        }
+        else if (sp.Ceguera)
+        {
+            // Ceguera nunca se aplicó a NPCs en el VB6 original (sólo a jugadores). Interpretación
+            // nueva: penaliza puntería (PoderAtaque), 6s como el jugador (Combat.cs:1297).
+            victima.CegueraHasta = Environment.TickCount64 / 1000.0 + 6.0;
+        }
+        else if (sp.Estupidez)
+        {
+            // Ídem Ceguera: interpretación nueva, distinta a propósito (penaliza PoderEvasion, "más
+            // fácil de golpear") para que los dos hechizos se sientan diferentes. 6s como el jugador.
+            victima.EstupidezHasta = Environment.TickCount64 / 1000.0 + 6.0;
         }
         return true;
     }
@@ -2568,7 +3488,8 @@ public static class Combat
     public static bool NpcCuraANpc(NpcManager.NpcInstance caster, NpcManager.NpcInstance aliado, short spellIndex)
     {
         if (aliado == null || aliado.Dead || aliado.MinHP >= aliado.MaxHP) return false;
-        if (!Intervals.PuedeAtacarNpc(ref caster.TimerAtaque, NpcManager.AttackIntervalFor(caster))) return false;
+        // [[FIX3]] Curar es un hechizo: usa el timer propio de hechizo, independiente del golpe físico.
+        if (!Intervals.PuedeAtacarNpc(ref caster.TimerAtaqueHechizo, NpcManager.AttackIntervalFor(caster))) return false;
         var sp = SpellData.Get(spellIndex);
         if (string.IsNullOrEmpty(sp.Nombre)) return false;
 
@@ -2583,17 +3504,65 @@ public static class Combat
         return true;
     }
 
+    /// <summary>Un sacerdote de ciudad cura AL INSTANTE (a full HP) a un usuario aliado herido cercano
+    /// (FX + sonido, sin hechizo real: Sp1/Sp2 en NPCs.dat son de combate y no de curación).</summary>
+    public static bool NpcCuraAUsuario(NpcManager.NpcInstance caster, User aliado)
+    {
+        if (aliado == null || aliado.flags.Muerto == 1 || aliado.Stats.MinHP >= aliado.Stats.MaxHP) return false;
+        if (!Intervals.PuedeAtacarNpc(ref caster.TimerAtaqueHechizo, NpcManager.AttackIntervalFor(caster))) return false;
+
+        aliado.Stats.MinHP = aliado.Stats.MaxHP;
+        ServerPackets.UpdateHP(aliado.Conn, aliado.Stats.MinHP);
+
+        int map = caster.Map;
+        // Rayo de casteo del sacerdote hacia el aliado (mismo mecanismo que usan los bots magos:
+        // BroadcastSpellBeam) para que se vea DE DÓNDE sale la cura, ya que el sacerdote no gira ni
+        // se mueve hacia el objetivo. WAV/Particle/TimeParticula del hechizo real "Sanar"
+        // (Hechizos.dat #32): mismo sonido/FX que ve un jugador al ser curado con ese hechizo.
+        BroadcastSpellBeam(map, map, caster.CharIndex, aliado.Char.CharIndex, caster.X, caster.Y, aliado.Pos.X, aliado.Pos.Y, 1);
+        BroadcastWaveArea(map, aliado.Pos.X, aliado.Pos.Y, 55);
+        BroadcastParticulaChar(map, aliado.Char.CharIndex, 28, 50);
+        ServerPackets.ConsoleMsg(aliado.Conn, $"{caster.Name} te ha curado.", 1);
+        return true;
+    }
+
+    /// <summary>Un sacerdote de ciudad resucita a un usuario muerto aliado cercano (instantáneo, vida completa).</summary>
+    public static bool NpcResucitaAUsuario(NpcManager.NpcInstance caster, User muerto)
+    {
+        if (muerto == null || muerto.flags.Muerto == 0) return false;
+        if (!Intervals.PuedeAtacarNpc(ref caster.TimerAtaqueHechizo, NpcManager.AttackIntervalFor(caster))) return false;
+
+        int userIndex = muerto.id;
+        int map = caster.Map;
+        BroadcastSpellBeam(map, map, caster.CharIndex, muerto.Char.CharIndex, caster.X, caster.Y, muerto.Pos.X, muerto.Pos.Y, 1);
+        Resucitar(userIndex, -1); // vida completa
+        BroadcastParticulaChar(map, muerto.Char.CharIndex, 18, 900);
+        ServerPackets.ConsoleMsg(muerto.Conn, $"{caster.Name} te ha resucitado.", 1);
+        return true;
+    }
+
     public static bool NpcLanzaSpell(NpcManager.NpcInstance npc, int userIndex)
     {
         var u = UserListManager.UserList[userIndex];
         if (u == null || u.flags.Muerto == 1 || u.Conn == null) return false;
+        // VB6 NpcLanzaUnSpell (AI_NPC.bas:1987): dormido por instrumento no lanza hechizos.
+        if (npc.DormidoHasta > Environment.TickCount64 / 1000.0) return false;
         if (npc.Spells == null || npc.Spells.Length == 0) return false;
 
         // VB6: no lanza a usuarios invisibles/ocultos.
         if (u.flags.Oculto == 1) return false;
         // Los NPCs no lanzan hechizos a GMs/Dioses (Consejero o superior).
-        // Excepción: el bot de sparring PvP SÍ le lanza hechizos a su dueño (aunque sea GM) para el testeo.
-        if (NpcManager.EsGmIntocable(u) && !(npc.IsBot && npc.BotSpar && userIndex == npc.OwnerUserIndex)) return false;
+        // Excepciones: el bot de sparring PvP SÍ le lanza hechizos a su dueño (aunque sea GM,
+        // para el testeo), y BotSmart (prototipo) le lanza a CUALQUIERA — mismo criterio que ya
+        // tiene su golpe cuerpo a cuerpo (NpcAtacaUsuario:3171, "los bots de prueba SÍ pegan a
+        // GMs/Dioses"). Sin esto, casi nunca se lo veía castear: quien lo invoca necesita ser
+        // Semidiós+ para spawnearlo (STATUS_SEMIDIOS >= STATUS_CONSEJERO), así que el propio GM
+        // que lo prueba —parado cerca, el blanco más obvio— quedaba blindado sólo para hechizos,
+        // mientras el golpe físico sí conectaba: la asimetría hacía parecer "no lanza hechizos"
+        // cuando en realidad SÍ los elegía, sólo que NpcLanzaSpell los descartaba en silencio.
+        if (NpcManager.EsGmIntocable(u)
+            && !(npc.IsBot && npc.BotSmart)
+            && !(npc.IsBot && npc.BotSpar && userIndex == npc.OwnerUserIndex)) return false;
         // Orbe de Inhibición (651) / armas con MagicasNoAtacan(9): los NPCs no pueden lanzarle
         // hechizos al usuario (VB6 modHechizos.bas:33-34). El NPC sigue pudiendo pegar cuerpo a cuerpo.
         if (Inventory.TieneEfectoMagico(u, 9, incluirArma: true)) return false;
@@ -2615,13 +3584,23 @@ public static class Combat
             npc.MinMana -= sp.ManaRequerido;
             NpcManager.NpcDicePalabrasMagicas(npc, sp.PalabrasMagicas); // palabras mágicas sobre su cabeza
         }
-        else if (!Intervals.PuedeAtacarNpc(ref npc.TimerAtaque, NpcManager.AttackIntervalFor(npc))) return false;
+        // [[FIX3]] Timer propio del hechizo, independiente del timer de golpe físico.
+        else if (!Intervals.PuedeAtacarNpc(ref npc.TimerAtaqueHechizo, NpcManager.AttackIntervalFor(npc))) return false;
+
+        // Las mascotas del usuario atacado defienden al amo, igual que en NpcAtacaUsuario (golpe
+        // cuerpo a cuerpo) — acá cubre el caso de ataque A DISTANCIA con hechizo.
+        NpcManager.CheckPets(npc, userIndex, false);
 
         short fx = (short)sp.FXgrh, loops = (short)Math.Max(0, sp.Loops);
         int map = npc.Map;
 
         // Sonido del hechizo del NPC (VB6 NpcLanzaSpell: PlayWave(Hechizos(Spell).WAV) en la pos del objetivo).
         if (sp.WAV > 0) BroadcastWaveArea(map, u.Pos.X, u.Pos.Y, (short)sp.WAV);
+        // Rayo de casteo del BOT hacia el jugador (ver NpcLanzaSpellANpc: el VB6 solo lo dibujaba
+        // para el casteo de un jugador, y sin esto al bot mago no se le ve el hechizo).
+        if (npc.IsBot) BroadcastSpellBeam(map, u.Pos.Map, (short)npc.CharIndex, (short)u.Char.CharIndex,
+            npc.X, npc.Y, u.Pos.X, u.Pos.Y,
+            sp.Paraliza || sp.Inmoviliza ? (byte)2 : sp.Envenena > 0 ? (byte)4 : (byte)1);
 
         // Partícula del hechizo sobre el objetivo (igual que el casteo de usuario, InfoHechizo).
         if (sp.Particle > 0)
@@ -2630,11 +3609,13 @@ public static class Combat
         if (sp.SubeHP == 2) // DAÑA
         {
             int dano = sp.MaxHP >= sp.MinHP && sp.MaxHP > 0 ? _rng.Next(sp.MinHP, sp.MaxHP + 1) : sp.MinHP;
-            // Resta resistencia mágica del equipo (casco/escudo/armadura/anillo).
+            // Resta resistencia mágica del equipo (casco/escudo/armadura/anillo) + resistencia racial del objetivo.
             dano -= ResistenciaMagica(u);
+            dano -= BalanceData.RazaResistenciaMagica(u.raza);
             // Anillo de Defensa Mágica (708, DisminuyeGolpe(7)): reduce el daño mágico en CuantoAumento%.
             int redPctNpc = Inventory.CuantoEfectoMagico(u, 7);
             if (redPctNpc > 0) dano -= dano * redPctNpc / 100;
+            dano = ClampDanoMagico(sp, dano, pve: false); // NPC ataca a un usuario: usa el piso/techo "PvP" (objetivo con equipo)
             if (dano < 0) dano = 0;
 
             BroadcastFX(map, u.Char.CharIndex, fx, loops);
@@ -2642,7 +3623,7 @@ public static class Combat
             ServerPackets.ConsoleMsg(u.Conn, $"{npc.Name} te lanzó {sp.Nombre}.", 4);
             Skills.SubirSkill(userIndex, 9); // eSkill.Resistencia 1:1 (modHechizos.bas:186)
             DanoRecibido(u, npc.CharIndex, dano);  // número rojo del daño mágico recibido
-            if (u.Stats.MinHP < 1) { u.Stats.MinHP = 0; ServerPackets.UpdateHP(u.Conn, 0); UserDie(userIndex); }
+            if (u.Stats.MinHP < 1) { u.Stats.MinHP = 0; ServerPackets.UpdateHP(u.Conn, 0); UserDie(userIndex); if (npc.IsBot) NpcManager.SonarKillstreakBot(npc); }
             else ServerPackets.UpdateHP(u.Conn, u.Stats.MinHP);
         }
         else if (sp.Paraliza || sp.Inmoviliza)
@@ -2711,6 +3692,13 @@ public static class Combat
             ServerPackets.RunaCastProgress(vic.Conn, vic.Char.CharIndex, 0, 6);
             ServerPackets.ConsoleMsg(vic.Conn, "¡Tu teletransporte fue cancelado!", 1);
         }
+        // El golpe también corta el conjuro de invocación: si te pueden interrumpir la runa y la
+        // meditación, traer una mascota en medio de una pelea no puede ser gratis.
+        if (vic.InvocandoPetHasta > 0)
+        {
+            CancelarCasteoMascota(vic, avisar: false);
+            ServerPackets.ConsoleMsg(vic.Conn, "¡El golpe te cortó el vínculo! La invocación se interrumpió.", 1);
+        }
         if (vic.flags.Meditando)
         {
             vic.flags.Meditando = false;
@@ -2766,13 +3754,14 @@ public static class Combat
 
     /// <summary>
     /// GolpeParalizaUsuario, rama OBJ869 (SistemaCombate.bas:3658): la Orbe Acuática equipada
-    /// (EfectoMagico=Paraliza(11)) paraliza al golpear a un usuario: 60% de prob, 3-5 segundos.
+    /// (EfectoMagico=Paraliza(11)) paraliza al golpear a un usuario:
+    /// <see cref="OrbeParalizaProb"/>% de prob, 3-5 segundos.
     /// </summary>
     private static void GolpeOrbeUsuario(User atk, User vic)
     {
         if (vic.flags.Paralizado == 1 || vic.flags.Inmovilizado == 1) return;
         if (!Inventory.TieneEfectoMagico(atk, 11, incluirArma: true)) return;
-        if (_rng.Next(1, 101) > 60) return;
+        if (_rng.Next(1, 101) > OrbeParalizaProb) return;
         int orbeSegs = _rng.Next(3, 6); // 3-5 s (VB6 90-150 ticks)
         vic.flags.Paralizado = 1;
         vic.flags.ParalisisExpira = Environment.TickCount64 / 1000.0 + orbeSegs;
@@ -2783,9 +3772,23 @@ public static class Combat
         }
         DifundirParalisisUsuario(vic, orbeSegs);
         ServerPackets.ConsoleMsg(atk.Conn, $"¡Tu orbe paraliza a {vic.Name}!", 2);
-        BroadcastWaveArea(vic.Pos.Map, vic.Pos.X, vic.Pos.Y, 17);
+        // BUG-012: sonido correcto del hechizo Paralizar (antes 17, genérico).
+        BroadcastWaveArea(vic.Pos.Map, vic.Pos.X, vic.Pos.Y, Sounds.PARALIZAR);
         BroadcastFX(vic.Pos.Map, vic.Char.CharIndex, 8, 0);
     }
+
+    /// <summary>Golpe físico de báculo para Mago: 70 de daño en mazmorra de novatos (nivel 1),
+    /// escala muy poco con el nivel hasta un tope de 100 en nivel 50.</summary>
+    private static int DanoGolpeBaculo(int nivel)
+    {
+        const int DANO_BASE = 70, DANO_TOPE = 100, NIVEL_TOPE = 50;
+        if (nivel <= 1) return DANO_BASE;
+        if (nivel >= NIVEL_TOPE) return DANO_TOPE;
+        return DANO_BASE + (DANO_TOPE - DANO_BASE) * (nivel - 1) / (NIVEL_TOPE - 1);
+    }
+
+    /// <summary>Golpe físico de báculo para Mago (PvP): daño fijo 50-56, sin escalar por nivel (a diferencia del PvE).</summary>
+    private static int DanoGolpeBaculoPvP() => _rng.Next(50, 57); // 57 exclusivo → incluye 56
 
     /// <summary>EsStaff (SistemaCombate.bas:3959): báculo según WeaponAnim (6/16/17) o nombre con "BACULO".</summary>
     private static bool EsStaff(short objIndex)
@@ -2805,11 +3808,14 @@ public static class Combat
         // party, aliados de facción, protección GM. Muestra su propio mensaje al denegar.
         if (!PuedeAtacar(atkIdx, vicIdx)) return;
 
+        // Las mascotas de la víctima defienden al amo también en PvP (ataque ya validado arriba).
+        NpcManager.CheckPetsVsUsuario(atkIdx, vicIdx);
+
         // VB6 UsuarioImpacto: chance de impacto (poder de ataque vs evasión + escudo). Falla → no hay daño.
         if (!UsuarioImpacto(atkIdx, vicIdx))
         {
             const short SND_SWING3 = 2;
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(atk.Pos.Map))
             {
                 var o = UserListManager.UserList[i];
                 if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == atk.Pos.Map)
@@ -2887,8 +3893,8 @@ public static class Combat
         int maxDano = Math.Max(danoPvpMin, (int)(danoBasePvp * ccPvp.TopeBurstPvP));
         if (dano > maxDano) dano = maxDano;
 
-        // Magos no hacen daño físico con báculos (Userda�oUser:2253).
-        if (atk.Clase == 2 && EsStaff(atk.Invent.WeaponEqpObjIndex)) dano = 0;
+        // Magos: golpe de báculo (PvP) con el mismo daño escalado por nivel que en PvE.
+        if (atk.Clase == 2 && EsStaff(atk.Invent.WeaponEqpObjIndex)) dano = DanoGolpeBaculoPvP();
 
         // VB6 (UsuarioAtacaUsuario:1539): proyectil visual + sonido según arma. Arco con munición →
         // flecha animada + Snd1 + FX(Snd2) + IMPACTO3; arrojadiza → arma animada + 68; resto → IMPACTO.
@@ -2903,7 +3909,7 @@ public static class Combat
             BroadcastFX(vic.Pos.Map, vic.Char.CharIndex, FX_APUNALAR, 0);          // FX/logo de daga sobre el objetivo
         }
         // Número azul sobre la víctima (atacante) y rojo sobre el atacante (víctima), + consola.
-        DanoInfligido(atk, vic.Char.CharIndex, dano);
+        DanoInfligidoFisico(atk, vic.Char.CharIndex, dano);
         DanoRecibido(vic, atk.Char.CharIndex, dano);
 
         // Incineración por orbe (UserIncinera).
@@ -2950,6 +3956,12 @@ public static class Combat
         var u = UserListManager.UserList[userIndex];
         if (u.flags.Muerto == 1) return; // ya está muerto: evitar doble drop/desequipo
         u.Stats.MinHP = 0;
+        // GM: sincronizar acá (chokepoint único de TODOS los caminos de muerte — hechizo,
+        // melee, veneno/hambre por tick, comando GM, evento) evita tener que repetir esta
+        // llamada en cada sitio que mata a un usuario, algunos de los cuales ni siquiera
+        // pasan por DanoRecibido/SendPartyMemberHP.
+        if (u.PartyId > 0) PartySystem.SendPartyMemberHP(userIndex);
+        GmWatch.BroadcastHP(userIndex);
         u.flags.Muerto = 1;
         u.flags.MuertesUsuario++;                  // contador de muertes (se ve en stats)
         u.flags.KillStreak = 0;                     // muere → se corta su racha de kills
@@ -2961,7 +3973,8 @@ public static class Combat
             for (int i = 1; i <= UserListManager.LastUser; i++)
             {
                 var o = UserListManager.UserList[i];
-                if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                if (o?.flags.UserLogged == true && o.Conn != null
+                    && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                     ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, GameTimer.AFK_PARTICULA, 0f, true);
             }
         }
@@ -2988,6 +4001,7 @@ public static class Combat
         if (u.flags.TomoPocion) RestaurarAtributos(u);                     // restaurar atributos buffeados/debuffeados
         u.flags.FurorIgneo = false; u.flags.SacrificioImpio = false;       // efectos de guerrero se cortan al morir
         u.flags.ArmaMagicaExpira = 0; u.flags.Maldecido = 0; u.flags.MaldecidoExpira = 0; // efectos temporales se cortan al morir
+        QuitarScrollTrueno(u, avisar: false);                              // el bonus de daño del scroll también
         if (u.flags.Descansar != 0) u.flags.Descansar = 0;
         if (u.flags.Meditando) { u.flags.Meditando = false; ServerPackets.MeditateToggle(u.Conn); Facciones.QuitarParticulaMeditacion(u); }
         if (u.flags.Trabajando) { u.flags.Trabajando = false; u.flags.WorkSkill = 0; }
@@ -2995,7 +4009,7 @@ public static class Combat
         {
             u.flags.Oculto = 0;
             u.flags.Invisible = 0; u.flags.InvisibleExpira = 0;
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
             {
                 var o = UserListManager.UserList[i];
                 if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -3040,12 +4054,24 @@ public static class Combat
         }
 
         // Montura: al morir se desmonta (VB6 UserDie: Montando=0 + WriteMontateToggle).
-        if (u.flags.Montando == 1) { u.flags.Montando = 0; ServerPackets.MontateToggle(u.Conn); }
+        if (u.flags.Montando == 1) { u.flags.Montando = 0; u.flags.Vuela = 0; ServerPackets.MontateToggle(u.Conn); }
 
         // Mascotas: al morir el amo, mueren todas sus mascotas (VB6 MuereNpc por cada MascotasIndex).
         NpcManager.LiberarMascotasDe(userIndex);
         u.NroMascotas = 0;
         for (int m = 1; m < u.MascotasCharIndex.Length; m++) u.MascotasCharIndex[m] = 0;
+
+        // Mascota compañera persistente: LiberarMascotasDe la excluye a propósito (PetOfPlayer),
+        // así que hay que sacarla acá o el fantasma queda con la mascota peleando sola en el mapa.
+        // Se DESINVOCA (no muere): no pierde nivel/exp ni exige Veterinaria — el castigo ya es la
+        // muerte del dueño. Se reinvoca con el hechizo después de resucitar.
+        CancelarCasteoMascota(u, avisar: false); // si moría en pleno conjuro, no la trae después
+        if (u.PetCharIndex > 0)
+        {
+            DespawnMascotaPersistente(u);
+            ServerPackets.ConsoleMsg(u.Conn, "Tu mascota se desvanece al morir vos. Invocala de nuevo cuando resucites.", 1);
+            EnviarPetInfo(u);
+        }
 
         // Reset de FX persistente sobre el char (VB6: si Loops == INFINITE_LOOPS).
         if (u.Char.Loops == -1) { u.Char.FX = 0; u.Char.Loops = 0; }
@@ -3071,7 +4097,7 @@ public static class Combat
             u.Char.CascoAnim = 0;
 
             int map = u.Pos.Map;
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(map))
             {
                 var o = UserListManager.UserList[i];
                 if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == map)
@@ -3104,7 +4130,7 @@ public static class Combat
             {
                 // Quedan más collares en la ranura: bajar 1 y mantener la pila equipada (sigue protegiendo).
                 u.Invent.Object[slotCollar].Amount = restantes;
-                ServerPackets.ChangeInventorySlot(u.Conn, (byte)slotCollar, actual, restantes, true);
+                ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slotCollar);
             }
             else
             {
@@ -3115,7 +4141,7 @@ public static class Combat
                 u.Invent.Object[slotCollar].Amount = 0;
                 u.Invent.Object[slotCollar].Equipped = false;
                 if (u.Invent.NroItems > 0) u.Invent.NroItems--;
-                ServerPackets.ChangeInventorySlot(u.Conn, (byte)slotCollar, 0, 0, false);
+                ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slotCollar);
             }
 
             if (siguiente > 0 && mapData != null
@@ -3168,8 +4194,7 @@ public static class Combat
         AreaVisibility.ObjectAppeared(u.Pos.Map, tx, ty, oi, 1);
         if (u.Conn != null)
         {
-            ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot,
-                u.Invent.Object[slot].ObjIndex, u.Invent.Object[slot].Amount, u.Invent.Object[slot].Equipped);
+            ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
             ServerPackets.ConsoleMsg(u.Conn, "¡El Pendiente del Sacrificio te ha protegido de perder tus items!", 1);
         }
     }
@@ -3180,7 +4205,7 @@ public static class Combat
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+            if (o?.flags.UserLogged == true && o.Conn != null && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                 ServerPackets.ChatOverHead(o.Conn, texto, u.Char.CharIndex, 0);
         }
     }
@@ -3212,7 +4237,7 @@ public static class Combat
             if (u.Invent.NroItems > 0) u.Invent.NroItems--;
             // Difundir por área y actualizar slot del dueño
             AreaVisibility.ObjectAppeared(u.Pos.Map, tx, ty, oi, amt);
-            ServerPackets.ChangeInventorySlot(u.Conn, slot, 0, 0, false);
+            ServerPackets.ChangeInventorySlot(u.Conn, u, slot);
         }
     }
 
@@ -3267,7 +4292,7 @@ public static class Combat
     /// el texto al recibir ChatOverHead con cadena vacía.</summary>
     private static void BroadcastRemoveDialog(User u)
     {
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
         {
             var o = UserListManager.UserList[i];
             if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -3278,7 +4303,7 @@ public static class Combat
     /// <summary>Difunde AuraToChar al área (equiv. SendData ToPCArea + PrepareMessageAuraToChar).</summary>
     private static void BroadcastAuraArea(User u, byte aura, byte slot)
     {
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(u.Pos.Map))
         {
             var o = UserListManager.UserList[i];
             if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
@@ -3379,7 +4404,7 @@ public static class Combat
         u.Char.CascoAnim  = u.Invent.CascoEqpObjIndex  > 0 ? (short)ObjData.Get(u.Invent.CascoEqpObjIndex).CascoAnim  : (short)0;
 
         int map = u.Pos.Map;
-        for (int i = 1; i <= UserListManager.LastUser; i++)
+        foreach (int i in UsersByMapIndex.Get(map))
         {
             var o = UserListManager.UserList[i];
             if (o.flags.UserLogged && o.Conn != null && o.Pos.Map == map)
@@ -3387,6 +4412,8 @@ public static class Combat
                     u.Char.heading, u.Char.WeaponAnim, u.Char.ShieldAnim, u.Char.CascoAnim, 0, 0, 0);
         }
         ServerPackets.UpdateHP(u.Conn, u.Stats.MinHP);
+        if (u.PartyId > 0) PartySystem.SendPartyMemberHP(userIndex);
+        GmWatch.BroadcastHP(userIndex); // GM: sin esto la barra quedaba en 0 (negra) tras revivir
         // NOTA: el sonido de revivir (204/84) NO se reproduce acá: solo debe sonar cuando te revive
         // el sacerdote (Accion.cs), no en las resurrecciones por hechizo. Acá queda solo la partícula.
         // OJO: el cliente decrementa el alive_counter del grupo POR FRAME (no por ms), y el VB6
@@ -3478,15 +4505,19 @@ public static class Combat
         if (expaDar > npc.ExpCount) { expaDar = npc.ExpCount; npc.ExpCount = 0; }
         else npc.ExpCount -= expaDar;
 
+        expaDar = (int)(expaDar * BalanceData.Exp.TasaGlobal);
         expaDar *= Math.Max(1, Events.ExpMultiplicador);
 
         var u = UserListManager.UserList[userIndex];
         // Boost de exp personal del Battle Pass (encima del multiplicador global de evento).
         double bpExpMult = BattlePass.ExpMult(u);
         if (bpExpMult > 1.0) expaDar = (int)(expaDar * bpExpMult);
+        // [[b4_usersbymap]] Antes recorría LastUser completo buscando compañeros de party; como ya
+        // exige m.Pos.Map == npc.Map, restringir la búsqueda a ese mapa es exactamente equivalente
+        // (cualquier candidato válido está, por definición, en ese subconjunto).
         var receptores = new List<User>();
         if (u.PartyId != 0)
-            for (int i = 1; i <= UserListManager.LastUser; i++)
+            foreach (int i in UsersByMapIndex.Get(npc.Map))
             {
                 var m = UserListManager.UserList[i];
                 if (m.flags.UserLogged && m.PartyId == u.PartyId && m.flags.Muerto == 0 && m.Pos.Map == npc.Map
@@ -3498,10 +4529,22 @@ public static class Combat
         int cada = Math.Max(1, expaDar / receptores.Count);
         foreach (var m in receptores)
         {
-            m.Stats.Exp += cada;
+            // Scroll de EXP personal (poción SubTipo 10): cada receptor multiplica SU porción.
+            int scrollMult = ScrollExpMultActivo(m);
+            int darExp = cada * scrollMult;
+            m.Stats.Exp += darExp;
             // Mensaje de experiencia: font 13 (celeste, locale_smg 140 del VB6) → pestaña Combate.
-            if (m.Conn != null) { ServerPackets.ConsoleMsg(m.Conn, $"Has ganado {cada} puntos de experiencia.", 13); ServerPackets.UpdateExp(m.Conn, (int)m.Stats.Exp); }
+            // Con scroll activo se desglosa la base + el bonus para que se vea la bonificación.
+            if (m.Conn != null)
+            {
+                string msg = scrollMult > 1
+                    ? $"Has ganado {darExp} puntos de experiencia ({cada} + {darExp - cada} de bonificación x{scrollMult})."
+                    : $"Has ganado {darExp} puntos de experiencia.";
+                ServerPackets.ConsoleMsg(m.Conn, msg, 13);
+                ServerPackets.UpdateExp(m.Conn, (int)m.Stats.Exp);
+            }
             CheckUserLevel(m);
+            DarExpAMascota(m, darExp);
         }
     }
 

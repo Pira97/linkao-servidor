@@ -50,9 +50,37 @@ public static class StatusEndpoint
 
                 try
                 {
-                    int players = UserListManager.OnlineCount();
-                    string json =
-                        $"{{\"online\":true,\"players\":{players},\"version\":\"{Version}\"}}";
+                    string ruta = ctx.Request.Url?.AbsolutePath ?? "/";
+                    string json;
+                    if (ruta.Equals("/online", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Lista de conectados con su posición: son datos privados de los
+                        // jugadores, así que va detrás del token del panel (ver Espia).
+                        json = Espia.TokenValido(ctx.Request.QueryString["tok"])
+                            ? JsonDeConectados()
+                            : "{\"error\":\"token\"}";
+                        if (!Espia.TokenValido(ctx.Request.QueryString["tok"]))
+                            ctx.Response.StatusCode = 403;
+                    }
+                    else if (ruta.Equals("/security", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Monitor de seguridad del panel (auditoría DDoS 24-ago-2026): sólo
+                        // contadores agregados y eventos ya resumidos (ver SecurityLog/GlobalStats),
+                        // nada de credenciales/IPs de jugadores individuales salvo las que YA
+                        // quedan en los eventos de seguridad (misma info que ya se ve en consola).
+                        // Mismo candado de token que /online: es información operativa interna.
+                        if (!Espia.TokenValido(ctx.Request.QueryString["tok"]))
+                        {
+                            json = "{\"error\":\"token\"}";
+                            ctx.Response.StatusCode = 403;
+                        }
+                        else json = JsonDeSeguridad();
+                    }
+                    else
+                    {
+                        int players = UserListManager.OnlineCount();
+                        json = $"{{\"online\":true,\"players\":{players},\"version\":\"{Version}\"}}";
+                    }
                     byte[] buf = Encoding.UTF8.GetBytes(json);
 
                     ctx.Response.ContentType = "application/json";
@@ -65,6 +93,99 @@ public static class StatusEndpoint
             }
         }, ct);
     }
+
+    /// <summary>
+    /// GET /online?tok=… → { "players":[{"name","map","x","y","lvl","clase","gm"}] }.
+    /// Lo consume el panel de deploy para armar la lista de "Espectar mundo vivo".
+    /// Se toma bajo GameLock: recorrer UserList mientras el tick lo muta daría datos rotos.
+    /// </summary>
+    private static string JsonDeConectados()
+    {
+        var sb = new StringBuilder("{\"players\":[");
+        bool primero = true;
+        lock (UserListManager.GameLock)
+        {
+            for (int i = 1; i <= UserListManager.LastUser; i++)
+            {
+                var u = UserListManager.UserList[i];
+                if (u?.flags.UserLogged != true || u.Conn == null) continue;
+                if (!primero) sb.Append(',');
+                primero = false;
+                sb.Append("{\"name\":\"").Append(Esc(u.Name)).Append("\",")
+                  .Append("\"map\":").Append(u.Pos.Map).Append(',')
+                  .Append("\"x\":").Append(u.Pos.X).Append(',')
+                  .Append("\"y\":").Append(u.Pos.Y).Append(',')
+                  .Append("\"lvl\":").Append(u.Stats.ELV).Append(',')
+                  .Append("\"gm\":").Append(u.FaccionStatus).Append(',')
+                  .Append("\"muerto\":").Append(u.flags.Muerto == 1 ? "true" : "false")
+                  .Append('}');
+            }
+
+            // Bots de guerra y progresivos: van en la misma lista con "bot":true y su bando, así
+            // el panel los puede mostrar aparte y se pueden espectar igual que un jugador (ver
+            // Espia.EmpezarEspectadorNpc). Sin guerra activa ni población del mundo, no agrega nada.
+            foreach (var b in NpcManager.BotsEspectables())
+            {
+                if (!primero) sb.Append(',');
+                primero = false;
+                sb.Append("{\"name\":\"").Append(Esc(b.Name)).Append("\",")
+                  .Append("\"map\":").Append(b.Map).Append(',')
+                  .Append("\"x\":").Append(b.X).Append(',')
+                  .Append("\"y\":").Append(b.Y).Append(',')
+                  .Append("\"lvl\":").Append(b.BotLeveling ? b.BotNivelActual : 0).Append(",\"gm\":0,\"muerto\":false,")
+                  .Append("\"bot\":true,\"faccion\":").Append(b.BotFaccion)
+                  .Append('}');
+            }
+        }
+        return sb.Append("]}").ToString();
+    }
+
+    /// <summary>
+    /// GET /security?tok=… → contadores de GlobalStats + latencia del GameLoop + últimos eventos
+    /// de seguridad ya agregados (SecurityLog.Recientes). Lo consume el panel de deploy para el
+    /// monitor "Security / DDoS" (sección 17 de la auditoría 24-ago-2026). De sólo lectura: no
+    /// modifica nada, no expone credenciales — misma información que ya se ve en la consola del
+    /// server, sólo que estructurada para el dashboard.
+    /// </summary>
+    private static string JsonDeSeguridad()
+    {
+        var s = GlobalStats.Snapshot();
+        var eventos = SecurityLog.Recientes(30);
+
+        var sb = new StringBuilder();
+        sb.Append('{');
+        sb.Append("\"online\":").Append(UserListManager.OnlineCount()).Append(',');
+        sb.Append("\"uptimeSeg\":").Append((Environment.TickCount64 - GameServer.StartTick) / 1000).Append(',');
+        sb.Append("\"paquetesProcesados\":").Append(s.PaquetesProcesados).Append(',');
+        sb.Append("\"bytesEntrantes\":").Append(s.BytesEntrantes).Append(',');
+        sb.Append("\"conexionesActivas\":").Append(s.ConexionesActivas).Append(',');
+        sb.Append("\"conexionesNuevas\":").Append(s.ConexionesNuevas).Append(',');
+        sb.Append("\"conexionesRechazadas\":").Append(s.ConexionesRechazadas).Append(',');
+        sb.Append("\"paquetesLimitados\":").Append(s.PaquetesLimitados).Append(',');
+        sb.Append("\"clientesDesconectadosPorAbuso\":").Append(s.ClientesDesconectadosPorAbuso).Append(',');
+        sb.Append("\"ultimoTickMs\":").Append(s.UltimoTickMs.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+        sb.Append("\"maxTickMsUltimoMinuto\":").Append(s.MaxTickMsUltimoMinuto.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+        sb.Append("\"eventos\":[");
+        for (int i = 0; i < eventos.Count; i++)
+        {
+            var e = eventos[i];
+            if (i > 0) sb.Append(',');
+            sb.Append('{')
+              .Append("\"ts\":\"").Append(e.Utc.ToString("O")).Append("\",")
+              .Append("\"sev\":\"").Append(e.Sev).Append("\",")
+              .Append("\"categoria\":\"").Append(Esc(e.Categoria)).Append("\",")
+              .Append("\"detalle\":\"").Append(Esc(e.Detalle)).Append("\",")
+              .Append("\"ip\":").Append(e.Ip != null ? $"\"{Esc(e.Ip)}\"" : "null").Append(',')
+              .Append("\"repeticiones\":").Append(e.Repeticiones)
+              .Append('}');
+        }
+        sb.Append("]}");
+        return sb.ToString();
+    }
+
+    /// <summary>Escapa lo mínimo para meter un nombre en JSON (comillas y barras).</summary>
+    private static string Esc(string s) =>
+        (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
 }
 
 // NOTA (Windows): si al arrancar ves "Acceso denegado" al iniciar el HttpListener en :7667,

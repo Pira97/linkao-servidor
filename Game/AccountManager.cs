@@ -111,6 +111,25 @@ public static class AccountManager
         ServerPackets.ShowMessageBoxCode(conn, 32);    // "Cuenta creada con éxito"
     }
 
+    /// <summary>
+    /// true si ALGUNO de los personajes de la cuenta es Dios (Server.ini [Dioses]). Es el
+    /// permiso del modo espectador: mirar por los ojos de un jugador es lo más invasivo que
+    /// hay, así que se pide el mismo rango que /espiar aunque no se entre con el personaje.
+    /// </summary>
+    public static bool CuentaTieneDios(string cuenta)
+    {
+        cuenta = (cuenta ?? "").Trim().ToUpperInvariant();
+        var ini = new IniFile(Path.Combine(AccountPath, cuenta + ".cnt"));
+        int n = ini.GetInt("PJS", "NumPjs");
+        for (int i = 1; i <= n; i++)
+        {
+            string name = ini.Get("PJS", "PJ" + i).Trim();
+            if (string.IsNullOrEmpty(name)) continue;
+            if (AdminLoader.GetFaccionStatus(name) >= AdminLoader.STATUS_DIOS) return true;
+        }
+        return false;
+    }
+
     /// <summary>true si el personaje 'name' está listado en [PJS] de la cuenta.</summary>
     public static bool CuentaTienePersonaje(string cuenta, string name)
     {
@@ -124,18 +143,135 @@ public static class AccountManager
         return false;
     }
 
+    /// <summary>Lista de nombres de personajes ([PJS]) de una cuenta.</summary>
+    public static List<string> GetPersonajes(string cuenta)
+    {
+        cuenta = (cuenta ?? "").Trim().ToUpperInvariant();
+        var ini = new IniFile(Path.Combine(AccountPath, cuenta + ".cnt"));
+        var result = new List<string>();
+        if (!ini.Loaded) return result;
+        int n = ini.GetInt("PJS", "NumPjs");
+        for (int i = 1; i <= n; i++)
+        {
+            string name = ini.Get("PJS", "PJ" + i).Trim();
+            if (!string.IsNullOrEmpty(name) && !name.Equals("nada", StringComparison.OrdinalIgnoreCase))
+                result.Add(name);
+        }
+        return result;
+    }
+
+    /// <summary>Busca a qué cuenta pertenece un personaje, recorriendo los .cnt (null si no existe).</summary>
+    public static string GetAccountByCharacter(string charName)
+    {
+        if (string.IsNullOrWhiteSpace(charName)) return null;
+        charName = charName.Trim();
+        try
+        {
+            if (!Directory.Exists(AccountPath)) return null;
+            foreach (var file in Directory.EnumerateFiles(AccountPath, "*.cnt"))
+            {
+                string cuenta = Path.GetFileNameWithoutExtension(file).ToUpperInvariant();
+                if (CuentaTienePersonaje(cuenta, charName)) return cuenta;
+            }
+        }
+        catch { /* directorio inaccesible: tratar como no encontrado */ }
+        return null;
+    }
+
+    // =============================== AMIGOS POR CUENTA ===============================
+    // La amistad es entre CUENTAS, no entre personajes: al aceptar, cualquier personaje
+    // de una cuenta ve en su panel a TODOS los personajes de la cuenta amiga.
+
+    /// <summary>Cuentas amigas ([AMIGOS] de este .cnt).</summary>
+    public static List<string> GetAmigosCuentas(string cuenta)
+    {
+        cuenta = (cuenta ?? "").Trim().ToUpperInvariant();
+        var ini = new IniFile(Path.Combine(AccountPath, cuenta + ".cnt"));
+        var result = new List<string>();
+        if (!ini.Loaded) return result;
+        int n = ini.GetInt("AMIGOS", "NumAmigos");
+        for (int i = 1; i <= n; i++)
+        {
+            string a = ini.Get("AMIGOS", "Amigo" + i).Trim().ToUpperInvariant();
+            if (!string.IsNullOrEmpty(a)) result.Add(a);
+        }
+        return result;
+    }
+
+    public static bool EsAmigoCuenta(string cuenta, string otraCuenta) =>
+        GetAmigosCuentas(cuenta).Contains((otraCuenta ?? "").Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase);
+
+    public static bool NoTieneEspacioAmigosCuenta(string cuenta) =>
+        GetAmigosCuentas(cuenta).Count >= Constants.MAXAMIGOS;
+
+    /// <summary>Agrega 'otraCuenta' a la lista de amigos de 'cuenta' (no-op si ya estaba o sin espacio).</summary>
+    public static bool AgregarAmigoCuenta(string cuenta, string otraCuenta)
+    {
+        cuenta = (cuenta ?? "").Trim().ToUpperInvariant();
+        otraCuenta = (otraCuenta ?? "").Trim().ToUpperInvariant();
+        var actuales = GetAmigosCuentas(cuenta);
+        if (actuales.Contains(otraCuenta, StringComparer.OrdinalIgnoreCase)) return true;
+        if (actuales.Count >= Constants.MAXAMIGOS) return false;
+
+        string cntFile = Path.Combine(AccountPath, cuenta + ".cnt");
+        var doc = new IniDocument(cntFile);
+        if (!doc.Loaded) return false;
+        int nuevoIndex = actuales.Count + 1;
+        doc.Set("AMIGOS", "Amigo" + nuevoIndex, otraCuenta);
+        doc.Set("AMIGOS", "NumAmigos", nuevoIndex.ToString());
+        doc.Save(cntFile);
+        return true;
+    }
+
+    /// <summary>Quita 'otraCuenta' de la lista de amigos de 'cuenta' (compacta los índices).</summary>
+    public static void QuitarAmigoCuenta(string cuenta, string otraCuenta)
+    {
+        cuenta = (cuenta ?? "").Trim().ToUpperInvariant();
+        otraCuenta = (otraCuenta ?? "").Trim().ToUpperInvariant();
+        var actuales = GetAmigosCuentas(cuenta);
+        int idx = actuales.FindIndex(a => string.Equals(a, otraCuenta, StringComparison.OrdinalIgnoreCase));
+        if (idx < 0) return;
+        actuales.RemoveAt(idx);
+
+        string cntFile = Path.Combine(AccountPath, cuenta + ".cnt");
+        var doc = new IniDocument(cntFile);
+        if (!doc.Loaded) return;
+        for (int i = 0; i < actuales.Count; i++)
+            doc.Set("AMIGOS", "Amigo" + (i + 1), actuales[i]);
+        doc.Set("AMIGOS", "Amigo" + (actuales.Count + 1), "");
+        doc.Set("AMIGOS", "NumAmigos", actuales.Count.ToString());
+        doc.Save(cntFile);
+    }
+
     /// <summary>Maneja CONNECT_ACCOUNT. 'passwordPlano' ya viene descifrada. true si entró OK.</summary>
     public static bool HandleLoginAccount(Connection conn, string cuenta, string passwordPlano)
     {
         cuenta = cuenta.Trim().ToUpperInvariant();
+        string ip = conn.RemoteIp;
+
+        // Fuerza bruta: antes de tocar el .cnt, ver si esta cuenta o esta IP está bloqueada
+        // por demasiados fallos recientes (LoginThrottle). No existía ningún límite de reintentos.
+        if (!LoginThrottle.PuedeIntentar(cuenta, ip, out string motivoBloqueo))
+        {
+            ServerPackets.ShowMessageBox(conn, motivoBloqueo);
+            conn.FlushAndClose();
+            return false;
+        }
+
         if (!ValidarCuenta(cuenta, passwordPlano, out string error))
         {
+            // Sólo cuenta como intento de fuerza bruta si la cuenta existe y la password fue lo
+            // que falló (no penalizar escribir mal el nombre de cuenta una vez, ni contar en el
+            // bloqueo global por-IP los golpes contra cuentas que ni siquiera existen).
+            if (error == "Contraseña incorrecta.") LoginThrottle.RegistrarFallo(cuenta, ip);
+
             // VB6 (Protocol.bas:17957): FlushBuffer + CloseSocket tras el rechazo.
             // Si no se cierra, el cliente queda conectado y no puede reintentar el login.
             ServerPackets.ShowMessageBox(conn, error);
             conn.FlushAndClose();
             return false;
         }
+        LoginThrottle.RegistrarExito(cuenta, ip);
         EnviarListaPersonajes(conn, cuenta);
         return true;
     }
@@ -168,6 +304,29 @@ public static class AccountManager
     }
 
     /// <summary>
+    /// Cambia el nombre de un personaje dentro de [PJS] de su cuenta (poción de cambio de nombre).
+    /// No toca archivos del personaje: de eso se encarga CharSaver.RenombrarPersonaje.
+    /// </summary>
+    public static bool RenombrarEnCuenta(string cuenta, string viejo, string nuevo)
+    {
+        cuenta = (cuenta ?? "").Trim().ToUpperInvariant();
+        string cntFile = Path.Combine(AccountPath, cuenta + ".cnt");
+        var ini = new IniFile(cntFile);
+        if (!ini.Loaded) return false;
+        int num = ini.GetInt("PJS", "NumPjs");
+        for (int i = 1; i <= num; i++)
+        {
+            if (!string.Equals(ini.Get("PJS", "PJ" + i).Trim(), viejo.Trim(), StringComparison.OrdinalIgnoreCase))
+                continue;
+            var doc = new IniDocument(cntFile);
+            doc.Set("PJS", "PJ" + i, nuevo);
+            doc.Save(cntFile);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// BorrarPersonaje (Protocol.bas:18432, ProcesosLogin tipo 8) 1:1. Valida la contraseña de la
     /// cuenta, borra el .chr y lo saca de [PJS] (compacta + decrementa), y reenvía la lista (AddPj).
     /// El personaje debe pertenecer a la cuenta (protección anti-borrado de PJ ajeno).
@@ -175,11 +334,23 @@ public static class AccountManager
     public static void BorrarPersonaje(Connection conn, string cuenta, string passwordPlano, string charName)
     {
         cuenta = cuenta.Trim().ToUpperInvariant();
+        string ip = conn.RemoteIp;
+
+        // Fix H3 (auditoría DDoS 24-ago-2026): este camino (ProcesosLogin step=8) también
+        // llamaba a ValidarCuenta directo, sin pasar por LoginThrottle — misma tabla
+        // (por cuenta y por IP) que HandleLoginAccount, ANTES de tocar el .cnt/verificar password.
+        if (!LoginThrottle.PuedeIntentar(cuenta, ip, out string motivoBloqueo))
+        {
+            ServerPackets.ConsoleMsg(conn, motivoBloqueo, 3);
+            return;
+        }
         if (!ValidarCuenta(cuenta, passwordPlano, out string error))
         {
+            if (error == "Contraseña incorrecta.") LoginThrottle.RegistrarFallo(cuenta, ip);
             ServerPackets.ConsoleMsg(conn, error, 3);
             return;
         }
+        LoginThrottle.RegistrarExito(cuenta, ip);
         if (string.IsNullOrWhiteSpace(charName) || !CuentaTienePersonaje(cuenta, charName))
         {
             ServerPackets.ConsoleMsg(conn, "Personaje no encontrado.", 3);

@@ -69,6 +69,9 @@ public static class Facciones
     /// nivel + facción. GM → 128. cambioStats=true mira el nivel+1 (al subir de nivel).</summary>
     public static int ParticleToLevel(User u, bool cambioStats = false)
     {
+        // Partícula premium equipada (NUEVO, no VB6): pisa el cálculo por nivel/facción
+        // mientras esté equipada. Ver PremiumParticles.cs.
+        if (u.EquippedPremiumParticle != 0) return u.EquippedPremiumParticle;
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return 128;
         int nivel = u.Stats.ELV + (cambioStats ? 1 : 0);
         int st = u.Faccion.Status;
@@ -89,7 +92,8 @@ public static class Facciones
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+            if (o?.flags.UserLogged == true && o.Conn != null
+                && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                 ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, (short)p, 0f, true);
         }
     }
@@ -101,7 +105,8 @@ public static class Facciones
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
-            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+            if (o?.flags.UserLogged == true && o.Conn != null
+                && AreaVisibility.VeChar(o, u.Pos.Map, u.Char.CharIndex))
                 ServerPackets.EfectoCharParticula(o.Conn, u.Char.CharIndex, (short)p, -1f, false);
         }
     }
@@ -207,6 +212,43 @@ public static class Facciones
     private static void OverHead(User u, short npcCharIndex, string msg)
     {
         if (u.Conn != null) ServerPackets.ChatOverHead(u.Conn, msg, npcCharIndex, 7);
+    }
+
+    /// <summary>
+    /// Cambio de facción por poción (obj.dat SubTipo 15). Es la versión sin NPC de
+    /// EntrarImperial/EntrarRepublica: no cobra el PERDON (ese es justamente el sentido del ítem)
+    /// y no exige ser renegado, pero SÍ mantiene las dos restricciones que romperían otras cosas:
+    /// no estar en un clan (igual que el flujo del NPC) y no estar enlistado en Armada/Caos/Milicia
+    /// (habría que darlos de baja con sus rangos y equipo faccionario primero).
+    /// destino: CIUDADANO (imperial) o REPUBLICANO. Devuelve false si no se aplicó (ya avisó por consola).
+    /// </summary>
+    public static bool CambiarFaccionPorPocion(User u, byte destino)
+    {
+        if (u.Faccion.Status == destino)
+        {
+            if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "Ya perteneces a esa facción.", FONT_INFO);
+            return false;
+        }
+        if (EsFaccion(u))
+        {
+            if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn,
+                "Estás enlistado en una facción de combate: debes darte de baja antes de cambiar de bando.", FONT_INFO);
+            return false;
+        }
+        if (u.GuildIndex > 0)
+        {
+            if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn,
+                "Para realizar esta acción no debes pertenecer a ningún clan.", FONT_INFO);
+            return false;
+        }
+
+        u.Faccion.Status = destino;
+        u.Hogar = destino == REPUBLICANO ? cIlliandor : cNix;
+        BroadcastCharStatus(u);
+        if (u.Conn != null)
+            ServerPackets.ConsoleMsg(u.Conn, destino == REPUBLICANO
+                ? "Bienvenido a la República." : "Bienvenido al Imperio.", FONT_INFO);
+        return true;
     }
 
     /// <summary>EntrarImperial (ModFacciones.bas:73): renegado → ciudadano imperial pagando PERDON.</summary>

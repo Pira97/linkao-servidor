@@ -79,6 +79,26 @@ public static class Skills
         return sb.ToString();
     }
 
+    // Tope de puntos de skill según nivel del personaje — LevelSkill (General.bas:2281-2330)
+    // portado 1:1. Índice = nivel (1..50); nivel 40+ ya permite 100.
+    private static readonly int[] LevelSkillCap =
+    {
+        0,                                       // 0 (sin uso)
+        3, 5, 7, 10, 13, 15, 17, 20, 23, 25,     // niveles 1-10
+        27, 30, 33, 35, 37, 40, 43, 45, 47, 50,  // niveles 11-20
+        53, 55, 57, 60, 63, 65, 67, 70, 73, 75,  // niveles 21-30
+        77, 80, 83, 85, 87, 90, 93, 95, 97, 100, // niveles 31-40
+        100, 100, 100, 100, 100, 100, 100, 100, 100, 100, // niveles 41-50
+    };
+
+    /// <summary>Máximo de puntos de skill permitido para un nivel dado (Modulo_UsUaRiOs.bas:1712-1720).</summary>
+    public static int MaxSkillPorNivel(int nivel)
+    {
+        if (nivel < 1) nivel = 1;
+        if (nivel >= LevelSkillCap.Length) nivel = LevelSkillCap.Length - 1;
+        return LevelSkillCap[nivel];
+    }
+
     // Probabilidad (%) de que una acción entrenadora sume +1. Se lee de Server.ini
     // PorcentajeSkills (cacheado al primer uso); default 100 = sistema de skills rápido.
     private static int? _porcentajeSkill;
@@ -86,15 +106,18 @@ public static class Skills
     private static readonly System.Random _rng = new();
 
     /// <summary>
-    /// SubirSkill — sistema de skills RÁPIDO (NO 1:1 con VB6 por diseño): sin tope por nivel
-    /// (el VB6 usaba LevelSkill) y entrena incluso con hambre/sed. Con probabilidad
-    /// PorcentajeSkill (default 100 = siempre) sube +1 hasta 100, otorga 10 de experiencia
+    /// SubirSkill — sistema de skills rápido con tope por nivel (LevelSkill del VB6,
+    /// Modulo_UsUaRiOs.bas:1712-1720): el skill no puede superar el máximo que permite
+    /// el nivel del personaje, y va subiendo progresivamente al levear. A diferencia del
+    /// VB6 entrena incluso con hambre/sed (decisión de diseño). Con probabilidad
+    /// PorcentajeSkill (default 100 = siempre) sube +1, otorga 10 de experiencia
     /// y chequea nivel.
     /// </summary>
     public static void SubirSkill(int userIndex, int skill)
     {
         var u = UserListManager.UserList[userIndex];
         if (u.Stats.UserSkills[skill] >= MAXSKILLPOINTS) return;       // ya está al máximo
+        if (u.Stats.UserSkills[skill] >= MaxSkillPorNivel(u.Stats.ELV)) return; // tope por nivel
         if (_rng.Next(1, 101) > PorcentajeSkill) return;              // probabilidad de subir
 
         u.Stats.UserSkills[skill]++;
@@ -104,9 +127,6 @@ public static class Skills
             // Font 28 = naranja brillante (fonttypes.ind) para que la subida resalte en la consola.
             ServerPackets.ConsoleMsg(u.Conn, $"¡Has subido {nombre} a {u.Stats.UserSkills[skill]} puntos! (+1)", 28);
             ServerPackets.ConsoleMsg(u.Conn, "¡Has ganado 10 puntos de experiencia!", 1);
-            // Burbuja ámbar dorado (modo 7) sobre la propia cabeza; solo la ve este jugador y el
-            // cliente no la duplica en consola por ser su propio CharIndex.
-            ServerPackets.ChatOverHead(u.Conn, $"¡{nombre} +1! ({u.Stats.UserSkills[skill]})", u.Char.CharIndex, 7);
         }
         u.Stats.Exp += 10;
         Combat.CheckUserLevel(u);

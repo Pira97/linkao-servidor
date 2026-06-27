@@ -25,8 +25,13 @@ Cuentas/
 GUILDS/
 Backups/
 
-# --- Maps: no se editan en vivo; la VM ya los tiene. No los subimos. ---
-Maps/
+# --- Maps: LOCAL MANDA (igual que Dat/). Se editan con el map editor en la PC
+#     y viajan en el deploy; la VM/VPS los reemplaza en cada update.
+#     Solo se versionan los .csm; archivos de trabajo del editor NO:
+Maps/*.editorbak
+Maps/*.aoinf
+Maps/*.aomap
+Maps/*.aozone
 
 # NOTA: Dat/ (obj.dat y demas .dat) SI se versiona: se edita en LOCAL y se sube.
 #       Local manda. Backups/temporales de esa carpeta NO se suben:
@@ -37,3 +42,26 @@ Dat/*.backup
 CONECTAR_VM.bat
 version_remota.txt
 Dat/*.bak_*
+
+# Progreso por personaje. ESTABAN versionados y el 'git reset --hard' del deploy.sh
+# se los pisaba a todos los jugadores del VPS con las copias viejas de esta PC.
+# Verificado 31-jul-2026: Logros/ tenia 8 archivos y BattlePass/ 12 dentro de git.
+Logros/
+BattlePass/
+MercadoPago/
+
+# Notas y scripts de seguridad del VPS. El repo es PUBLICO: publicar la IP, el puerto
+# de SSH y las reglas del firewall le ahorra el trabajo de reconocimiento a cualquiera.
+# Se colaron el 1-ago-2026 porque SUBIR_A_VM.bat hace "git add -A", y se sacaron con
+# amend + push --force antes de que corriera el deploy.
+seguridad_red/
+para subir a vm en linux.txt
+
+# Respaldos que deja Claude al editar los .dat a mano.
+Dat/*.antes-de-*
+
+# --- Backups locales del reemplazo de mapas (18-ago-2026) ---
+# 842 archivos, 49 MB. Son copias de los .csm originales; el repo es PUBLICO y
+# SUBIR_A_VM.bat hace `git add -A`, asi que sin esto se publicaban enteros.
+*.bak_pack
+*.bak_*

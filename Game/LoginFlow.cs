@@ -76,11 +76,9 @@ public static class LoginFlow
         if (u.flags.Paralizado == 1 || u.flags.Inmovilizado == 1) ServerPackets.ParalizeOK(conn);
 
         // Inventario completo (equivale a UpdateUserInv con todos los slots).
+        // La sobrecarga con User calcula PuedeUsar (rojo en el cliente) como el VB6.
         for (byte slot = 1; slot <= Constants.MAX_INVENTORY_SLOTS; slot++)
-        {
-            var o = u.Invent.Object[slot];
-            ServerPackets.ChangeInventorySlot(conn, slot, o.ObjIndex, o.Amount, o.Equipped);
-        }
+            ServerPackets.ChangeInventorySlot(conn, u, slot);
 
         // Solo GMs/Dioses (FaccionStatus 7=Consejero/RM, 8=SemiDios, 9=Dios, 10=Soporte) reciben
         // el hechizo "Te Violo" (índice 30 en Hechizos.dat). Se agrega al primer slot libre si no lo tienen.
@@ -107,6 +105,24 @@ public static class LoginFlow
         // Skills del personaje (WriteSendSkills): puntos de cada habilidad.
         ServerPackets.SendSkills(conn, u);
 
+        // Intervalos de Golpe/Hechizo (editables en vivo por GM, Game/BalanceEditor.cs): el
+        // cliente los usa como gate LOCAL antes de mandar el clic, para no spamear paquetes
+        // que el server igual va a rechazar. Sin esto el cliente se queda con los valores por
+        // default hardcodeados y desincroniza en cuanto un GM cambia el intervalo (el server
+        // rechaza en silencio porque el cliente manda el clic demasiado pronto).
+        var iv = BalanceData.Intervalos;
+        ServerPackets.IntervalConfig(conn, iv.Atacar, iv.LanzarSpell);
+
+        // Mascota compañera persistente (NUEVO, no VB6): manda el estado guardado para que el
+        // panel de mascota (mini/pet_ui.js) se pueda previsualizar sin tener que invocarla primero.
+        Combat.EnviarPetInfo(u);
+
+        // Personajes creados ANTES de que la mascota existiera: su .chr no tiene [MASCOTA], así que
+        // quedaron sin ninguna y sin enterarse. Si su clase puede tener una y todavía no eligió, se
+        // le avisa al entrar (la elige desde el panel de mascota, tecla M → PetElegir).
+        if (u.PetTipo == 0 && PetLeveling.OpcionesPara(u.Clase).Length > 0)
+            ServerPackets.ConsoleMsg(conn, "¡Tu clase puede tener una mascota compañera y todavía no elegiste la tuya! Abrí el panel de mascota (tecla M) para elegirla.", 1);
+
         // NOTA: las partículas ambientales del mapa las carga el propio cliente desde sus .csm
         // (map_loader.gd → set_map_particle). El servidor NO debe enviarlas. Los teleport los renderiza
         // el cliente desde su .csm (AreaVisibility omite ObjType.Teleport).
@@ -121,8 +137,14 @@ public static class LoginFlow
         // Ciclo Día/Noche actual (hora del mundo + flag de dungeon) al entrar al mundo.
         DayNightCycle.EnviarAUsuario(conn.UserIndex);
 
-        // Aviso de evento de ruleta activo (montar dungeon / minería x2 / drop x2).
-        Ruleta.NotificarEventoAlLogin(conn.UserIndex);
+        // Eventos globales en curso (EXP/ORO xN, Barrido, Cacería, Inframundo): avisar al que entra.
+        // También se pueden consultar en cualquier momento con /eventos.
+        var eventosActivos = Events.ResumenEventos();
+        if (eventosActivos.Count > 0)
+            ServerPackets.ConsoleMsg(conn, "Eventos en curso: " + string.Join(" | ", eventosActivos), 58); // 58 = ámbar dorado
+
+        // (NUEVO) Solicitud de amistad pendiente recibida mientras estaba offline.
+        Social.DeliverPendingAmigoRequest(conn.UserIndex);
 
         // Saldo de créditos de donación (cuenta .cnt [cuenta] Creditos) → header de la tienda.
         if (!string.IsNullOrEmpty(u.Account))
@@ -132,9 +154,19 @@ public static class LoginFlow
             ServerPackets.UpdateCreditos(conn, u.CreditoDonador);
         }
 
+        // Partículas premium de meditación: poseídas + equipada (cuenta .cnt [Particulas]).
+        PremiumParticles.LoadForLogin(u);
+
         // Aviso de condena de cárcel pendiente (TCP.bas:1301). El preso sigue confinado al reloguear.
         if (u.flags.Pena > 0)
             ServerPackets.ConsoleMsg(conn, $"Estás cumpliendo condena. Te quedan {u.flags.Pena} minutos.", 4);
+
+        // Scrolls de EXP/Oro que quedaron activos (persisten en el .chr): re-armar el chip del HUD.
+        double ahoraScroll = Environment.TickCount64 / 1000.0;
+        if (u.flags.ScrollExpMult > 1 && u.flags.ScrollExpExpira > ahoraScroll)
+            ServerPackets.ScrollBuff(conn, 1, (byte)u.flags.ScrollExpMult, (int)(u.flags.ScrollExpExpira - ahoraScroll));
+        if (u.flags.ScrollOroMult > 1 && u.flags.ScrollOroExpira > ahoraScroll)
+            ServerPackets.ScrollBuff(conn, 2, (byte)u.flags.ScrollOroMult, (int)(u.flags.ScrollOroExpira - ahoraScroll));
 
         // Sonido de entrada al mundo (SND_ENTRADA=15): lo escucha el que entra Y los ya logueados
         // del mismo mapa (antes solo se mandaba al propio conn y los demás no lo oían).
@@ -152,6 +184,12 @@ public static class LoginFlow
         // Battle Pass: carga el progreso del personaje (reset si cambió la temporada) y envía el estado.
         BattlePass.OnLogin(conn.UserIndex);
 
+        // Logros: carga el progreso y completa retroactivamente los de nivel ya alcanzado.
+        Achievements.OnLogin(conn.UserIndex);
+
+        // Misiones: carga el progreso del personaje (Quests/<NOMBRE>.json).
+        QuestSystem.OnLogin(conn.UserIndex);
+
         Console.WriteLine($"[ServidorCS] {u.Name} entró al mundo en mapa {u.Pos.Map} ({u.Pos.X},{u.Pos.Y}) con {u.Invent.NroItems} items");
     }
 
@@ -165,19 +203,24 @@ public static class LoginFlow
     /// <summary>Envía a targetConn un CharacterCreate que representa al personaje 'u'.</summary>
     public static void SendCharCreate(Connection targetConn, User u)
     {
+        // Mundo continuo: traducir la posición local a global si está activo (identidad si no).
+        var (px, py) = Continuous.Pos(u.Pos.Map, u.Pos.X, u.Pos.Y);
+        // Metamorfoseado: igual que BroadcastCharacterChange (Combat.cs), ocultar cabeza y
+        // equipo (arma/escudo/casco) también al crear el personaje para quien recién lo ve.
+        bool meta = u.flags.Metamorfoseado == 1;
         ServerPackets.CharacterCreate(targetConn,
             charIndex: u.Char.CharIndex,
             body: u.Char.body,
-            head: u.Char.Head,
+            head: meta ? (short)0 : u.Char.Head,
             heading: u.Char.heading,
-            x: (byte)u.Pos.X,
-            y: (byte)u.Pos.Y,
-            weapon: u.Char.WeaponAnim,
-            shield: u.Char.ShieldAnim,
-            helmet: u.Char.CascoAnim,
+            x: px,
+            y: py,
+            weapon: meta ? (short)0 : u.Char.WeaponAnim,
+            shield: meta ? (short)0 : u.Char.ShieldAnim,
+            helmet: meta ? (short)0 : u.Char.CascoAnim,
             fx: 0,
             fxLoops: 0,
-            name: u.Name,
+            name: GuildManager.NombreConTag(u),
             privileges: NickStatus(u),
             donador: u.Char.Donador,
             particulaFx: 0,
@@ -189,5 +232,29 @@ public static class LoginFlow
             anilloAura: u.Char.Anillo_Aura,
             isTopGold: false,
             weaponObjIndex: 0);
+
+        // Estado visual no incluido en CharacterCreate: si el usuario sigue paralizado o
+        // inmovilizado, reenviar la barra/efecto al observador (igual que NpcManager.SendOne
+        // para NPCs; sino al entrar al mapa el PJ se recrea sin barra ni petrificado/enredaderas).
+        double restante = u.flags.ParalisisExpira - Environment.TickCount64 / 1000.0;
+        if (restante > 0 && (u.flags.Paralizado == 1 || u.flags.Inmovilizado == 1))
+        {
+            byte tipo = (byte)(u.flags.Paralizado == 0 && u.flags.Inmovilizado == 1 ? 2 : 1);
+            ServerPackets.NpcParalysisProgress(targetConn, u.Char.CharIndex,
+                (byte)Math.Min(255, (int)Math.Ceiling(restante)), tipo);
+        }
+
+        // GM viendo vida/maná de cualquiera en vivo (GmWatch.cs): al recrearse el char en
+        // pantalla del observador hay que mandarle la foto inicial, sin esperar al próximo
+        // golpe/cura/poción que dispare GmWatch.Broadcast*.
+        if (targetConn.UserIndex > 0)
+        {
+            var obs = UserListManager.UserList[targetConn.UserIndex];
+            if (obs != null && obs.FaccionStatus >= AdminLoader.STATUS_CONSEJERO && obs.id != u.id)
+            {
+                ServerPackets.GmWatchHP(targetConn, u.Char.CharIndex, u.Stats.MinHP, u.Stats.MaxHP);
+                ServerPackets.GmWatchMana(targetConn, u.Char.CharIndex, u.Stats.MinMAN, u.Stats.MaxMAN);
+            }
+        }
     }
 }

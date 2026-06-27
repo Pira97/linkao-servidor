@@ -47,6 +47,7 @@ public static class ObjData
         // Armadura/escudo/casco
         public int MinDef, MaxDef;
         public int Ropaje;     // body al equipar armadura/montura/barco (NumRopaje)
+        public int Vuela;      // 1 = la montura vuela: ignora bloqueo de paredes/estructuras y agua/tierra
         public int ShieldAnim, CascoAnim;
         public int Aura;       // aura del item (obj.dat "Aura"); se muestra al equiparlo (AuraToChar)
         public int SndEspecial; // sonido de aura al equipar (obj.dat "SndEspecial"); solo si Aura>0
@@ -58,6 +59,17 @@ public static class ObjData
         public int MinModificador, MaxModificador;
         public int DuracionEfecto;   // pociones de atributo (agi/fza)
         public int LanzaHechizo;     // pociones que lanzan hechizo (subtipo 5)
+        // Pociones de metamorfosis (SubTipo 16 → 14): body/cabeza a los que transforma y bonus
+        // temporal de ataque/defensa, igual que los hechizos de metamorfosis (Hechizos.dat).
+        // Cabeza=0 para los bodies de criatura (no tienen cabeza aparte).
+        public int MetamorfosisBody; // obj.dat "Body"
+        public int MetamorfosisHead; // obj.dat "Cabeza"
+        public int ExtraHIT;         // obj.dat "ExtraHIT": bonus de ataque (metamorfosis y Scroll del Trueno)
+        public int ExtraDEF;         // obj.dat "ExtraDEF": bonus de defensa mientras dura la metamorfosis
+        public string Tag;           // obj.dat "Tag": texto del tag personal que otorga (SubTipo 19)
+        public int MapaDestino;      // obj.dat "MapaDestino"/"DestinoX"/"DestinoY": teleport fijo (SubTipo 20)
+        public int DestinoX, DestinoY;
+        public int NumNpc;           // obj.dat "NumNpc": criatura que invoca como mascota (SubTipo 22)
         public int ExtraTimer;       // armas: modifica el intervalo de ataque (neg=más rápido, pos=más lento)
         public int HechizoIndex;     // otPergaminos: índice del hechizo que enseña al usarlo
         public int ResistenciaMagica; // armadura/casco/escudo/anillo/montura: resta daño mágico recibido
@@ -163,6 +175,72 @@ public static class ObjData
         return razas;
     }
 
+    /// <summary>
+    /// Barre obj.dat y lista qué efecto le va a dar el servidor a cada consumible (pociones,
+    /// comida y bebida), marcando los que quedarían SIN efecto — que es como se cuelan las
+    /// pociones que el jugador "quema" sin que pase nada ni se le descuenten. Uso:
+    /// dotnet run -- --pociontest
+    /// </summary>
+    public static void ConsumiblesSelfTest()
+    {
+        EnsureLoaded();
+        string EfectoPocion(in Obj o) => o.SubTipo switch
+        {
+            1 => $"agilidad +{o.MinModificador}..{o.MaxModificador} por {o.DuracionEfecto / 1000}s",
+            2 => $"fuerza +{o.MinModificador}..{o.MaxModificador} por {o.DuracionEfecto / 1000}s",
+            3 => $"vida +{o.MinModificador}..{o.MaxModificador}",
+            4 => "maná (fórmula por nivel)",
+            5 => o.LanzaHechizo > 0 ? $"lanza hechizo {o.LanzaHechizo}" : "cura veneno",
+            6 => "teleport a Intermundia",
+            7 => "cambio de cara",
+            8 => "cambio de sexo",
+            9 => $"partícula permanente {(o.Particula > 0 ? o.Particula : 23)}",
+            10 => $"scroll EXP x{o.CuantoAumento}",
+            11 => $"scroll oro x{o.CuantoAumento}",
+            13 => $"+{o.CuantoAumento} créditos",
+            14 => o.MetamorfosisBody > 0
+                    ? $"metamorfosis body {o.MetamorfosisBody} por {(o.DuracionEfecto > 0 ? o.DuracionEfecto / 1000 : 60)}s (+{o.ExtraHIT}/+{o.ExtraDEF})"
+                    : "SIN EFECTO (metamorfosis sin Body)",
+            15 => "cambio de facción",
+            16 => o.MinModificador > 0
+                    ? $"vida máxima +{o.MinModificador}..{o.MaxModificador} ({(o.CuantoAumento > 0 ? o.CuantoAumento : 3)} usos)"
+                    : "SIN EFECTO (poción de vida sin modificador)",
+            17 => "reinicio de pociones de vida",
+            12 => o.ExtraHIT > 0
+                    ? $"scroll del trueno +{o.ExtraHIT} daño por {(o.DuracionEfecto > 0 ? o.DuracionEfecto / 1000 : 1800)}s"
+                    : "SIN EFECTO (scroll del trueno sin ExtraHIT)",
+            18 => "donador definitivo",
+            19 => string.IsNullOrWhiteSpace(o.Tag) ? "SIN EFECTO (poción de tag sin Tag)" : $"tag <{o.Tag.Trim()}>",
+            20 => o.MapaDestino > 0 && o.DestinoX > 0 && o.DestinoY > 0
+                    ? $"teleport a mapa {o.MapaDestino} ({o.DestinoX},{o.DestinoY})"
+                    : "SIN EFECTO (teleport sin destino)",
+            21 => "resucita la última mascota",
+            22 => o.NumNpc > 0 ? $"invoca mascota NPC {o.NumNpc}" : "SIN EFECTO (invocación sin NumNpc)",
+            23 => "habilita /nombre (cambio de nombre)",
+            _ => o.Particula > 0 || o.FX > 0 ? "fuego artificial" : "SIN EFECTO (SubTipo " + o.SubTipo + ")",
+        };
+
+        int sinEfecto = 0, total = 0;
+        for (int i = 1; i <= Count; i++)
+        {
+            var o = _objs[i];
+            if (o.Name == null) continue;
+            string efecto = o.Type switch
+            {
+                ObjType.Pociones => EfectoPocion(o),
+                ObjType.UseOnce => o.MinHam > 0 ? $"hambre +{o.MinHam}" : "SIN EFECTO (comida sin MinHam)",
+                ObjType.Bebidas => o.MinSed > 0 ? $"sed +{o.MinSed}" : "SIN EFECTO (bebida sin MinAgu)",
+                _ => null,
+            };
+            if (efecto == null) continue;
+            total++;
+            bool malo = efecto.StartsWith("SIN EFECTO");
+            if (malo) sinEfecto++;
+            Console.WriteLine($"{(malo ? "!!" : "  ")} OBJ{i,-5} {o.Name,-52} {efecto}");
+        }
+        Console.WriteLine($"\n[ConsumiblesSelfTest] {total} consumibles, {sinEfecto} sin efecto.");
+    }
+
     private static Obj[] _objs;
     public static int Count => (_objs?.Length ?? 1) - 1;
     public static void Reload() { _objs = null; EnsureLoaded(); Console.WriteLine($"[ObjData] Recargado: {Count} objetos."); }
@@ -239,6 +317,7 @@ public static class ObjData
                 MinDef = ini.GetInt("OBJ" + i, "MinDef"),
                 MaxDef = ini.GetInt("OBJ" + i, "MaxDef"),
                 Ropaje = ini.GetInt("OBJ" + i, "NumRopaje"),
+                Vuela = ini.GetInt("OBJ" + i, "Vuela"),
                 // CascoAnim/ShieldAnim NO existen como campos en obj.dat: el VB6 (FileIO.bas:955-958)
                 // los lee del MISMO campo "Anim" según SubTipo (1=casco, 2=escudo). Se setean abajo.
                 Aura = ini.GetInt("OBJ" + i, "Aura"),
@@ -261,6 +340,15 @@ public static class ObjData
                 MaxModificador = ini.GetInt("OBJ" + i, "MaxModificador"),
                 DuracionEfecto = ini.GetInt("OBJ" + i, "DuracionEfecto"),
                 LanzaHechizo = ini.GetInt("OBJ" + i, "LanzaHechizo"),
+                MetamorfosisBody = ini.GetInt("OBJ" + i, "Body"),
+                MetamorfosisHead = ini.GetInt("OBJ" + i, "Cabeza"),
+                ExtraHIT = ini.GetInt("OBJ" + i, "ExtraHIT"),
+                ExtraDEF = ini.GetInt("OBJ" + i, "ExtraDEF"),
+                Tag = ini.Get("OBJ" + i, "Tag"),
+                MapaDestino = ini.GetInt("OBJ" + i, "MapaDestino"),
+                DestinoX = ini.GetInt("OBJ" + i, "DestinoX"),
+                DestinoY = ini.GetInt("OBJ" + i, "DestinoY"),
+                NumNpc = ini.GetInt("OBJ" + i, "NumNpc"),
                 ExtraTimer = ini.GetInt("OBJ" + i, "ExtraTimer"),
                 HechizoIndex = ini.GetInt("OBJ" + i, "HechizoIndex"),
                 ResistenciaMagica = ini.GetInt("OBJ" + i, "ResistenciaMagica"),

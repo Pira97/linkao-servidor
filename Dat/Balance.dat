@@ -5,36 +5,54 @@ HumanoInteligencia=+1
 HumanoCarisma=0
 HumanoConstitucion=+2
 HumanoDañoPVP=95
+HumanoDañoMagicoPVP=100
+HumanoDañoMagicoPVE=100
+HumanoResistenciaMagica=0
 ElfoFuerza=0
 ElfoAgilidad=+2
 ElfoInteligencia=+3
 ElfoCarisma=+2
 ElfoConstitucion=0
 ElfoDañoPVP=85
+ElfoDañoMagicoPVP=115
+ElfoDañoMagicoPVE=115
+ElfoResistenciaMagica=0
 DrowFuerza=+2
 DrowAgilidad=0
 DrowInteligencia=+2
 DrowCarisma=-1
 DrowConstitucion=+1
 DrowDañoPVP=90
+DrowDañoMagicoPVP=110
+DrowDañoMagicoPVE=110
+DrowResistenciaMagica=0
 EnanoFuerza=+3
 EnanoAgilidad=-1
 EnanoInteligencia=-5
 EnanoCarisma=-1
 EnanoConstitucion=+4
 EnanoDañoPVP=115
+EnanoDañoMagicoPVP=80
+EnanoDañoMagicoPVE=80
+EnanoResistenciaMagica=15
 GnomoFuerza=-5
 GnomoAgilidad=+3
 GnomoInteligencia=+4
 GnomoCarisma=0
 GnomoConstitucion=-1
 GnomoDañoPVP=80
+GnomoDañoMagicoPVP=120
+GnomoDañoMagicoPVE=120
+GnomoResistenciaMagica=0
 OrcoFuerza=+5
 OrcoAgilidad=-2
 OrcoInteligencia=-5
 OrcoCarisma=-4
 OrcoConstitucion=+4
 OrcoDañoPVP=110
+OrcoDañoMagicoPVP=85
+OrcoDañoMagicoPVE=85
+OrcoResistenciaMagica=10
 
 
 [MODEVASION]
@@ -307,3 +325,83 @@ EscalaMagiaPvE=3
 
 ; Bonus de dano (%) si Fuerza Y Agilidad estan al maximo. Default 7.
 BonusStatsMax=7
+
+; Escala del dano magico con la Inteligencia del lanzador (% por punto de INT). Default 100 (=1%/INT).
+; Se puede sobreescribir por hechizo con EscalaINT en Hechizos.dat (0 = usar este default).
+EscalaMagiaINT=100
+
+; Piso/techo de dano magico configurable (0 = sin piso/techo, compatibilidad historica).
+; Se pueden sobreescribir por hechizo con DanoMagicoMin/DanoMagicoMax en Hechizos.dat.
+DanoMagicoMinPvP=0
+DanoMagicoMaxPvP=0
+DanoMagicoMinPvE=0
+DanoMagicoMaxPvE=0
+
+[RESPAWN]
+; ====== Tiempo que tardan los NPCs en revivir (editable en caliente con /reloadbalance) ======
+; Antes era una constante de 20s para TODOS: la hormiga y el Rey Dragon reaparecian igual de
+; rapido. Ahora el tiempo escala con la exp que da el bicho (su dificultad):
+;
+;   segundos = Segundos * (GiveEXP / ExpReferencia) ^ (Escala/100)   , recortado a SegundosMax
+;
+; Con los valores de abajo:
+;   Hormiga (6 exp) 45s . Lobo (295) 45s . bicho medio (3.200) ~103s . fuerte (32.000) ~231s
+;   . Guardian (550.000) y jefes (Rey Dragon, Dragon Legendario) 600s = 10 min.
+; Los NPCs sin exp (guardias, mercaderes, aldeanos) usan el piso: Segundos.
+; OJO: se usa el GiveEXP CRUDO de NPCs.dat, sin el multiplicador Exp de Server.ini.
+
+; Piso: lo que tarda el bicho mas debil. Subilo para frenar el farmeo en general.
+Segundos=45
+
+; Techo: lo maximo que puede tardar un jefe. Default 600 (10 min).
+SegundosMax=600
+
+; Exp a partir de la cual el tiempo empieza a crecer por encima del piso. Default 300.
+ExpReferencia=300
+
+; Cuanto pesa la exp, x100: 35 = exponente 0.35. Mas alto = los jefes tardan MUCHO mas que
+; los bichos comunes; 0 = todos tardan lo mismo (Segundos).
+Escala=35
+
+; Variacion aleatoria +- en %. Evita que un grupo de bichos muerto junto reaparezca todo
+; sincronizado de golpe. Default 20 (un bicho de 45s revive entre 36s y 54s). 0 = sin jitter.
+Jitter=20
+
+; Para pisar el tiempo de UN npc puntual, poner "RespawnSegundos=N" en su bloque de NPCs.dat
+; (no confundir con el "RespawnTime=1" heredado del AO original, que es un flag, no segundos).
+
+[INTERVALOS]
+; ====== Cooldowns de golpe y hechizo (editables en caliente con /reloadbalance o desde
+; el panel GM, pestana Intervalos). Si borras una linea, vuelve al valor por defecto.
+; Valores en MILISEGUNDOS.
+
+; Cooldown entre golpes de un arma (IntervaloUserPuedeAtacar). Default 1200.
+Atacar=1200
+
+; Cooldown entre lanzamientos de hechizo (IntervaloLanzaHechizo). Default 500.
+LanzarSpell=1150
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[EXP]
+TasaGlobalOro=10
+
+
+TasaGlobal=10

@@ -12,7 +12,53 @@ using System.Net.NetworkInformation;
 // movimiento se vaciaba y la caminata se veía trabada. Con 1ms el loop es preciso.
 if (OperatingSystem.IsWindows()) NativeTiming.TimeBeginPeriod(1);
 
+// Herramienta de dev del mundo único: ensambla la región y valida invariantes, luego sale.
+// No arranca el servidor. Uso: dotnet run -- --regiontest
+if (args.Length > 0 && args[0] == "--regiontest")
+{
+    ServidorCS.Game.RegionLoader.SelfTest();
+    return;
+}
+
+// Tabla de tiempos de respawn por NPC según [RESPAWN] de Balance.dat. Para tunear los números
+// sin levantar el servidor. Uso: dotnet run -- --respawntest
+if (args.Length > 0 && args[0] == "--respawntest")
+{
+    ServidorCS.Game.NpcManager.RespawnSelfTest();
+    return;
+}
+
+// Verificación manual de los FIX 1-4 de IA de NPCs (guardias+UsersByMapIndex, cache de pathfinding,
+// timers de golpe/hechizo independientes, reacción inmediata a atacante nuevo). Uso: dotnet run -- --fixtest
+if (args.Length > 0 && args[0] == "--fixtest")
+{
+    int fallos = ServidorCS.Game.NpcManager.FixesSelfTest();
+    Environment.Exit(fallos == 0 ? 0 : 1);
+}
+
+// Benchmark real (Stopwatch) de los FIX 1 y 2: viejo algoritmo vs nuevo, mismo proceso, mismos
+// datos sintéticos. Uso: dotnet run -- --benchtest
+if (args.Length > 0 && args[0] == "--benchtest")
+{
+    ServidorCS.Game.NpcManager.FixesBenchmark();
+    return;
+}
+
+// Qué efecto le da el server a cada consumible de obj.dat (y cuáles quedarían sin efecto,
+// que es el bug de "la poción se usa, no hace nada y no se descuenta"). Uso:
+// dotnet run -- --pociontest
+if (args.Length > 0 && args[0] == "--pociontest")
+{
+    ServidorCS.Game.ObjData.ConsumiblesSelfTest();
+    return;
+}
+
 int port = ServerConfig.ReadPort(defaultPort: 7666);
+
+// Versión de cliente exigida: se trae de GitHub ACÁ, antes de escuchar. Si se dejaba para el
+// primer login, esa llamada HTTP salía con el GameLock tomado (server congelado hasta 5s) y,
+// si fallaba, el número viejo de Server.ini rechazaba a todos por "cliente desactualizado".
+ServerConfig.PrecargarVersion();
 
 // Auto-curado del puerto: el launcher de la VM relanza el exe apenas se cae, pero a veces
 // la instancia anterior (u otro server viejo) sigue escuchando el puerto y la nueva moría
@@ -23,9 +69,19 @@ int port = ServerConfig.ReadPort(defaultPort: 7666);
 PortGuard.EnsurePortFree(port);
 
 ServidorCS.Game.AdminLoader.Load();
+ServidorCS.Game.Espia.CargarToken(); // secreto para espectar desde el panel de deploy sin login
 ServidorCS.Game.MercadoPago.Init(); // donaciones: catálogo siempre; cobro/polling gateado por token
+ServidorCS.Game.PremiumParticles.Init(); // catálogo de partículas premium de meditación (Server.ini [ParticulasPremium])
+ServidorCS.Game.CreditItems.Init(); // catálogo de cosméticos comprados con créditos (Server.ini [TiendaCreditosItems])
 ServidorCS.Game.ReportManager.Load(); // sistema de reportes / tickets de soporte
 ServidorCS.Game.BattlePass.Load(); // pase de temporada (battle pass): temporada + tabla de recompensas
+ServidorCS.Game.Achievements.Load(); // sistema de logros (Dat/Logros.ini)
+ServidorCS.Game.QuestSystem.Load(); // sistema de misiones (Dat/Quests.dat)
+ServidorCS.Game.QuestSystem.SpawnNpcs(); // NPCs dadores dedicados ([NPCSPAWNS] de Quests.dat)
+ServidorCS.Game.AmigoRequestStore.Load(); // solicitudes de amistad pendientes (entrega offline)
+// DESHABILITADO temporalmente (a pedido): descomentar esta línea para volver a poblar los
+// dungeons con los guardianes de facción permanentes.
+// ServidorCS.Game.DungeonBots.Init();
 
 var server = new GameServer(port);
 
@@ -58,11 +114,19 @@ catch (OperationCanceledException)
 }
 finally
 {
+    // Si quedó un autosave/backup en vuelo en el worker de persistencia, esperarlo antes del
+    // guardado final: evita que un snapshot viejo, terminando de escribir en su propio hilo,
+    // pise por accidente los datos más frescos que el guardado final está por escribir.
+    if (!ServidorCS.Game.PersistenceWorker.DrainAndWait(TimeSpan.FromSeconds(5)))
+        Console.WriteLine("[ServidorCS] Aviso: el worker de persistencia no terminó a tiempo, se guarda igual.");
+
     // Guardado final: sin esto, los jugadores conectados al momento del cierre
     // perdían el progreso desde el último autosave (hasta 5 minutos).
     Console.WriteLine("[ServidorCS] Guardando personajes online...");
     ServidorCS.Game.CharSaver.SaveAllOnline();
     int bp = ServidorCS.Game.BattlePass.SaveAll();
+    ServidorCS.Game.Achievements.SaveAll();
+    ServidorCS.Game.QuestSystem.SaveAll();
     Console.WriteLine($"[ServidorCS] Personajes guardados ({bp} pases de temporada). Adiós.");
 
     if (OperatingSystem.IsWindows()) NativeTiming.TimeEndPeriod(1);

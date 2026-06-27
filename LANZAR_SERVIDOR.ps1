@@ -4,7 +4,7 @@
 #
 #   1) Detecta version nueva bajando solo "version.txt" por RAW (tiny).
 #   2) Si cambio, baja el paquete del repo por CODELOAD (zip, sin API,
-#      sin limite, siempre la version actual) y extrae el exe + Dat/.
+#      sin limite, siempre la version actual) y extrae exe + Dat/ + Maps/.
 #   3) Arranca ServidorCS.exe.
 #   4) Mientras corre, sondea cada $PollSegundos. Si subiste algo
 #      con SUBIR_A_VM.bat -> cierra, baja y reinicia.
@@ -87,7 +87,7 @@ function EsNueva($remoto, $local) {
 
 # Baja el repo (zip de codeload, sin API, sin cache vieja) y copia exe + Dat/.
 function Sincronizar($ver) {
-    Log "Bajando version $ver (exe + Dat) desde GitHub... puede tardar con el exe (~68MB)." "Cyan"
+    Log "Bajando version $ver (exe + Dat + Maps) desde GitHub... puede tardar (~80MB)." "Cyan"
     $tmp = Join-Path $env:TEMP ("linkao_" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null
     $zip = Join-Path $tmp "repo.zip"
@@ -137,6 +137,17 @@ function Sincronizar($ver) {
     if (Test-Path $srcDat) {
         try { Copy-Item $srcDat $PSScriptRoot -Recurse -Force }
         catch { Log "No pude copiar Dat/." "Yellow"; $ok = $false }
+    }
+
+    # Maps/ (.csm): LOCAL MANDA. Reemplaza los mapas de la VM con los del repo
+    # (editados con el map editor en la PC dev). El server ya esta cerrado aca.
+    $srcMaps = Join-Path $root.FullName "Maps"
+    if (Test-Path $srcMaps) {
+        try {
+            Copy-Item $srcMaps $PSScriptRoot -Recurse -Force
+            Log ("Maps/ actualizado ({0} archivos)." -f (Get-ChildItem $srcMaps -File).Count) "Cyan"
+        }
+        catch { Log "No pude copiar Maps/." "Yellow"; $ok = $false }
     }
 
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue

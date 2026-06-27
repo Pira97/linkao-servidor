@@ -10,12 +10,48 @@ public static class Chat
     /// <summary>Procesa comandos GM enviados vía GMCommands packet (ID 94).</summary>
     public static void HandleGMCommand(int userIndex, string command)
     {
+        // Fix M4 (auditoría DDoS 24-ago-2026): SecurityConfig.GmComandoMaxPorVentana existía
+        // pero no estaba conectado a ningún handler. Este es el camino BINARIO (packet 94,
+        // sin pasar por TalkToMap/chat), así que necesita su propio gate — el rate-limit de
+        // chat no lo cubre. Ráfaga (no cadencia): un GM tipeando/clickeando rápido no debería
+        // verse afectado, sólo un script mandando el packet 94 a velocidad de red.
+        var u0 = UserListManager.UserList[userIndex];
+        var rl = PacketRateLimiter.Permitir(userIndex, "gmcmd",
+            SecurityConfig.GmComandoMaxPorVentana, SecurityConfig.GmComandoVentanaMs,
+            u0?.Conn?.RemoteIp, u0?.Account);
+        if (!rl.Permitido)
+        {
+            // PacketRateLimiter.Permitir ya deja el registro en SecurityLog (agregado, misma
+            // política que "walk"/"chat"): acá sólo se decide si además hay que cortar la conexión.
+            if (rl.Excesivo && u0?.Conn != null) u0.Conn.FlushAndClose();
+            return;
+        }
+
         Console.WriteLine($"[GMCMD] Procesando: {command}");
         HandleCommand(userIndex, command);
     }
 
     public static void TalkToMap(int userIndex, string chat, byte talkMode)
     {
+        // Largo máximo: el protocolo ya lo acota con el prefijo Int16 (hasta ~32KB), pero un mensaje
+        // de gameplay razonable es mucho más corto — un mensaje gigante en un globo o en el chat
+        // Global es puro ruido/abuso, no una necesidad legítima.
+        if (chat.Length > SecurityConfig.ChatMaxLargoMensaje)
+            chat = chat.Substring(0, SecurityConfig.ChatMaxLargoMensaje);
+
+        // Ráfaga (NO cadencia conversacional: ese anti-spam de 8s se sacó a pedido). Este límite
+        // sólo corta el caso de un script mandando decenas de mensajes por segundo — muy por
+        // encima de lo que cualquier persona tipeando llega a generar.
+        var u0 = UserListManager.UserList[userIndex];
+        var rl = PacketRateLimiter.Permitir(userIndex, "chat",
+            SecurityConfig.ChatMaxMensajesPorVentana, SecurityConfig.ChatVentanaMs,
+            u0?.Conn?.RemoteIp, u0?.Account);
+        if (!rl.Permitido)
+        {
+            if (rl.Excesivo && u0?.Conn != null) u0.Conn.FlushAndClose();
+            return;
+        }
+
         Console.WriteLine($"[CHAT] TalkToMap llamado: user={userIndex}, chat='{chat}', mode={talkMode}");
 
         if (chat.StartsWith("/"))
@@ -34,17 +70,9 @@ public static class Chat
         int map = speaker.Pos.Map;
 
         // talkMode 10 = chat GLOBAL: va a la consola de TODOS los usuarios (tab Global),
-        // no como globo sobre la cabeza. Cooldown anti-spam por usuario.
+        // no como globo sobre la cabeza. Sin cooldown (a pedido, sacado el anti-spam de 8s).
         if (talkMode == 10)
         {
-            long now = Environment.TickCount64;
-            if (_lastGlobalChat.TryGetValue(userIndex, out long last) && now - last < GLOBAL_COOLDOWN_MS)
-            {
-                ServerPackets.ConsoleMsg(speaker.Conn, "Debes esperar antes de volver a usar el chat global.", 8);
-                return;
-            }
-            _lastGlobalChat[userIndex] = now;
-
             string globalMsg = $"{speaker.Name} (Global): {chat}";
             for (int i = 1; i <= UserListManager.LastUser; i++)
             {
@@ -84,14 +112,11 @@ public static class Chat
         {
             var other = UserListManager.UserList[i];
             if (!other.flags.UserLogged || other.Conn == null) continue;
-            if (other.Pos.Map != map) continue;
+            // Mismo mapa (clásico) o — mundo continuo — quien vea al que habla desde el mapa vecino.
+            if (!AreaVisibility.VeChar(other, map, charIndex)) continue;
             ServerPackets.ChatOverHead(other.Conn, chat, charIndex, talkMode);
         }
     }
-
-    // Cooldown del chat global (talkMode 10).
-    private static readonly System.Collections.Generic.Dictionary<int, long> _lastGlobalChat = new();
-    private const long GLOBAL_COOLDOWN_MS = 8000;
 
     // Bando del chat faccionario: 1=Imperial (Ciudadano+Armada), 2=República (Republicano+Milicia),
     // 3=Caos, 0=sin facción (Renegado). Los enemigos no comparten bando, así que no se ven.
@@ -103,6 +128,93 @@ public static class Chat
         _                                          => 0,
     };
 
+    // ===================================================================
+    //  PRIVILEGIOS DE COMANDOS (fail-closed)
+    // ===================================================================
+    // Esta clase implementa los comandos de GM, pero NO tenía ningún chequeo
+    // central: sólo 20 de los ~133 handlers miraban u.FaccionStatus. Cualquier
+    // jugador que escribiera "/ci 1 10000" o "/telep" en el chat —o que mandara
+    // el packet GMCommands (94) a mano— los ejecutaba igual.
+    // Regla: TODO comando exige GM salvo los listados en ComandosDeJugador.
+
+    private const byte NIVEL_JUGADOR = 0;
+
+    /// <summary>Comandos que puede usar cualquier jugador. Todo lo que no esté acá
+    /// exige como mínimo Consejero (AdminLoader.STATUS_CONSEJERO).</summary>
+    private static readonly HashSet<string> ComandosDeJugador = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "/eventos",                  // eventos globales en curso
+        "/logros",                   // abre la ventana de Logros (botón del HUD)
+        "/misiones", "/quests",      // abre el log de misiones
+        "/torneo", "/torneoestado",  // estado de las colas del torneo
+        "/hora", "/time",            // hora del servidor
+        "/pos", "/donde",            // la posición propia (con nombre exige GM: ver Cmd_Donde)
+        "/rem", "/comment",          // no-op
+        "/nombre",                   // cambio de nombre: sólo si tomó la poción (SubTipo 23)
+    };
+
+    /// <summary>Comandos que exigen MÁS que Consejero por su impacto (cuentas, IPs,
+    /// economía, mapas persistentes, servidor entero). Los que ya chequean adentro
+    /// (eventos, cacería, barrido, skills, bots, espiar…) conservan su chequeo propio.</summary>
+    private static readonly Dictionary<string, byte> NivelExtra = ConstruirNivelExtra();
+
+    private static Dictionary<string, byte> ConstruirNivelExtra()
+    {
+        var d = new Dictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+        void Dios(params string[] cmds) { foreach (var c in cmds) d[c] = AdminLoader.STATUS_DIOS; }
+
+        Dios("/apagar", "/shutdown", "/habilitar", "/enable", "/grabar", "/save-all", "/setinivar");
+        Dios("/reloadobj", "/reload-objects", "/reloadhechizos", "/reload-spells",
+             "/reloadbalance", "/reload-balance", "/reloadsini", "/reload-ini", "/reloadnpcs");
+        Dios("/apass", "/alter-pass", "/altpass");                                    // contraseñas ajenas
+        Dios("/banip", "/ban-ip", "/unbanip", "/unban-ip", "/baniplist", "/banipreload");
+        Dios("/nick2ip", "/ip2nick", "/lastip");                                      // datos personales (IPs)
+        Dios("/ban", "/echartodospjs", "/kick-all");
+        Dios("/mod", "/editchar", "/darpun", "/points", "/donador");                  // editar personajes ajenos
+        Dios("/banclan", "/ban-guild", "/rajarclan", "/remove-guild");
+        Dios("/ci", "/create-item");                                                  // economía
+        Dios("/guardamapa", "/save-map", "/modmapinfo", "/map-info", "/ct", "/create-teleport",
+             "/dt", "/destroy-teleport", "/bloq", "/bloqueo", "/trigger");            // mapas persistentes
+        return d;
+    }
+
+    /// <summary>FaccionStatus mínimo para ejecutar <paramref name="cmd"/> (ya en minúsculas).</summary>
+    private static byte NivelRequerido(string cmd)
+    {
+        if (ComandosDeJugador.Contains(cmd)) return NIVEL_JUGADOR;
+        return NivelExtra.TryGetValue(cmd, out byte n) ? n : AdminLoader.STATUS_CONSEJERO;
+    }
+
+    /// <summary>Chequeo central de privilegios. Fail-closed: lo desconocido también se
+    /// rechaza, así un comando nuevo nace privado aunque nadie lo agregue a las tablas.</summary>
+    internal static bool PuedeUsarComando(User u, string cmd)
+    {
+        byte req = NivelRequerido(cmd);
+        if (req == NIVEL_JUGADOR) return true;
+        if (u != null && u.FaccionStatus >= req) return true;
+
+        Console.WriteLine($"[SEGURIDAD] {u?.Name ?? "?"} (status {u?.FaccionStatus ?? 0}) intentó '{cmd}' " +
+                          $"que exige status {req}. RECHAZADO.");
+        // Mismo texto para "no existe" y "no te alcanza": no delata qué comandos hay.
+        Send(u, "Comando inexistente o no disponible para tu personaje.");
+        return false;
+    }
+
+    /// <summary>
+    /// Mismo chequeo fail-closed que PuedeUsarComando, para las acciones privilegiadas que NO
+    /// llegan como texto "/comando" (paquetes binarios dedicados: ObjEditorRequest, BotClasesRequest,
+    /// etc.). Antes cada handler en PacketHandler.cs comparaba u.FaccionStatus a mano — un mismo
+    /// resultado (permitir/rechazar+loguear) escrito dos veces es un lugar más donde un chequeo
+    /// nuevo se puede olvidar. Centralizar acá deja UN solo camino de autorización para auditar.
+    /// </summary>
+    public static bool RequierePrivilegio(User u, byte nivelMinimo, string etiqueta)
+    {
+        if (u != null && u.FaccionStatus >= nivelMinimo) return true;
+        Console.WriteLine($"[SEGURIDAD] {u?.Name ?? "?"} (status {u?.FaccionStatus ?? 0}) intentó '{etiqueta}' " +
+                          $"que exige status {nivelMinimo}. RECHAZADO.");
+        return false;
+    }
+
     private static bool HandleCommand(int userIndex, string chat)
     {
         var u = UserListManager.UserList[userIndex];
@@ -113,19 +225,35 @@ public static class Chat
 
         Console.WriteLine($"[COMANDO] Usuario {u.Name} escribió: {cmd}");
 
+        // Sin privilegios no se ejecuta NADA, y se consume (return true) para que el
+        // texto del comando tampoco se difunda como chat sobre la cabeza.
+        if (!PuedeUsarComando(u, cmd)) return true;
+
         // Alias para comandos
         switch (cmd)
         {
             // === UTILIDADES ===
             case "/spawn": return Cmd_Spawn(u, parts);
             case "/bot": return Cmd_Bot(u, parts);
+            case "/guerra": return Cmd_Guerra(u, parts);
+            case "/guerraoff": case "/guerrafin": return Cmd_GuerraOff(u);
+            case "/guerraestado": case "/verguerra": return Cmd_GuerraEstado(u);
+            case "/poblarmundo": return Cmd_PoblarMundo(u);
             case "/pos": case "/donde": return Cmd_Donde(u, parts);
             case "/resucitar": return Cmd_Resucitar(userIndex, u);
             case "/curar": return Cmd_Curar(u);
             case "/mana": return Cmd_Mana(u);
             case "/sta": case "/stamina": return Cmd_Stamina(u);
             case "/save": return Cmd_Save(u);
-            case "/eventoexp": return Cmd_EventoExp(parts);
+            case "/eventos": return Cmd_Eventos(u);
+            case "/logros": return Cmd_Logros(u);
+            case "/misiones": case "/quests": return Cmd_Misiones(userIndex, u);
+            case "/eventoexp": return Cmd_EventoExp(u, parts);
+            case "/eventooro": return Cmd_EventoOro(u, parts);
+            case "/eventoexpoff": return Cmd_EventoExpOff(u);
+            case "/eventoorooff": return Cmd_EventoOroOff(u);
+            case "/expx2": return Cmd_ExpX2(u);
+            case "/orox2": return Cmd_OroX2(u);
             case "/invasion": return Cmd_Invasion(u, parts);
             case "/centinelaactivado": return Cmd_CentinelaToggle(u);
             case "/todosvstodos": case "/tvt": case "/pvpmapa": return Cmd_TodosVsTodos(u);
@@ -156,6 +284,7 @@ public static class Chat
             case "/skills": return Cmd_Skills(u);
             case "/listusu": return Cmd_ListaUsuarios(u);
             case "/online": return Cmd_Online();
+            case "/segstats": return Cmd_SegStats(u);
             case "/onlinegm": return Cmd_OnlineGM();
             case "/onlinemap": return Cmd_OnlineMap(u);
             case "/nene": case "/criaturas": return Cmd_Criaturas(u, parts);
@@ -165,7 +294,7 @@ public static class Chat
             case "/trigger": return Cmd_Trigger(u, parts);
 
             // === HERRAMIENTAS ===
-            case "/hora": return Cmd_Hora();
+            case "/hora": return Cmd_Hora(u);
             case "/gmsg": case "/gmessage": return Cmd_GMMsg(u, parts);
             case "/smsg": case "/smessage": return Cmd_SMsg(parts);
             case "/rmsg": case "/rmessage": return Cmd_RMsg(parts);
@@ -178,6 +307,7 @@ public static class Chat
 
             // === MODULOS ===
             case "/invisible": case "/invi": return Cmd_Invisible(u);
+            case "/espiar": case "/espia": return Cmd_Espiar(userIndex, u, parts);
             case "/trabajando": return Cmd_Trabajando(u);
             case "/ocultando": return Cmd_Ocultando(u);
             case "/nave": case "/navigate": return Cmd_Navigate(u);
@@ -201,6 +331,8 @@ public static class Chat
             case "/masskill": case "/kill-area": return Cmd_MassKill(u);
             case "/acc": case "/create-npc": return Cmd_CreateNPC(u, parts);
             case "/racc": case "/respawn-npc": return Cmd_RespawnNPC(u, parts);
+            case "/accpos": return Cmd_CreateNPCAt(u, parts);
+            case "/matarmisnpc": case "/killmine": return Cmd_KillMyNpcs(u);
             case "/seguir": case "/follow": return Cmd_Seguir(u, parts);
             case "/talkas": case "/habla-como": return Cmd_TalkAs(u, parts);
             case "/reloadnpcs": return Cmd_ReloadNPCs();
@@ -251,6 +383,7 @@ public static class Chat
             case "/msgclan": return Cmd_ShowGuildMessages(u, parts);
             case "/altpass": return Cmd_AlterPassword(u, parts);
             case "/donador": return Cmd_Donador(u, parts);
+            case "/nombre": return Cmd_Nombre(u, parts);
             case "/summonbot": return Send(u, "SummonBot: (no implementado)");
             case "/time": return Send(u, $"Hora servidor: {DateTime.Now:HH:mm}");
             case "/asktrigger": return Cmd_AskTrigger(u);
@@ -325,15 +458,67 @@ public static class Chat
     private static bool Cmd_Bot(User u, string[] parts)
     {
         if (parts.Length < 2)
-            return Send(u, "Uso: /bot <clase> [raza] [armada|milicia|caos]  ó  /bot all  ó  /bot pvp <clase> [raza]. Clases: " +
+            return Send(u, "Uso: /bot <clase> [raza] [armada|milicia|caos] [nivel]  ó  /bot all  ó  /bot pvp <clase> [raza]  ó  /bot smart <clase> [raza] [nivel]. Clases: " +
                 string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant())));
-        // /bot pvp <clase> [raza] — bot de sparring que te ATACA a vos (testeo PvP).
+        // /bot pvp <clase> [raza] — bot de sparring que te ATACA a vos (testeo PvP). Sin control de
+        // nivel por texto (queda en 50): el panel /bots ya cubre sparring+nivel por el mismo paquete.
         if (parts[1].Equals("pvp", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("spar", StringComparison.OrdinalIgnoreCase))
         { SpawnBotSpar(u, parts); return true; }
+        // /bot smart <clase> [raza] [nivel] — PROTOTIPO: un único bot con TickBotSmart (Utility AI),
+        // reusa Bots.Spawn tal cual (mismo equipo/stats reales que cualquier otro bot) y sólo prende
+        // el flag BotSmart. Nunca ataca solo al dueño ni sigue en fila: caza igual que un progresivo.
+        if (parts[1].Equals("smart", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("inteligente", StringComparison.OrdinalIgnoreCase))
+        { SpawnBotSmart(u, parts); return true; }
         byte raza = parts.Length > 2 ? (byte)RazaPorNombre(parts[2]) : (byte)0;
         byte faccion = parts.Length > 3 ? FaccionBotPorNombre(parts[3]) : (byte)0;
-        SpawnBotsDesdePacket(u.id, parts[1], raza, faccion);
+        byte nivel = parts.Length > 4 && byte.TryParse(parts[4], out var nv) ? nv : (byte)50;
+        SpawnBotsDesdePacket(u.id, parts[1], raza, faccion, nivel);
         return true;
+    }
+
+    /// <summary>
+    /// /guerra [cantidad] — inicia la GUERRA MUNDIAL DE FACCIONES: tres ejércitos de bots (Armada,
+    /// República, Caos) que nacen en su ciudad, marchan por el mundo y se matan entre sí.
+    /// Sin cantidad usa 50 por facción (los 150 bots del pedido original).
+    /// </summary>
+    private static bool Cmd_Guerra(User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tenés privilegios para iniciar la guerra de facciones.");
+        int cant = 50;
+        if (parts.Length > 1 && int.TryParse(parts[1], out int c)) cant = c;
+        if (cant < 1 || cant > GuerraFacciones.MAX_POR_FACCION)
+            return Send(u, $"Cantidad por facción entre 1 y {GuerraFacciones.MAX_POR_FACCION}.");
+
+        int n = GuerraFacciones.Iniciar(cant);
+        return Send(u, $"Guerra de facciones iniciada: {cant} bots por bando ({n} en pie). " +
+                       $"Armada en Ullathorpe, República en Illiandor, Caos en Rinkel. " +
+                       $"Marchan solos a las ciudades enemigas. /guerraestado para ver los frentes, /guerraoff para terminarla.");
+    }
+
+    /// <summary>/guerraoff — termina la guerra y borra los tres ejércitos.</summary>
+    private static bool Cmd_GuerraOff(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tenés privilegios para esto.");
+        int n = GuerraFacciones.Detener();
+        return Send(u, $"Guerra de facciones terminada: {n} bots eliminados.");
+    }
+
+    /// <summary>/guerraestado — vivos, bajas y mapas donde se está peleando.</summary>
+    private static bool Cmd_GuerraEstado(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tenés privilegios para esto.");
+        return Send(u, GuerraFacciones.Estado());
+    }
+
+    /// <summary>/poblarmundo — invoca 150 bots progresivos (50 Armada/50 Milicia/50 Caos)
+    /// repartidos entre su ciudad y los dungeons de su facción por nivel (Bots.PoblarMundo).
+    /// NO es idempotente: repetirlo suma otros 150 bots.</summary>
+    private static bool Cmd_PoblarMundo(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tenés privilegios para esto.");
+        int n = Bots.PoblarMundo();
+        return Send(u, $"Mundo poblado: {n} bots invocados (repartidos por ciudad/dungeon y nivel). " +
+                       "Se atacan entre sí si son de facción rival y se cruzan. Visibles en el panel espía.");
     }
 
     /// <summary>/bot pvp &lt;clase&gt; [raza] — invoca un bot de sparring que TE ataca (testeo PvP).</summary>
@@ -358,13 +543,43 @@ public static class Chat
         byte by = (byte)Math.Clamp(u.Pos.Y + hdy * DIST_FRENTE, 1, 99);
 
         var bot = Bots.SpawnSpar(u.Pos.Map, bx, by, cl, raza, u.id, u.Char.heading, soloMelee);
-        if (bot == null) Send(u, $"No se pudo invocar (¿llegaste al tope de {Bots.MAX_BOTS} bots? Usá 'Matar todos').");
+        if (bot == null) Send(u, "No se pudo invocar el bot.");
         else Send(u, $"Bot de sparring {parts[2]} invocado: te persigue, golpea, inmoviliza y se saca solo la parálisis. Usá 'Matar todos' para eliminarlos.");
     }
 
+    /// <summary>/bot smart &lt;clase&gt; [raza] [nivel] — PROTOTIPO de bot inteligente (Utility AI,
+    /// NpcManager.TickBotSmart). Sólo pensado para invocar UNO a la vez para probar: cada llamada
+    /// suma otro, no reemplaza al anterior (mismo criterio que /bot normal).</summary>
+    private static void SpawnBotSmart(User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) { Send(u, "No tenés privilegios para invocar bots."); return; }
+        if (parts.Length < 3) { Send(u, "Uso: /bot smart <clase> [raza] [nivel]. Clases: " +
+            string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant()))); return; }
+        byte cl = Bots.ClasePorNombre(parts[2]);
+        if (cl == 0) { Send(u, $"Clase desconocida: '{parts[2]}'."); return; }
+        byte raza = parts.Length > 3 ? (byte)RazaPorNombre(parts[3]) : (byte)0;
+        byte nivel = parts.Length > 4 && byte.TryParse(parts[4], out var nv) ? nv : (byte)50;
+
+        WorldPos front = u.Pos;
+        Movement.HeadtoPos(u.Char.heading, ref front);
+        byte bx = (byte)Math.Clamp((int)front.X, 1, 99), by = (byte)Math.Clamp((int)front.Y, 1, 99);
+
+        // Mismo Bots.Spawn que cualquier otro bot (equipo real, HP/Maná/Poder reales para su nivel).
+        // owner=0 (sin dueño: no sigue a nadie ni lo protege) para que TickBotSmart, no la rama
+        // "seguir al dueño", sea la única IA que lo mueve. smart:true (NO asignar bot.BotSmart
+        // después de Spawn: llegaría tarde al primer CharacterCreate, ver NpcManager.SpawnAt).
+        var bot = Bots.Spawn(u.Pos.Map, bx, by, cl, raza, owner: 0, faccion: 0, heading: u.Char.heading, nivel: nivel, smart: true);
+        if (bot == null) { Send(u, "No se pudo invocar el bot inteligente."); return; }
+        bot.BotAtacar = false;
+        Send(u, $"Bot inteligente ({parts[2]}, nivel {nivel}) invocado — decide solo qué hacer (Utility AI). Usá 'Matar todos' para eliminarlo.");
+    }
+
     /// <summary>Lógica común de invocación de bots (la usan el comando /bot y el packet SpawnBot/form).
-    /// clase especial: "__atacar__" = activa el ataque; "__matar__" = elimina todos los bots.</summary>
-    public static void SpawnBotsDesdePacket(int userIndex, string clase, byte raza, byte faccion = 0)
+    /// clase especial: "__atacar__" = activa el ataque; "__matar__" = elimina todos los bots.
+    /// nivel (1-50, default 50) escala HP/Maná/Poder con las fórmulas reales (ver Bots.Spawn).
+    /// leveling: sólo aplica a los spawns NORMALES (no sparring/pvp) — arranca con equipo real de
+    /// ese nivel en vez del set sacro y sube matando NPCs (ver Bots.Spawn/DarExpABot).</summary>
+    public static void SpawnBotsDesdePacket(int userIndex, string clase, byte raza, byte faccion = 0, byte nivel = 50, bool leveling = false)
     {
         var u = UserListManager.UserList[userIndex];
         if (u == null || !u.flags.UserLogged) return;
@@ -386,15 +601,34 @@ public static class Chat
             {
                 int ns = 0;
                 foreach (var c in Bots.Clases)
-                    if (Bots.SpawnSpar(u.Pos.Map, sx, sy, c.Clase, raza, userIndex, u.Char.heading, soloMelee) != null) ns++;
+                    if (Bots.SpawnSpar(u.Pos.Map, sx, sy, c.Clase, raza, userIndex, u.Char.heading, soloMelee, nivel) != null) ns++;
                 Send(u, $"Invocados {ns} bots de sparring: te atacan, inmovilizan y se sacan solos la parálisis. Usá 'Matar todos' para eliminarlos.");
                 return;
             }
             byte clSpar = Bots.ClasePorNombre(claseSpar);
             if (clSpar == 0) { Send(u, $"Clase desconocida: '{claseSpar}'."); return; }
-            var sbot = Bots.SpawnSpar(u.Pos.Map, sx, sy, clSpar, raza, userIndex, u.Char.heading, soloMelee);
-            if (sbot == null) Send(u, $"No se pudo invocar (¿tope de {Bots.MAX_BOTS} bots? Usá 'Matar todos').");
+            var sbot = Bots.SpawnSpar(u.Pos.Map, sx, sy, clSpar, raza, userIndex, u.Char.heading, soloMelee, nivel);
+            if (sbot == null) Send(u, "No se pudo invocar el bot.");
             else Send(u, $"Bot de sparring {claseSpar} invocado: te persigue, golpea, inmoviliza y se saca solo la parálisis. Usá 'Matar todos' para eliminarlos.");
+            return;
+        }
+
+        // Bot inteligente (prototipo Utility AI, "smart:<clase>" — mismo prefijo-en-el-string que
+        // "pvp:"/"pvpm:" de arriba, sin paquete nuevo). Mismo comportamiento que /bot smart:
+        // owner=0 (no sigue a nadie, TickBotSmart es la única IA que lo mueve), sin facción.
+        if (clase.StartsWith("smart:", StringComparison.OrdinalIgnoreCase))
+        {
+            string claseSmart = clase.Substring(6);
+            byte clSmart = Bots.ClasePorNombre(claseSmart);
+            if (clSmart == 0) { Send(u, $"Clase desconocida: '{claseSmart}'."); return; }
+            WorldPos frenteSmart = u.Pos;
+            Movement.HeadtoPos(u.Char.heading, ref frenteSmart);
+            byte smx = (byte)Math.Clamp((int)frenteSmart.X, 1, 99), smy = (byte)Math.Clamp((int)frenteSmart.Y, 1, 99);
+            // smart:true (NO asignar botSmart.BotSmart después de Spawn: ver NpcManager.SpawnAt).
+            var botSmart = Bots.Spawn(u.Pos.Map, smx, smy, clSmart, raza, owner: 0, faccion: 0, heading: u.Char.heading, nivel: nivel, smart: true);
+            if (botSmart == null) { Send(u, "No se pudo invocar el bot inteligente."); return; }
+            botSmart.BotAtacar = false;
+            Send(u, $"Bot inteligente ({claseSmart}, nivel {nivel}) invocado — decide solo qué hacer (Utility AI). Usá 'Matar todos' para eliminarlo.");
             return;
         }
 
@@ -432,7 +666,7 @@ public static class Chat
             {
                 byte bx = (byte)Math.Clamp(baseX + (n % 5) - 2, 1, 99);
                 byte by = (byte)Math.Clamp(baseY + (n / 5) - 1, 1, 99);
-                if (Bots.Spawn(u.Pos.Map, bx, by, c.Clase, raza, userIndex, faccion, u.Char.heading) != null) n++;
+                if (Bots.Spawn(u.Pos.Map, bx, by, c.Clase, raza, userIndex, faccion, u.Char.heading, nivel: nivel, leveling: leveling) != null) n++;
             }
             Send(u, $"Invocados {n} bots adelante tuyo.");
             return;
@@ -442,9 +676,126 @@ public static class Chat
         if (cl == 0) { Send(u, $"Clase desconocida: '{clase}'. Probá: " +
             string.Join(", ", Bots.Clases.Select(c => c.Nombre.ToLowerInvariant()))); return; }
 
-        var bot = Bots.Spawn(u.Pos.Map, baseX, baseY, cl, raza, userIndex, faccion, u.Char.heading);
-        if (bot == null) Send(u, $"No se pudo invocar (¿llegaste al tope de {Bots.MAX_BOTS} bots? Usá 'Matar todos').");
+        var bot = Bots.Spawn(u.Pos.Map, baseX, baseY, cl, raza, userIndex, faccion, u.Char.heading, nivel: nivel, leveling: leveling);
+        if (bot == null) Send(u, "No se pudo invocar el bot.");
         else Send(u, $"Bot {clase} invocado (te sigue; tocá Atacar para que pelee).");
+    }
+
+    /// <summary>
+    /// /espiar &lt;nick&gt; — ver EN VIVO la pantalla de otro jugador. /espiar off para cortar.
+    ///
+    /// SOLO DIOSES (privilegio 9). Es la herramienta más invasiva del servidor: el espía
+    /// recibe TODO lo que recibe el espiado, incluido lo privado (susurros, correo,
+    /// comercio). No la abras a los GM de rango menor sin pensarlo.
+    ///
+    /// El espejo en sí lo hace ServerPackets.Send (ver Espia.cs): le copia al Dios TODO lo
+    /// que el servidor le manda al espiado y, al revés, le silencia lo suyo (menos el
+    /// texto). Acá se resuelve lo otro: la FOTO INICIAL. El espiado ya está en el mundo,
+    /// así que copiar los paquetes de ahí en adelante mostraría los cambios sobre una
+    /// pantalla vacía. Por eso primero se teletransporta al Dios (invisible) hasta él: el
+    /// warp normal ya le manda el mapa y todo lo que hay alrededor, y el espejo se enciende
+    /// recién al final.
+    /// </summary>
+    private static bool Cmd_Espiar(int userIndex, User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_DIOS)
+            return Send(u, "Ese comando es solo para Dioses.");
+
+        string arg = parts.Length > 1 ? ArgResto(parts) : "";
+        if (arg.Length == 0 || arg.Equals("off", StringComparison.OrdinalIgnoreCase))
+        {
+            // Terminar() ANTES de restaurar: mientras el espejo esté encendido, todo lo que
+            // se le mande al espía se descarta (Espia.Rutear).
+            if (!Espia.Terminar(u.Conn)) return Send(u, "No estabas espiando a nadie.");
+            MostrarEnMapa(u);
+            // Tu cliente quedó con los datos del otro (su vida, su inventario, su mapa).
+            // Reenviarle lo suyo pieza por pieza es frágil; RestaurarPantalla le manda de
+            // nuevo la ráfaga de entrada al mundo, que es el camino ya probado.
+            Espia.RestaurarPantalla(userIndex);
+            return Send(u, "Dejaste de espiar.");
+        }
+
+        var t = BuscarOnline(arg);
+        if (t == null) return Send(u, $"'{arg}' no está online.");
+        if (t.Conn == u.Conn) return Send(u, "No podés espiarte a vos mismo.");
+
+        // ¿Ya estaba espiando a otro? Se apaga el espejo viejo y se le devuelve su pantalla
+        // ANTES de armar la foto nueva. Sin esto la foto salía vacía: con el espejo prendido
+        // sus propios paquetes (los del warp que arma la foto) están silenciados, y encima su
+        // vista de área quedó desincronizada de lo que su cliente tiene dibujado.
+        if (Espia.Terminar(u.Conn)) Espia.RestaurarPantalla(userIndex);
+
+        // Invisibilidad REAL. OJO: NO sirve Cmd_Invisible — ese comando está mal nombrado
+        // en este servidor y lo único que hace es ponerte a MEDITAR (toggle de Meditando).
+        // Usarlo fue el bug que te hacía aparecer al lado del espiado, meditando, a la
+        // vista de todos. La invisibilidad de verdad es esta, la misma del hechizo
+        // (Combat.cs::sp.Invisibilidad): flag + SetInvisible difundido a TODO el mapa.
+        EsconderDelMapa(u);
+        // ESPEJO DE VERDAD. Antes acá se te teletransportaba al lado del espiado y la
+        // cámara no lo seguía nunca: el cliente centra la cámara en SU personaje, y tu
+        // personaje seguía siendo el tuyo, caminando atrás de él a los tirones.
+        //
+        // Ahora no se mueve a nadie. Se le miente al cliente: se lo manda al mapa del
+        // espiado y se le dice que SU personaje es el del espiado (UserCharIndexInServer).
+        // Desde ese momento la cámara lo sigue sola, porque para tu cliente vos SOS él, y
+        // cada paquete copiado cae justo donde tiene que caer.
+        Movement.WarpUser(userIndex, (short)t.Pos.Map, t.Pos.X, t.Pos.Y, fx: false, sonido: false);
+        EsconderDelMapa(u);                       // el warp te dio de alta en el mapa nuevo
+        // Va DESPUÉS del warp: el warp manda su propio UserCharIndexInServer con el tuyo y
+        // pisaría este. Este tiene que ser el último que le llegue al cliente.
+        ServerPackets.UserCharIndexInServer(u.Conn, t.Char.CharIndex);
+        // Y borrar TU propio muñeco de TU pantalla: EsconderDelMapa solo se lo saca a los
+        // demás, así que te quedaba tu personaje plantado en el medio, visible solo para
+        // vos. Ahora la pantalla es limpiamente la del espiado.
+        ServerPackets.CharacterRemove(u.Conn, u.Char.CharIndex);
+        // El espejo se enciende ACÁ, al final: a partir de este punto todo lo que el
+        // servidor te mande A VOS se descarta (Espia.Rutear), incluidos los dos paquetes de
+        // arriba si estuvieran después. Lo único tuyo que sigue pasando es el texto.
+        Espia.Empezar(u, t);
+        // Foto inicial de SU HUD (inventario, hechizos, skills, barras, misiones): el espejo
+        // solo copia lo que cambia, así que sin esto seguías viendo tu propio inventario.
+        Espia.FotoInicialDelEspiado(t);
+        return Send(u, $"Espiando a {t.Name} (mapa {t.Pos.Map}). /espiar off para cortar.");
+    }
+
+    /// <summary>
+    /// Borra al espía de la pantalla de todos los del mapa.
+    ///
+    /// NO alcanza con SetInvisible: el cliente dibuja a un invisible con transparencia y
+    /// le deja el nick, porque esa marca existe para que los GM se vean ENTRE SÍ. Para
+    /// espiar hace falta que directamente no haya nada que dibujar, así que se manda un
+    /// CharacterRemove: para los demás el personaje deja de existir. Sin sprite, sin nick
+    /// y sin animación de aparecer.
+    ///
+    /// El flag Invisible se pone igual para que la lógica del servidor lo trate como
+    /// invisible (que no lo ataquen, que no cuente como testigo).
+    /// </summary>
+    private static void EsconderDelMapa(User u)
+    {
+        u.flags.Invisible = 1;
+        // Sin vencimiento: la invisibilidad mágica dura 30 s y acá tiene que durar lo que
+        // dure el espionaje. /espiar off la apaga.
+        u.flags.InvisibleExpira = double.MaxValue;
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o?.flags.UserLogged == true && o.Conn != null && o.Conn != u.Conn
+                && o.Pos.Map == u.Pos.Map)
+                ServerPackets.CharacterRemove(o.Conn, u.Char.CharIndex);
+        }
+    }
+
+    private static void MostrarEnMapa(User u)
+    {
+        u.flags.Invisible = 0;
+        u.flags.InvisibleExpira = 0;
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o?.flags.UserLogged == true && o.Conn != null && o.Conn != u.Conn
+                && o.Pos.Map == u.Pos.Map)
+                ServerPackets.SetInvisible(o.Conn, u.Char.CharIndex, false);
+        }
     }
 
     private static bool Cmd_Donde(User u, string[] parts)
@@ -452,9 +803,16 @@ public static class Chat
         // VB6 HandleWhere: con nombre muestra la posición del target (botón "Dónde" del panel GM)
         if (parts.Length > 1)
         {
+            // /pos y /donde son de jugador, pero ubicar a OTRO personaje es herramienta de GM.
+            if (u.FaccionStatus < AdminLoader.STATUS_CONSEJERO)
+                return Send(u, "Sólo un GM puede ver la posición de otro personaje.");
             string nombre = ArgResto(parts);
             var t = BuscarOnline(nombre);
-            if (t == null) return Send(u, $"'{nombre}' no está online.");
+            // Un Dios espiando no se puede ubicar: su cuerpo está parado al lado del que
+            // mira, así que decir dónde está sería entregarlo. Se contesta lo mismo que si
+            // no estuviera conectado, igual que hace /quien.
+            if (t == null || Espia.AQuienEspia(t.Conn) != null)
+                return Send(u, $"'{nombre}' no está online.");
             return Send(u, $"{t.Name}: Mapa {t.Pos.Map} ({t.Pos.X},{t.Pos.Y})");
         }
         return Send(u, $"Mapa {u.Pos.Map} ({u.Pos.X},{u.Pos.Y}) heading {u.Char.heading}");
@@ -569,11 +927,86 @@ public static class Chat
         return Send(u, modo == BarridoEvento.MOV_X ? "Movimiento del Barrido: X diagonal." : "Movimiento del Barrido: barrido horizontal.");
     }
 
-    private static bool Cmd_EventoExp(string[] parts)
+    /// <summary>/EVENTOS — cualquier usuario: lista los eventos globales en curso.</summary>
+    private static bool Cmd_Eventos(User u)
     {
+        if (u?.Conn == null) return true;
+        var lineas = Events.ResumenEventos();
+        if (lineas.Count == 0) return Send(u, "No hay eventos en curso.");
+        ServerPackets.ConsoleMsg(u.Conn, "Eventos en curso:", 58); // 58 = ámbar dorado
+        foreach (var l in lineas) ServerPackets.ConsoleMsg(u.Conn, "» " + l, 58);
+        return true;
+    }
+
+    /// <summary>/LOGROS — cualquier usuario: manda LogrosInfo para abrir la ventana de Logros.</summary>
+    private static bool Cmd_Logros(User u)
+    {
+        if (u?.Conn == null) return true;
+        Achievements.SendInfo(u);
+        return true;
+    }
+
+    /// <summary>/MISIONES — cualquier usuario: manda QuestInfo (origen=0) para abrir el log de misiones.</summary>
+    private static bool Cmd_Misiones(int userIndex, User u)
+    {
+        if (u?.Conn == null) return true;
+        QuestSystem.SendQuestLog(userIndex);
+        return true;
+    }
+
+    /// <summary>/EVENTOEXP [mult] [segs] — GM: EXP xN por tiempo (segs 0 = sin límite).</summary>
+    private static bool Cmd_EventoExp(User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
         int mult = parts.Length > 1 && int.TryParse(parts[1], out var mv) ? mv : 2;
         int segs = parts.Length > 2 && int.TryParse(parts[2], out var sv) ? sv : 300;
         Events.ActivarEventoExp(mult, segs);
+        return true;
+    }
+
+    /// <summary>/EVENTOORO [mult] [segs] — GM: ORO xN por tiempo (segs 0 = sin límite).</summary>
+    private static bool Cmd_EventoOro(User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
+        int mult = parts.Length > 1 && int.TryParse(parts[1], out var mv) ? mv : 2;
+        int segs = parts.Length > 2 && int.TryParse(parts[2], out var sv) ? sv : 300;
+        Events.ActivarEventoOro(mult, segs);
+        return true;
+    }
+
+    /// <summary>/EVENTOEXPOFF — GM: termina el evento de EXP ya mismo.</summary>
+    private static bool Cmd_EventoExpOff(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
+        if (Events.ExpMultiplicador <= 1) return Send(u, "No hay evento de EXP activo.");
+        Events.DesactivarEventoExp();
+        return true;
+    }
+
+    /// <summary>/EVENTOOROOFF — GM: termina el evento de ORO ya mismo.</summary>
+    private static bool Cmd_EventoOroOff(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
+        if (Events.OroMultiplicador <= 1) return Send(u, "No hay evento de ORO activo.");
+        Events.DesactivarEventoOro();
+        return true;
+    }
+
+    /// <summary>/EXPX2 — GM: activa/desactiva EXP x2 global sin límite de tiempo (toggle).</summary>
+    private static bool Cmd_ExpX2(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
+        if (Events.ExpMultiplicador > 1) Events.DesactivarEventoExp();
+        else Events.ActivarEventoExp(2, 0);
+        return true;
+    }
+
+    /// <summary>/OROX2 — GM: activa/desactiva ORO x2 global sin límite de tiempo (toggle).</summary>
+    private static bool Cmd_OroX2(User u)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
+        if (Events.OroMultiplicador > 1) Events.DesactivarEventoOro();
+        else Events.ActivarEventoOro(2, 0);
         return true;
     }
 
@@ -672,7 +1105,25 @@ public static class Chat
         return Send(u, $"Skills: {(string.IsNullOrEmpty(skills) ? "(ninguno)" : skills)}");
     }
 
-    private static bool Cmd_Online() => Send(null, $"Online: {UserListManager.LastUser} usuarios");
+    // OnlineCount() y no LastUser: LastUser es la marca de agua de SLOTS usados, no la gente
+    // adentro — contaba de más a cualquier conexión que no entró al mundo (una espectadora
+    // del panel, un login a medias) y encima no bajaba nunca al desconectarse nadie.
+    private static bool Cmd_Online() => Send(null, $"Online: {UserListManager.OnlineCount()} usuarios");
+
+    /// <summary>
+    /// /segstats (auditoría DDoS 24-ago-2026): foto de los contadores globales agregados
+    /// (Network.GlobalStats) — pensado para responder "¿está pasando algo raro ahora mismo?"
+    /// sin tener que ir a buscar en el log línea por línea. Exige GM (fuera de
+    /// ComandosDeJugador, cae en el default de PuedeUsarComando: Consejero).
+    /// </summary>
+    private static bool Cmd_SegStats(User u)
+    {
+        var s = Network.GlobalStats.Snapshot();
+        Send(u, $"Conexiones activas: {s.ConexionesActivas} | aceptadas: {s.ConexionesNuevas} | rechazadas: {s.ConexionesRechazadas}");
+        Send(u, $"Paquetes procesados: {s.PaquetesProcesados} | bytes entrantes: {s.BytesEntrantes}");
+        Send(u, $"Paquetes limitados (rate-limit): {s.PaquetesLimitados} | conexiones cerradas por abuso sostenido: {s.ClientesDesconectadosPorAbuso}");
+        return true;
+    }
 
     private static bool Cmd_ListaUsuarios(User u)
     {
@@ -681,7 +1132,11 @@ public static class Chat
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var t = UserListManager.UserList[i];
-            if (t != null && t.flags.UserLogged && !string.IsNullOrEmpty(t.Name))
+            // Un Dios espiando NO figura: para el mundo no existe (ni se dibuja, ni se lo ve
+            // por área). Si apareciera acá, al espiado le alcanzaría un /quien para saber que
+            // hay alguien de más conectado y atar cabos.
+            if (t != null && t.flags.UserLogged && !string.IsNullOrEmpty(t.Name)
+                && Espia.AQuienEspia(t.Conn) == null)
             {
                 if (sb.Length > 0) sb.Append('|');
                 sb.Append(t.Name);
@@ -706,7 +1161,11 @@ public static class Chat
         return true;
     }
 
-    private static bool Cmd_OnlineMap(User u) => Send(u, $"En este mapa: {UserListManager.UserList.Count(x => x != null && x.Pos.Map == u.Pos.Map)} usuarios");
+    // Cuenta SOLO gente realmente adentro del mundo y visible: antes contaba todos los slots
+    // del array (incluidos los que no están logueados, cuyo Pos.Map es basura del que lo usó
+    // antes) y también habría contado a un Dios espiando.
+    private static bool Cmd_OnlineMap(User u) => Send(u,
+        $"En este mapa: {UserListManager.UserList.Count(x => x != null && x.flags.UserLogged && x.Conn != null && x.Pos.Map == u.Pos.Map && Espia.AQuienEspia(x.Conn) == null)} usuarios");
 
     private static bool Cmd_Criaturas(User u, string[] parts = null)
     {
@@ -739,17 +1198,19 @@ public static class Chat
         return Send(u, $"Trigger {trigger} seteado en ({u.Pos.X},{u.Pos.Y}) mapa {u.Pos.Map}");
     }
 
-    private static bool Cmd_Hora()
-    {
-        return false;  // Comando sin parámetros
-    }
+    /// <summary>/hora — cualquier jugador: hora del servidor. Antes devolvía false y el
+    /// texto "/hora" terminaba difundiéndose como chat sobre la cabeza.</summary>
+    private static bool Cmd_Hora(User u) => Send(u, $"Hora servidor: {DateTime.Now:HH:mm}");
 
     private static bool Cmd_GMMsg(User u, string[] parts)
     {
         if (parts.Length < 2) return Send(u, "Uso: /gmsg <mensaje>");
         string msg = string.Join(" ", parts.Skip(1));
+        // fontIndex 59: antes iba con 2 (FONTTYPE_PELIGRO, daño de combate) y el cliente web
+        // enruta por color a la pestaña Combate/Global/Normal (fontIndexToTab en hud_ui.js) —
+        // compartir el 2 hacía que el chat GM apareciera mezclado con el daño recibido.
         foreach (var other in UserListManager.UserList.Where(x => x?.Conn != null && x.flags.UserLogged))
-            ServerPackets.ConsoleMsg(other.Conn, $"[GM {u.Name}]: {msg}", 2);
+            ServerPackets.ConsoleMsg(other.Conn, $"[GM {u.Name}]: {msg}", 59);
         return true;
     }
 
@@ -813,7 +1274,13 @@ public static class Chat
         string nombre = ArgResto(parts);
         var target = BuscarOnline(nombre);
         if (target == null) return Send(u, $"Usuario '{nombre}' no encontrado.");
+        // [[b4_usersbymap]] GAP identificado en la auditoría B4.3: /ira asigna Pos directo, sin
+        // pasar por WarpUser/AreaVisibility. Se preserva el comportamiento existente tal cual
+        // (no es alcance de B4 arreglar el bug de sincronización visual que esto ya tiene si el
+        // target está en otro mapa) — solo se mantiene el índice consistente.
+        int oldMap = u.Pos.Map;
         u.Pos = target.Pos;
+        UsersByMapIndex.Move(u.id, oldMap, target.Pos.Map);
         return Send(u, $"→ Con {target.Name} en mapa {target.Pos.Map}");
     }
 
@@ -852,12 +1319,49 @@ public static class Chat
         return Send(u, $"Usuario '{nombre}' no encontrado.");
     }
 
+    /// <summary>
+    /// Invisibilidad REAL de GM (no confundir con el viejo /invisible, que solo togglea
+    /// Meditando). Un jugador común deja de verte por completo (CharacterRemove); otro
+    /// GM te sigue viendo, como fantasma semitransparente con nick (SetInvisible), igual
+    /// que el hechizo de invisibilidad y /espiar (ver EsconderDelMapa y
+    /// AreaVisibility.CrearUsuarioParaObs, que filtra por status del observador).
+    /// </summary>
     private static bool Cmd_Invisible(User u)
     {
-        // VB6 HandleInvisible: toggle Meditando + WriteMeditateToggle al cliente
-        u.flags.Meditando = !u.flags.Meditando;
-        ServerPackets.MeditateToggle(u.Conn);
-        return Send(u, u.flags.Meditando ? "¡Invisible!" : "¡Visible!");
+        bool activar = u.flags.Invisible == 0;
+        if (activar)
+        {
+            u.flags.Invisible = 1;
+            u.flags.InvisibleExpira = double.MaxValue;
+        }
+        else
+        {
+            u.flags.Invisible = 0;
+            u.flags.InvisibleExpira = 0;
+        }
+
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var o = UserListManager.UserList[i];
+            if (o?.flags.UserLogged != true || o.Conn == null || o.Conn == u.Conn || o.Pos.Map != u.Pos.Map)
+                continue;
+
+            bool esGM = o.FaccionStatus >= AdminLoader.STATUS_CONSEJERO;
+            if (activar)
+            {
+                if (esGM) ServerPackets.SetInvisible(o.Conn, u.Char.CharIndex, true);
+                else ServerPackets.CharacterRemove(o.Conn, u.Char.CharIndex);
+            }
+            else
+            {
+                if (esGM) ServerPackets.SetInvisible(o.Conn, u.Char.CharIndex, false);
+                else LoginFlow.SendCharCreate(o.Conn, u); // no lo tenía dibujado: hay que recrearlo
+            }
+        }
+
+        return Send(u, activar
+            ? "Invisible. Solo otros GMs pueden verte (semitransparente)."
+            : "Visible de nuevo.");
     }
 
     private static bool Cmd_Trabajando(User u) { u.flags.Trabajando = !u.flags.Trabajando; return Send(u, u.flags.Trabajando ? "Trabajando..." : "Parado."); }
@@ -1256,7 +1760,7 @@ public static class Chat
     private static void KillNpc(User u, NpcManager.NpcInstance npc, bool respawn)
     {
         npc.Dead = true;
-        npc.RespawnAt = respawn ? (Environment.TickCount64 / 1000.0 + NpcManager.RespawnSeconds) : double.MaxValue;
+        npc.RespawnAt = respawn ? (Environment.TickCount64 / 1000.0 + NpcManager.RespawnSecondsFor(npc)) : double.MaxValue;
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
@@ -1269,7 +1773,7 @@ public static class Chat
     {
         if (parts.Length < 2 || !int.TryParse(parts[1], out int npcIdx))
             return Send(u, "Uso: /acc <npcIndex>");
-        NpcManager.SpawnAt(u.Pos.Map, npcIdx, (byte)u.Pos.X, (byte)u.Pos.Y);
+        NpcManager.SpawnAt(u.Pos.Map, npcIdx, (byte)u.Pos.X, (byte)u.Pos.Y, u.Name);
         return Send(u, $"✓ NPC {npcIdx} creado.");
     }
 
@@ -1279,8 +1783,44 @@ public static class Chat
             return Send(u, "Uso: /racc <npcIndex>");
         WorldPos front = u.Pos;
         Movement.HeadtoPos(u.Char.heading, ref front);
-        NpcManager.SpawnAt(u.Pos.Map, npcIdx, (byte)front.X, (byte)front.Y);
+        NpcManager.SpawnAt(u.Pos.Map, npcIdx, (byte)front.X, (byte)front.Y, u.Name);
         return Send(u, $"✓ NPC {npcIdx} spawneado con respawn en ({front.X},{front.Y}).");
+    }
+
+    /// <summary>/accpos NPCIndex X Y: crea el NPC en un tile puntual del mapa actual (no en la
+    /// posición del GM). Lo usa el formulario "Crear NPC" del cliente web para el modo
+    /// "invocar por selección" (clic en el mapa por cada punto elegido).</summary>
+    private static bool Cmd_CreateNPCAt(User u, string[] parts)
+    {
+        if (parts.Length < 4 || !int.TryParse(parts[1], out int npcIdx)
+            || !int.TryParse(parts[2], out int gx) || !int.TryParse(parts[3], out int gy))
+            return Send(u, "Uso: /accpos <npcIndex> <x> <y>");
+        // BUG-009: el cliente manda coordenadas GLOBALES del mundo continuo (clic en el mapa
+        // vía "Invocar por selección"), no locales del mapa del GM — antes se usaban tal
+        // cual como x,y locales (y encima como byte, que ya cortaba cualquier global > 255):
+        // el NPC quedaba invocado en el tile equivocado o rechazado en silencio, así que
+        // nunca aparecía. RegionLayout.TryGlobalToLocal resuelve a qué mapa/tile corresponde;
+        // si el GM está en un mapa fuera de la región (dungeon/interior) la traducción no
+        // aplica y gx,gy YA son locales (mismo criterio que regionOffset en el cliente), así
+        // que se usan tal cual.
+        int map, x, y;
+        if (!RegionLayout.TryGlobalToLocal(u.Pos.Map, gx, gy, out map, out x, out y))
+        { map = u.Pos.Map; x = gx; y = gy; }
+        if (x < 1 || x > 100 || y < 1 || y > 100) return Send(u, "Posición fuera del mapa.");
+        NpcManager.SpawnAt(map, npcIdx, (byte)x, (byte)y, u.Name);
+        return true; // sin eco por punto: el cliente ya muestra el total invocado
+    }
+
+    /// <summary>/matarmisnpc: elimina (sin respawn) todos los NPCs del mapa actual invocados a
+    /// mano por ESTE GM (/acc, /racc, /accpos), sin tocar los nativos del mapa ni los de otros
+    /// GMs/sistemas, aunque estén al lado.</summary>
+    private static bool Cmd_KillMyNpcs(User u)
+    {
+        var npcs = NpcManager.GetMapNpcs(u.Pos.Map)
+            .Where(n => !n.Dead && n.SpawnedBy == u.Name)
+            .ToList();
+        foreach (var n in npcs) KillNpc(u, n, respawn: false);
+        return Send(u, $"✓ {npcs.Count} NPCs invocados por vos eliminados.");
     }
 
     private static bool Cmd_Seguir(User u, string[] parts)
@@ -1303,7 +1843,7 @@ public static class Chat
         }
         return true;
     }
-    private static bool Cmd_ReloadNPCs() { return false; }
+    private static bool Cmd_ReloadNPCs() { NpcData.Reload(); Console.WriteLine("[GM] NPCs recargados."); return true; }
 
     private static bool Cmd_CI(User u, string[] parts)
     {
@@ -1437,6 +1977,7 @@ public static class Chat
         srcMap.FloorObj[tx, ty] = 378;
         srcMap.FloorAmount[tx, ty] = 1;
         srcMap.Exits[tx, ty] = new TileExit { DestMap = destMap, DestX = destX, DestY = destY };
+        srcMap.DynamicTeleports.Add(tx * 101 + ty);
 
         // VB6: SendToAreaByPos → broadcast a todos en el mapa
         for (int i = 1; i <= UserListManager.LastUser; i++)
@@ -1464,6 +2005,7 @@ public static class Chat
         // Borrar objeto y exit
         map.FloorObj[x, y] = 0; map.FloorAmount[x, y] = 0;
         map.Exits[x, y] = null;
+        map.DynamicTeleports.Remove(x * 101 + y);
 
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
@@ -1665,7 +2207,7 @@ public static class Chat
     }
     private static bool Cmd_ReloadObj()  { ObjData.Reload();   Console.WriteLine("[GM] Objetos recargados.");  return true; }
     private static bool Cmd_ReloadSpells() { SpellData.Reload(); Console.WriteLine("[GM] Hechizos recargados."); return true; }
-    private static bool Cmd_ReloadBalance() { BalanceData.Reload(); Console.WriteLine("[GM] Balance.dat recargado (mods clase/raza + [COMBATE])."); return true; }
+    private static bool Cmd_ReloadBalance() { BalanceData.Reload(); Console.WriteLine("[GM] Balance.dat recargado (mods clase/raza + [COMBATE] + [RESPAWN])."); return true; }
     private static bool Cmd_ReloadIni()  { Console.WriteLine("[GM] /reloadsini: recarga de Server.ini no implementada aún."); return true; }
     private static bool Cmd_SetIniVar(string[] parts) { Console.WriteLine("[GM] /setinivar (no implementado)"); return true; }
 
@@ -1937,6 +2479,29 @@ public static class Chat
         return Send(u, $"'{nombre}' no está online.");
     }
 
+    /// <summary>
+    /// /nombre &lt;nuevo&gt; — cambio de nombre para quien tomó la Poción mágica de cambio de nombre
+    /// (obj.dat SubTipo 23). Sin la poción no hace nada. Al terminar desconecta al jugador, porque
+    /// hay estado en memoria (party, comercio, espectadores) que quedó con el nombre viejo.
+    /// </summary>
+    private static bool Cmd_Nombre(User u, string[] parts)
+    {
+        if (!u.PuedeRenombrar)
+            return Send(u, "Necesitas una Poción mágica de cambio de nombre para usar este comando.");
+        if (parts.Length < 2)
+            return Send(u, "Uso: /nombre <nuevo nombre>");
+
+        string nuevo = ArgResto(parts);
+        string viejo = u.Name;
+        if (!CharRename.Renombrar(u, nuevo, out string motivo))
+            return Send(u, motivo);
+
+        Send(u, $"Tu personaje ahora se llama {u.Name}. Vuelve a entrar con ese nombre.");
+        Console.WriteLine($"[/nombre] {viejo} → {u.Name}");
+        u.Conn?.FlushAndClose();
+        return true;
+    }
+
     private static bool Cmd_CuentaRegresiva(string[] parts)
     {
         // VB6 HandleCuentaRegresiva: broadcast de cuenta regresiva a todos
@@ -2026,6 +2591,14 @@ public static class Chat
     {
         var u = UserListManager.UserList[userIndex];
         if (u == null) return;
+        // OJO: los subcomandos 70-77 de GMCommands llaman acá DIRECTO desde PacketHandler,
+        // sin pasar por HandleCommand, así que el chequeo va sí o sí en esta función.
+        if (!u.flags.UserLogged || u.FaccionStatus < AdminLoader.STATUS_DIOS)
+        {
+            Console.WriteLine($"[SEGURIDAD] {u.Name} (status {u.FaccionStatus}) intentó cambiar MapInfo {infoType}. RECHAZADO.");
+            Send(u, "Sólo un Dios puede modificar la información del mapa.");
+            return;
+        }
         var map = MapLoader.Get(u.Pos.Map);
         if (map == null) return;
         string campo;

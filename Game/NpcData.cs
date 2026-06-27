@@ -11,16 +11,29 @@ public static class NpcData
     {
         public string Name; public short Body, Head; public byte Heading;
         public int MaxHP; public bool Attackable; public int GiveEXP, GiveGLD;
+        // GiveEXP CRUDO del .dat, sin el multiplicador global Exp de Server.ini. El tiempo de respawn
+        // escala con la dificultad del NPC y debe ser el mismo tenga el server Exp=1 o Exp=200.
+        public int GiveEXPBase;
+        // NPCs.dat "RespawnSegundos": pisa el tiempo calculado para ESE NPC. 0 = automático (por exp).
+        // OJO: NO es el "RespawnTime" heredado del AO original, que vale 1 en casi todos los NPCs y
+        // es un flag, no segundos.
+        public int RespawnSegundos;
         public bool Hostil; public int MinHIT, MaxHIT;
         public int PoderAtaque, PoderEvasion; // para el cálculo de impacto/evasión (NPCs.dat)
         public byte Movement;  // TipoAI: 0=persigue usuarios, 1=estático (solo ataca adyacente)
         public int Domable;    // puntos requeridos para domar (0 = no domable)
         public short[] Spells; // hechizos que lanza (Sp1..LanzaSpells); null = no lanza
         public bool Comercia;
+        public bool NoCompra;   // 1 = el NPC solo vende (no compra ítems al usuario)
         public byte NpcType;   // eNPCType (Declares.bas:424): 1=Revividor,4=Banquero,3=Entrenador,16=Subastador,18=Convertidor,19=Shop,5=facciones,7=transportador, 2=GuardiasCity
         public byte Status;    // facción del NPC (0/3=neutral, 1=imperial, 2=republicano, 4=caos, 5=renegado)
         public byte Ciudad;    // CIUDAD_* (1=Imperial,2=Republicana,3=Caotica,5=Rinkel); derivada de Status si 0. Para guardias.
         public (short objIndex, int amount)[] Inventario; // items que vende (Obj1..NroItems)
+        // Comercio con moneda propia: 0 = oro (default). >0 = ObjIndex de un objeto del inventario
+        // del jugador que se usa como divisa (ej. Moneda Abisal). Los precios salen de Precios[]
+        // (3er campo de cada ObjN: "idx-cant-precio"), alineado por slot con Inventario.
+        public short Moneda;
+        public int[] Precios;
         // Drops al morir (Drops.dat: DropN=ObjIndex,Amount,Prob). Prob en % (puede ser decimal).
         public (short objIndex, int amount, double prob)[] Drops;
         // Entrenador (NpcType=3): criaturas que puede invocar (NroCriaturas + CI1..CIN = npcindex).
@@ -35,9 +48,22 @@ public static class NpcData
         public bool AguaValida;
         // TierraInvalida (NPCs.dat "TierraInValida"): 1 = NO puede pisar tierra (criatura solo-agua).
         public bool TierraInvalida;
+        // AfectaParalisis (NPCs.dat "Inmunidad", MODULO_NPCs.bas:1348): 1 = inmune a parálisis
+        // y al dormir de los instrumentos musicales (dragones/jefes).
+        public bool AfectaParalisis;
     }
 
     private static Dictionary<int, NpcInfo> _cache;
+
+    /// <summary>Fuerza releer NPCs.dat y el multiplicador Exp/Oro de Server.ini. Sin esto, el
+    /// cache estático solo se carga una vez al boot y editar Exp=/Oro= en caliente no tiene
+    /// ningún efecto hasta reiniciar el proceso.</summary>
+    public static void Reload()
+    {
+        _cache = null;
+        EnsureLoaded();
+        Console.WriteLine($"[NpcData] Recargado: {_cache.Count} NPCs.");
+    }
 
     public static NpcInfo Get(int npcIndex)
     {
@@ -53,16 +79,17 @@ public static class NpcData
         _cache[npcIndex] = info;
     }
 
-    /// <summary>Catálogo resumido (índice + nombre + tipo) de todos los NPCs cargados,
-    /// ordenado por índice. Lo usa el panel GM para el buscador de "Crear NPC".</summary>
-    public static List<(int Index, string Name, byte NpcType)> All()
+    /// <summary>Catálogo resumido (índice + nombre + tipo + hostilidad + body/head para la
+    /// vista previa) de todos los NPCs cargados, ordenado por índice. Lo usa el panel GM
+    /// para el buscador de "Crear NPC".</summary>
+    public static List<(int Index, string Name, byte NpcType, bool Hostil, short Body, short Head)> All()
     {
         EnsureLoaded();
-        var list = new List<(int, string, byte)>(_cache.Count);
+        var list = new List<(int, string, byte, bool, short, short)>(_cache.Count);
         foreach (var kv in _cache)
         {
             if (string.IsNullOrEmpty(kv.Value.Name)) continue;
-            list.Add((kv.Key, kv.Value.Name, kv.Value.NpcType));
+            list.Add((kv.Key, kv.Value.Name, kv.Value.NpcType, kv.Value.Hostil, kv.Value.Body, kv.Value.Head));
         }
         list.Sort((a, b) => a.Item1.CompareTo(b.Item1));
         return list;
@@ -84,7 +111,10 @@ public static class NpcData
         if (oroc <= 0) oroc = 1;
 
         var ini = new IniFile(file);
-        for (int i = 1; i <= 2000; i++)
+        // Hasta 4000 y no 2000: los NPCs importados con los mapas de Recursos-master viven
+        // en 3000-3449 (18-ago-2026), y con el tope viejo no se cargaba ninguno — el mapa
+        // pedía spawnear un NPC que para el servidor no existía, en silencio.
+        for (int i = 1; i <= 4000; i++)
         {
             string name = ini.Get("NPC" + i, "Name");
             if (string.IsNullOrEmpty(name)) name = ini.Get("NPC" + i, "Nombre");
@@ -98,7 +128,9 @@ public static class NpcData
                 MaxHP = ini.GetInt("NPC" + i, "MaxHP"),
                 Attackable = ini.GetInt("NPC" + i, "Attackable") == 1,
                 GiveEXP = ini.GetInt("NPC" + i, "GiveEXP") * expc,
+                GiveEXPBase = ini.GetInt("NPC" + i, "GiveEXP"),
                 GiveGLD = ini.GetInt("NPC" + i, "GiveGLD") * oroc,
+                RespawnSegundos = ini.GetInt("NPC" + i, "RespawnSegundos"),
                 Hostil = ini.GetInt("NPC" + i, "Hostile") == 1,
                 MinHIT = ini.GetInt("NPC" + i, "MinHIT"),
                 MaxHIT = ini.GetInt("NPC" + i, "MaxHIT"),
@@ -108,6 +140,9 @@ public static class NpcData
                 Domable = ini.GetInt("NPC" + i, "Domable"),
                 Spells = LoadSpells(ini, i),
                 Comercia = ini.GetInt("NPC" + i, "Comercia") == 1,
+                // Por defecto los NPC NO compran ítems al usuario; solo compran los marcados con Compra=1
+                // (ej. el Vendedor General). Así "vender" queda habilitado únicamente en esos.
+                NoCompra = ini.GetInt("NPC" + i, "Compra") != 1,
                 NpcType = (byte)ini.GetInt("NPC" + i, "NpcType"),
                 Status = (byte)ini.GetInt("NPC" + i, "Status"),
                 Snd1 = (short)ini.GetInt("NPC" + i, "Snd1"),
@@ -118,6 +153,7 @@ public static class NpcData
                 CascoAnim = (short)ini.GetInt("NPC" + i, "CascoAnim"),
                 AguaValida = ini.GetInt("NPC" + i, "AguaValida") == 1,
                 TierraInvalida = ini.GetInt("NPC" + i, "TierraInValida") == 1,
+                AfectaParalisis = ini.GetInt("NPC" + i, "Inmunidad") == 1,
             };
             // Ciudad del guardia (MODULO_NPCs.bas:1187): si no está en el DAT, derivar del Status.
             info.Ciudad = (byte)ini.GetInt("NPC" + i, "Ciudad");
@@ -134,15 +170,22 @@ public static class NpcData
             // Inventario del mercader: Obj1..NroItems = "objindex-cantidad".
             if (info.Comercia)
             {
+                info.Moneda = (short)ini.GetInt("NPC" + i, "Moneda"); // 0 = oro; >0 = ObjIndex de la divisa propia
                 int nro = ini.GetInt("NPC" + i, "NroItems");
                 var inv = new List<(short, int)>();
+                var precios = new List<int>();
                 for (int k = 1; k <= nro; k++)
                 {
                     var parts = ini.Get("NPC" + i, "Obj" + k).Split('-');
                     if (parts.Length >= 2 && short.TryParse(parts[0], out var oi) && int.TryParse(parts[1], out var am) && oi > 0)
+                    {
                         inv.Add((oi, am));
+                        // 3er campo opcional = precio en la moneda propia del NPC ("idx-cant-precio").
+                        precios.Add(parts.Length >= 3 && int.TryParse(parts[2], out var pr) ? pr : 0);
+                    }
                 }
                 info.Inventario = inv.ToArray();
+                info.Precios = precios.ToArray();
             }
             // Entrenador (NpcType=3): lista de criaturas que puede invocar (NroCriaturas + CI1..CIN).
             if (info.NpcType == 3)

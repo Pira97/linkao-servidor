@@ -29,6 +29,7 @@ public static class Sounds
     public const short CASAMIENTO   = 161;
     public const short ORO2         = 172;
     public const short RESUCITADO   = 204;
+    public const short PARALIZAR    = 203;  // BUG-012: mismo WAV que el hechizo Paralizar (Hechizos.dat HECHIZO9)
     public const short VENENO       = 239;
     public const short ARROJADIZA   = 68;   // proyectil arrojadizo (daga/shuriken)
 

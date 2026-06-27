@@ -7,8 +7,8 @@
 '7 materializa
 '8 Combinacion 1, 2 y 11
 '9 Actua sobre los estados de NPCs (Domar y Calmar)
-'10 Creación de arma,escudo, casco, armadura mágica
-'11 Modificación de estado de arma, armadura, escudo, casco
+'10 Creaciï¿½n de arma,escudo, casco, armadura mï¿½gica
+'11 Modificaciï¿½n de estado de arma, armadura, escudo, casco
 '12 Detecta invisibles
 
 'Tagets....
@@ -52,7 +52,7 @@ ClasesProhibidas=3-5-8-10-11-12-13-14-15-16-17
 
 [HECHIZO2]
 Nombre=Proyectil Magico
-Desc=Causa 2 a 7 puntos daño a la víctima.
+Desc=Causa 2 a 7 puntos daï¿½o a la vï¿½ctima.
 PalabrasMagicas=Rah'Za'Lu
 HechizeroMsg=Has lanzado Proyectil Magico sobre
 TargetMsg=lanzo Proyectil Magico sobre vos.
@@ -107,7 +107,7 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO4]
 Nombre=Envenenar
-Desc=Envenenamiento, provoca la muerte si no se contraresta con un antídoto.
+Desc=Envenenamiento, provoca la muerte si no se contraresta con un antï¿½doto.
 PalabrasMagicas=SERP XON IN
 
 HechizeroMsg=Has envenenado a
@@ -165,11 +165,11 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO6]
 Nombre=Saeta Ignea
-Desc=Causa 7 a 14 puntos de daño a la victima.
+Desc=Causa 7 a 14 puntos de daï¿½o a la victima.
 PalabrasMagicas=Fogs Saex
-HechizeroMsg=Has lanzado saeta ígnea sobre 
-TargetMsg=lanzó Saeta ígnea sobre vos.
-PropioMsg=Has lanzado Saeta ígnea sobre ti.
+HechizeroMsg=Has lanzado saeta ï¿½gnea sobre 
+TargetMsg=lanzï¿½ Saeta ï¿½gnea sobre vos.
+PropioMsg=Has lanzado Saeta ï¿½gnea sobre ti.
 Tipo=1
 WAV=19
 Particle=35
@@ -192,11 +192,11 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO7]
 Nombre=Proyectil electrico
-Desc=Causa 14 a 22 puntos de daño a la victima.
+Desc=Causa 14 a 22 puntos de daï¿½o a la victima.
 PalabrasMagicas=SUN VAP
-HechizeroMsg=Has lanzado Proyectil eléctrico sobre
-TargetMsg=lanzó Proyectil eléctrico sobre vos.
-PropioMsg=Has lanzado proyectil eléctrico sobre ti.
+HechizeroMsg=Has lanzado Proyectil elï¿½ctrico sobre
+TargetMsg=lanzï¿½ Proyectil elï¿½ctrico sobre vos.
+PropioMsg=Has lanzado proyectil elï¿½ctrico sobre ti.
 Tipo=1
 WAV=164
 Particle=86
@@ -219,11 +219,11 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO8]
 Nombre=Bomba magica
-Desc=Causa 10 a 30 puntos de daño en un área de dos tiles.
+Desc=Causa 10 a 30 puntos de daï¿½o en un ï¿½rea de dos tiles.
 PalabrasMagicas=VAX IN TAR
-HechizeroMsg=Has lanzado Bomba mágica sobre
-TargetMsg=lanzó Bomba mágica sobre vos.
-PropioMsg=Has lanzado Bomba mágica sobre ti.
+HechizeroMsg=Has lanzado Bomba mï¿½gica sobre
+TargetMsg=lanzï¿½ Bomba mï¿½gica sobre vos.
+PropioMsg=Has lanzado Bomba mï¿½gica sobre ti.
 Tipo=1
 WAV=129
 FXgrh=50
@@ -251,7 +251,7 @@ ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO9]
 Nombre=Paralizar
-Desc=Impide que la víctima realize todo movimiento.
+Desc=Impide que la vï¿½ctima realize todo movimiento.
 PalabrasMagicas=HOAX VORP
 
 HechizeroMsg=Has paralizado a
@@ -429,7 +429,7 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO15]
 Nombre=Tormenta de fuego
-Desc=Causa 15 a 50 puntos de daño en un área de tres tiles.
+Desc=Causa 15 a 50 puntos de daï¿½o en un ï¿½rea de tres tiles.
 PalabrasMagicas=RAX IN ZAR
 HechizeroMsg=Has lanzado Tormenta de fuego sobre
 TargetMsg=lanzo Tormenta de fuego sobre vos.
@@ -462,7 +462,7 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO16]
 Nombre=Llamado musical
-Desc=Implora el espiritu musical, un bardo acudirá en tu ayuda.
+Desc=Implora el espiritu musical, un bardo acudirï¿½ en tu ayuda.
 PalabrasMagicas=Impendere et worg
 HechizeroMsg=Has invocado un bardo.
 
@@ -486,8 +486,8 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 [HECHIZO17]
 Nombre=Llamado a la naturaleza
-Desc=Trae tres lobos que ayudarán a tu causa.
-PalabrasMagicas=Lüpus Aident
+Desc=Trae tres lobos que ayudarï¿½n a tu causa.
+PalabrasMagicas=Lï¿½pus Aident
 HechizeroMsg=Has invocado tres lobos.
 
 Tipo=4
@@ -620,7 +620,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO22]
 Nombre=Desencantar
-Desc=Desencantar remueve todo efecto mágico del usuario que lo conjure.
+Desc=Desencantar remueve todo efecto mï¿½gico del usuario que lo conjure.
 PalabrasMagicas=Disincanto
 HechizeroMsg=Has lanzado Desencantar sobre
 TargetMsg=lanzo Desencantar sobre vos.
@@ -646,11 +646,11 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO23]
 Nombre=Corriente electrica
-Desc=Causa 20 a 70 puntos de daño en un área de cuatro tiles.
+Desc=Causa 20 a 70 puntos de daï¿½o en un ï¿½rea de cuatro tiles.
 PalabrasMagicas=T'HY KOOOL
-HechizeroMsg=Has lanzado Corriente eléctrica sobre
-TargetMsg=lanzo Corriente eléctrica sobre vos.
-PropioMsg=Has lanzado Corriente eléctrica sobre ti.
+HechizeroMsg=Has lanzado Corriente elï¿½ctrica sobre
+TargetMsg=lanzo Corriente elï¿½ctrica sobre vos.
+PropioMsg=Has lanzado Corriente elï¿½ctrica sobre ti.
 Tipo=1
 WAV=56
 Particle=48
@@ -679,7 +679,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO24]
 Nombre=Inmovilizar
-Desc=Impide que la víctima se movilize.
+Desc=Impide que la vï¿½ctima se movilize.
 PalabrasMagicas=r Prop s'uo
 
 HechizeroMsg=Has inmovilizado a
@@ -706,8 +706,8 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO25]
 Nombre=Apocalipsis
-Desc=Causa 50 a 90 puntos de daño en un area de cuatro tiles.
-PalabrasMagicas=Rahma Nañarak O'al
+Desc=Causa 50 a 90 puntos de daï¿½o en un area de cuatro tiles.
+PalabrasMagicas=Rahma Naï¿½arak O'al
 HechizeroMsg=Has lanzado Apocalipsis sobre
 TargetMsg=lanzo Apocalipsis sobre vos.
 PropioMsg=Has lanzado Apocalipsis sobre ti.
@@ -716,12 +716,12 @@ WAV=138
 Particle=45
 Anillo=1
 SubeHP=2
-MinHP=60
-MaxHP=75
+MinHP=70
+MaxHP=80
     
 MinSkill=80
-ManaRequerido=950
-StaRequerido=120
+ManaRequerido=1000
+StaRequerido=125
 TimeParticula=50
 Target=3
 ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
@@ -731,6 +731,8 @@ ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+DanoMagicoMax=0
+DanoMagicoMin=0
 [HECHIZO26]
 Nombre=Invocar elemental de fuego
 Desc=Invocar elemental de fuego
@@ -739,7 +741,7 @@ HechizeroMsg=Has invocado un elemental de fuego.
 Tipo=4
 WAV=17
 FXgrh=7
-Invoca=6
+Invoca=1
 NumNpc=93
 Cant=1
 MinSkill=100
@@ -876,10 +878,10 @@ ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 [HECHIZO32]
 Nombre=Sanar
-Desc=Restaura entre 60 y 100 de daño al usuario y remueve todos los efectos negativos que éste pueda tener.
+Desc=Restaura entre 60 y 100 de daï¿½o al usuario y remueve todos los efectos negativos que ï¿½ste pueda tener.
 PalabrasMagicas=Nihil Vitae
 HechizeroMsg=Has lanzado Sanar sobre
-TargetMsg=lanzó Sanar sobre vos.
+TargetMsg=lanzï¿½ Sanar sobre vos.
 PropioMsg=Has lanzado Sanar sobre ti.
 Tipo=1
 WAV=55
@@ -888,15 +890,15 @@ loops=0
 Sanacion=1
 
 SubeHP=1
-MinHP=60
-MaxHP=100
+MinHP=40
+MaxHP=45
 
 RemoverEstupidez=1
 RemoverParalisis=1
 
 MinSkill=80
-ManaRequerido=750
-StaRequerido=270
+ManaRequerido=1250
+StaRequerido=500
 TimeParticula=50
 Target=1
 ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
@@ -908,7 +910,7 @@ ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 [HECHIZO33]
 Nombre=Desatar la ira
-Desc=Desatar la ira reduce la fuerza y la agilidad del usuario críticamente.
+Desc=Desatar la ira reduce la fuerza y la agilidad del usuario crï¿½ticamente.
 PalabrasMagicas=Hic Dei
 
 HechizeroMsg=Has desatado la ira de
@@ -941,23 +943,23 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 [HECHIZO34]
 Nombre=Implosion
-Desc=Causa 120 a 150 puntos de daño a la victima.
+Desc=Causa 120 a 150 puntos de daï¿½o a la victima.
 PalabrasMagicas=Nihil Mortem
-HechizeroMsg=Has lanzado Implosión sobre
-TargetMsg=lanzo Implosión sobre vos.
-PropioMsg=Has lanzado Implosión sobre ti.
+HechizeroMsg=Has lanzado Implosiï¿½n sobre
+TargetMsg=lanzo Implosiï¿½n sobre vos.
+PropioMsg=Has lanzado Implosiï¿½n sobre ti.
 Tipo=1
 WAV=65
 FXgrh=18
 loops=0
 Anillo=1
 SubeHP=2
-MinHP=70
-MaxHP=80
+MinHP=90
+MaxHP=100
     
 MinSkill=100
-ManaRequerido=1400
-StaRequerido=120
+ManaRequerido=1500
+StaRequerido=160
 
 Target=3
 ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
@@ -970,10 +972,10 @@ ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO35]
 Nombre=Lluvia de Mosquitos
-Desc=Los insectos paralizarán y dejaran ciega a la victima.
+Desc=Los insectos paralizarï¿½n y dejaran ciega a la victima.
 PalabrasMagicas=Hut Inefectus
 HechizeroMsg=Has lanzado lluvia de mosquitos sobre
-TargetMsg=lanzó Lluvia de mosquitos sobre vos.
+TargetMsg=lanzï¿½ Lluvia de mosquitos sobre vos.
 PropioMsg=Has lanzado Lluvia de mosquitos sobre ti.
 Tipo=2
 WAV=26
@@ -984,7 +986,7 @@ Paraliza=1
 Ceguera=1
 
 MinSkill=100
-ManaRequerido=2600
+ManaRequerido=2000
 StaRequerido=300
 TimeParticula=150
 Target=1
@@ -1031,10 +1033,10 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO38]
 Nombre=Metamorfosis: Golem
-Desc=Transforma al usuario en un Gólem, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
-HechizeroMsg=Has transformado en gólem a
-TargetMsg=te transformó en gólem.
-PropioMsg=Te has transformado en gólem.
+Desc=Transforma al usuario en un Gï¿½lem, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
+HechizeroMsg=Has transformado en gï¿½lem a
+TargetMsg=te transformï¿½ en gï¿½lem.
+PropioMsg=Te has transformado en gï¿½lem.
 Tipo=2
 WAV=57
 fxgrh=30
@@ -1055,10 +1057,10 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO39]
 Nombre=Metamorfosis: Dragon
-Desc=Transforma al usuario en un Dragón, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
-HechizeroMsg=Has transformado en dragón a
-TargetMsg=te transformó en dragón.
-PropioMsg=Te has transformado en dragón.
+Desc=Transforma al usuario en un Dragï¿½n, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
+HechizeroMsg=Has transformado en dragï¿½n a
+TargetMsg=te transformï¿½ en dragï¿½n.
+PropioMsg=Te has transformado en dragï¿½n.
 Tipo=2
 WAV=57
 fxgrh=30
@@ -1080,9 +1082,9 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO40]
 Nombre=Metamorfosis: Lobo
-Desc=Transforma al usuario en un Lobo, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+Desc=Transforma al usuario en un Lobo, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
 HechizeroMsg=Has transformado en lobo a
-TargetMsg=te transformó en lobo.
+TargetMsg=te transformï¿½ en lobo.
 PropioMsg=Te has transformado en lobo.
 Tipo=2
 WAV=57
@@ -1116,10 +1118,10 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO42]
 Nombre=Metamorfosis: Jabali
-Desc=Transforma al usuario en un Jabalí, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
-HechizeroMsg=Has transformado en jabalí a
-TargetMsg=te transformó en jabalí.
-PropioMsg=Te has transformado en jabalí.
+Desc=Transforma al usuario en un Jabalï¿½, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
+HechizeroMsg=Has transformado en jabalï¿½ a
+TargetMsg=te transformï¿½ en jabalï¿½.
+PropioMsg=Te has transformado en jabalï¿½.
 Tipo=2
 WAV=57
 fxgrh=30
@@ -1138,10 +1140,10 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO43]
 Nombre=Metamorfosis: Arbol
-Desc=Transforma al usuario en un Árbol, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
-HechizeroMsg=Has transformado en árbol a
-TargetMsg=te transformó en árbol.
-PropioMsg=Te has transformado en árbol.
+Desc=Transforma al usuario en un ï¿½rbol, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
+HechizeroMsg=Has transformado en ï¿½rbol a
+TargetMsg=te transformï¿½ en ï¿½rbol.
+PropioMsg=Te has transformado en ï¿½rbol.
 Tipo=2
 WAV=57
 fxgrh=30
@@ -1154,15 +1156,17 @@ MinSkill=90
 ManaRequerido=900
 StaRequerido=100
 Target=1
+ItemRequerido=583
+CantidadItemRequerido=1
 asusta=10
 autolanzar=1
 ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO44]
 Nombre=Metamorfosis: Oso Pardo
-Desc=Transforma al usuario en un Oso Pardo, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+Desc=Transforma al usuario en un Oso Pardo, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
 HechizeroMsg=Has transformado en oso pardo a
-TargetMsg=te transformó en oso pardo.
+TargetMsg=te transformï¿½ en oso pardo.
 PropioMsg=Te has transformado en oso pardo.
 Tipo=2
 WAV=57
@@ -1184,9 +1188,9 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO45]
 Nombre=Metamorfosis: Tortuga
-Desc=Transforma al usuario en una Tortuga, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+Desc=Transforma al usuario en una Tortuga, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
 HechizeroMsg=Has transformado en tortuga a
-TargetMsg=te transformó en tortuga.
+TargetMsg=te transformï¿½ en tortuga.
 PropioMsg=Te has transformado en tortuga.
 Tipo=2
 WAV=57
@@ -1208,10 +1212,10 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO46]
 Nombre=Metamorfosis: Arana
-Desc=Transforma al usuario en una Araña, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
-HechizeroMsg=Has transformado en araña a
-TargetMsg=te transformó en araña.
-PropioMsg=Te has transformado en araña.
+Desc=Transforma al usuario en una Araï¿½a, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
+HechizeroMsg=Has transformado en araï¿½a a
+TargetMsg=te transformï¿½ en araï¿½a.
+PropioMsg=Te has transformado en araï¿½a.
 Tipo=2
 WAV=57
 fxgrh=30
@@ -1230,9 +1234,9 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO47]
 Nombre=Metamorfosis: Demonio
-Desc=Transforma al usuario en un Demonio, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+Desc=Transforma al usuario en un Demonio, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
 HechizeroMsg=Has transformado en demonio a
-TargetMsg=te transformó en demonio.
+TargetMsg=te transformï¿½ en demonio.
 PropioMsg=Te has transformado en demonio.
 Tipo=2
 WAV=57
@@ -1277,10 +1281,10 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO49]
 Nombre=Metamorfosis: Murcielago
-Desc=Transforma al usuario en un Murciélago, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
-HechizeroMsg=Has transformado en murcielégo a
-TargetMsg=te transformó en murciélago.
-PropioMsg=Te has transformado en murciélago.
+Desc=Transforma al usuario en un Murciï¿½lago, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
+HechizeroMsg=Has transformado en murcielï¿½go a
+TargetMsg=te transformï¿½ en murciï¿½lago.
+PropioMsg=Te has transformado en murciï¿½lago.
 Tipo=2
 WAV=57
 fxgrh=30
@@ -1299,9 +1303,9 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO50]
 Nombre=Metamorfosis: Tigre
-Desc=Transforma al usuario en un Tigre, efecto no permanente. Las criaturas no te atacarán si aparentas ser más poderoso que ellas, y obtendrás un bonificador en tu ataque y defensa.
+Desc=Transforma al usuario en un Tigre, efecto no permanente. Las criaturas no te atacarï¿½n si aparentas ser mï¿½s poderoso que ellas, y obtendrï¿½s un bonificador en tu ataque y defensa.
 HechizeroMsg=Has transformado en tigre a
-TargetMsg=te transformó en tigre.
+TargetMsg=te transformï¿½ en tigre.
 PropioMsg=Te has transformado en tigre.
 Tipo=2
 WAV=57
@@ -1348,7 +1352,7 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO52]
 Nombre=Juicio final
-Desc=Causa 150 a 180 puntos de daño a la victima.
+Desc=Causa 150 a 180 puntos de daï¿½o a la victima.
 PalabrasMagicas=Finis Mortem
 HechizeroMsg=Has lanzado Juicio final sobre
 TargetMsg=lanzo Juicio final sobre vos.
@@ -1359,12 +1363,12 @@ FXgrh=20
 loops=0
 Anillo=1
 SubeHP=2
-MinHP=85
-MaxHP=100
+MinHP=100
+MaxHP=105
     
 MinSkill=100
 ManaRequerido=1800
-StaRequerido=250
+StaRequerido=200
 
 Target=3
 ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
@@ -1374,10 +1378,12 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+DanoMagicoMin=
+DanoMagicoMax=
 
 [HECHIZO53]
 Nombre=Portal planar
-Desc=El hechizo Portal planar crea un teleport hacia tu hogar de orígen.
+Desc=El hechizo Portal planar crea un teleport hacia tu hogar de orï¿½gen.
 PalabrasMagicas=Opercure Dimentia
 HechizeroMsg=Has creado un Portal interplanar.
 Tipo=5
@@ -1386,7 +1392,7 @@ Particle=52
 loops=0
 TimeParticula=1
 MinSkill=100
-ManaRequerido=2300
+ManaRequerido=2100
 StaRequerido=300
 
 Target=4
@@ -1416,8 +1422,8 @@ Tipo=2
 Revivir=1
 
 MinSkill=75
-ManaRequerido=300
-StaRequerido=100
+ManaRequerido=840
+StaRequerido=200
 
 Target=4
 ClasesProhibidas=2-3-5-8-10-11-12-13-14-15-16-17
@@ -1430,7 +1436,7 @@ ClasesProhibidas=2-3-5-8-10-11-12-13-14-15-16-17
 
 [HECHIZO55]
 Nombre=Materializar: Comida
-Desc=Los hechizos de materialización convierten magia en materia. Este hechizo puede crear comida a partir de su lanzamiento.
+Desc=Los hechizos de materializaciï¿½n convierten magia en materia. Este hechizo puede crear comida a partir de su lanzamiento.
 PalabrasMagicas=Sunt Alifens
 HechizeroMsg=Has creado algo de comida.
 
@@ -1455,7 +1461,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO56]
 Nombre=Incinerar
-Desc=Una llamarada incinerará al objetivo, causando un daño considerable rápidamente.
+Desc=Una llamarada incinerarï¿½ al objetivo, causando un daï¿½o considerable rï¿½pidamente.
 PalabrasMagicas=Incinera Corps
 
 HechizeroMsg=Has incinerado a
@@ -1469,8 +1475,8 @@ loops=0
 TimeParticula=20
 Incinera=1
 MinSkill=90
-ManaRequerido=920
-StaRequerido=100
+ManaRequerido=1400
+StaRequerido=300
 
 Target=1
 ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
@@ -1483,11 +1489,11 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO57]
 Nombre=Tormenta acida
-Desc=Causa 20 a 70 puntos de daño y envenena en un área de tres tiles.
+Desc=Causa 20 a 70 puntos de daï¿½o y envenena en un ï¿½rea de tres tiles.
 PalabrasMagicas=VAX IN XORP
-HechizeroMsg=Has lanzado Tormenta ácida sobre
-TargetMsg=lanzo Tormenta ácida sobre vos.
-PropioMsg=Has lanzado Tormenta ácida sobre ti.
+HechizeroMsg=Has lanzado Tormenta ï¿½cida sobre
+TargetMsg=lanzo Tormenta ï¿½cida sobre vos.
+PropioMsg=Has lanzado Tormenta ï¿½cida sobre ti.
 Tipo=1
 WAV=127
 FXgrh=136
@@ -1519,7 +1525,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO58]
 Nombre=Maldicion
-Desc=Impide que la víctima ataque.
+Desc=Impide que la vï¿½ctima ataque.
 PalabrasMagicas=Malefectus Sunt
 HechizeroMsg=Has maldecido a
 TargetMsg=te ha maldecido.
@@ -1569,7 +1575,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO60]
 Nombre=Materializar: Bebida
-Desc=Los hechizos de materialización convierten magia en materia. Este hechizo puede crear bebida a partir de su lanzamiento.
+Desc=Los hechizos de materializaciï¿½n convierten magia en materia. Este hechizo puede crear bebida a partir de su lanzamiento.
 PalabrasMagicas=Sunt Aquum
 HechizeroMsg=Has creado algo de bebida.
 
@@ -1593,7 +1599,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 [HECHIZO61]
-Nombre=Señal a tu mascota
+Nombre=Seï¿½al a tu mascota
 Desc=Llama o retira tu mascota
 Tipo=6
 Invoca=1
@@ -1613,7 +1619,7 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO63]
 Nombre=Lamento de la Banshee
-Desc=Causa 90 a 145 puntos de daño en un área de ocho tiles.
+Desc=Causa 90 a 145 puntos de daï¿½o a la victima.
 PalabrasMagicas=VR NI MS
 HechizeroMsg=Has lanzado Lamento de la Banshee sobre
 TargetMsg=lanzo Lamento de la Banshee sobre vos.
@@ -1626,17 +1632,14 @@ Particle=0
 TimeParticula=100
 
 SubeHP=2
-MinHP=90
-MaxHP=145
-    
-MinSkill=100
-ManaRequerido=3020
-StaRequerido=300
+MinHP=130
+MaxHP=140
 
-HechizoDeArea=1
-AreaEfecto=8
-Afecta=3
-Anillo=2
+MinSkill=100
+ManaRequerido=1800
+StaRequerido=200
+
+Anillo=1
 Target=3
 ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
@@ -1648,12 +1651,12 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO64]
 Nombre=Veneno critico
-Desc=Envenenamiento crítico, provoca la muerte rápidamente si no se contraresta con un antídoto.
+Desc=Envenenamiento crï¿½tico, provoca la muerte rï¿½pidamente si no se contraresta con un antï¿½doto.
 PalabrasMagicas=Nihil Xn In
 
-HechizeroMsg=Has envenenado críticamente a
-TargetMsg=te ha envenenado críticamente.
-PropioMsg=Te has envenenado críticamente.
+HechizeroMsg=Has envenenado crï¿½ticamente a
+TargetMsg=te ha envenenado crï¿½ticamente.
+PropioMsg=Te has envenenado crï¿½ticamente.
 
 Tipo=2
 WAV=127
@@ -1677,8 +1680,8 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO65]
 Nombre=Tornado
-Desc=Paraliza en un área de dos tiles.
-PalabrasMagicas=nt Natur Veé
+Desc=Paraliza en un ï¿½rea de dos tiles.
+PalabrasMagicas=nt Natur Veï¿½
 HechizeroMsg=Has paralizado a
 TargetMsg=te ha paralizado.
 PropioMsg=Te has paralizado.
@@ -1706,7 +1709,7 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 [HECHIZO66]'Ruthnar
-Nombre=Terror 'Rey Dragón
+Nombre=Terror 'Rey Dragï¿½n
 Desc=Hechizo de NPC.
 Tipo=8
 WAV=32
@@ -1733,8 +1736,8 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 [HECHIZO67]
-Nombre=Curar heridas críticas
-Desc=Curar heridas críticas, restaura entre 30 y 60 puntos de salud.
+Nombre=Curar heridas crï¿½ticas
+Desc=Curar heridas crï¿½ticas, restaura entre 30 y 60 puntos de salud.
 PalabrasMagicas=CORP CURATIO
 
 HechizeroMsg=Has curado a
@@ -1748,12 +1751,12 @@ Particle=27
 loops=1
 
 SubeHP=1
-MinHP=60
-MaxHP=90
+MinHP=40
+MaxHP=45
     
 MinSkill=65
-ManaRequerido=620
-StaRequerido=80
+ManaRequerido=450
+StaRequerido=100
 TimeParticula=100
 Target=3
 ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
@@ -1761,12 +1764,12 @@ ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO69] 'Lvl 32 en adelante
 Nombre=Descarga Flamigera
-Desc=Castiga al enemigo con el fuego divino, causando entre 80 y 120 puntos de daño e incinerándolo
+Desc=Castiga al enemigo con el fuego divino, causando entre 80 y 120 puntos de daï¿½o e incinerï¿½ndolo
 PalabrasMagicas=Jf Rashida
 
-HechizeroMsg=Has lanzado Descarga Flamígera sobre
-TargetMsg=te ha lanzado Descarga Flamígera
-PropioMsg=Te has lanzado Descarga Flamígera
+HechizeroMsg=Has lanzado Descarga Flamï¿½gera sobre
+TargetMsg=te ha lanzado Descarga Flamï¿½gera
+PropioMsg=Te has lanzado Descarga Flamï¿½gera
 Anillo=1
 Tipo=1
 WAV=242
@@ -1774,14 +1777,14 @@ Particle=84
 loops=0
 
 SubeHP=2
-MinHP=60
-MaxHP=75
+MinHP=114
+MaxHP=116
 
 
 TimeParticula=100
 MinSkill=90
 ManaRequerido=950
-StaRequerido=75
+StaRequerido=150
 
 Target=3
 'HechizoDeArea=1
@@ -1793,8 +1796,8 @@ ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO71] 'Lvl 28 en adelante
 Nombre=Pregonar la palabra de Dios
-Desc=Cura en un diámetro de 5 tiles entre 75 y 125 puntos de vida
-PalabrasMagicas=In nómini Pater, Filum, Sanctis Espiritum
+Desc=Cura en un diï¿½metro de 5 tiles entre 75 y 125 puntos de vida
+PalabrasMagicas=In nï¿½mini Pater, Filum, Sanctis Espiritum
 
 HechizeroMsg=La palabra de Dios cura y fortalece
 TargetMsg=te ha curado.
@@ -1806,27 +1809,27 @@ Particle=5
 loops=1
 TimeParticula=5
 SubeHP=1
-MinHP=40
-MaxHP=55
+MinHP=55
+MaxHP=60
     
 MinSkill=70
-ManaRequerido=1000
+ManaRequerido=1225
 StaRequerido=350
 
 AreaEfecto=5
 HechizoDeArea=1
 
-Target=4 'Efecto área
+Target=4 'Efecto ï¿½rea
 Afecta=1
 ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO72] 'Lvl 42 en adelante
 Nombre=Golpe certero
-Desc=El receptor no fallará el próximo golpe
+Desc=El receptor no fallarï¿½ el prï¿½ximo golpe
 PalabrasMagicas=Ar'Sen Benerim
 HechizeroMsg=Has lanzado Golpe certero sobre
 Targetmsg=te ha lanzado Golpe certero
-PropioMsg=Tu próximo golpe no fallará!
+PropioMsg=Tu prï¿½ximo golpe no fallarï¿½!
 
 Tipo=1
 WAV=55
@@ -1834,7 +1837,7 @@ autolanzar=1
 Particle=70
 TimeParticula=50
 MinSkill=90
-ManaRequerido=880
+ManaRequerido=1480
 StaRequerido=300
 
 Target=1
@@ -1846,7 +1849,7 @@ Desc=El poder del receptor aumenta considerablemente
 PalabrasMagicas=Ar'Sen Benerim
 HechizeroMsg=Has lanzado Poder Divino sobre
 Targetmsg=te ha lanzado Poder Divino
-PropioMsg=Te sientes más fuerte
+PropioMsg=Te sientes mï¿½s fuerte
 
 Tipo=1
 WAV=228
@@ -1875,7 +1878,7 @@ ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO74] 'Lvl 28 en adelante
 Nombre=Animar a la naturaleza
-Desc=Le da vida momentáneamente a un árbol.
+Desc=Le da vida momentï¿½neamente a un ï¿½rbol.
 PalabrasMagicas=In amari spra T'ai
 HechizeroMsg=La naturaleza te protege
 
@@ -1892,10 +1895,10 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO75] 'Lvl 9 en adelante
 Nombre=Circulo curativo
-Desc=Curar entre 25 y 35 puntos de salud en un diámetro de 3 tiles.
+Desc=Curar entre 25 y 35 puntos de salud en un diï¿½metro de 3 tiles.
 PalabrasMagicas=AMARI SANCTIS
 
-HechizeroMsg=Has lanzado círculo curativo sobre
+HechizeroMsg=Has lanzado cï¿½rculo curativo sobre
 TargetMsg=te ha curado.
 PropioMsg=Te has curado.
 
@@ -1904,11 +1907,11 @@ WAV=18
 Particle=17
 SubeHP=1
 TimeParticula=50
-MinHP=25
-MaxHP=35
+MinHP=40
+MaxHP=45
     
 MinSkill=45
-ManaRequerido=350
+ManaRequerido=900
 StaRequerido=90
 
 HechizoDeArea=1
@@ -1920,7 +1923,7 @@ ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO76] 'Lvl 30 en adelante
 Nombre=Semillas de fuego
-Desc=Bellotas y bayas se convierten en bolas de fuego, causando 85 a 120 puntos de daño.
+Desc=Bellotas y bayas se convierten en bolas de fuego, causando 85 a 120 puntos de daï¿½o.
 PalabrasMagicas=Samarin Tar
 HechizeroMsg=Has lanzado Semillas de fuego sobre
 TargetMsg=lanzo Semillas de fuego sobre vos.
@@ -1931,19 +1934,19 @@ loops=0
 Particle=43
 TimeParticula=50
 SubeHP=2
-MinHP=60
-MaxHP=70
+MinHP=121
+MaxHP=124
 Anillo=1
 MinSkill=85
-ManaRequerido=1250
-StaRequerido=100
+ManaRequerido=950
+StaRequerido=150
 
 Target=3
 ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO77] 'Lvl 35/36 en adelante
 Nombre=Rayo solar
-Desc=Haz de luz que ciega e inflige 50 a 100 puntos de daño.
+Desc=Haz de luz que ciega e inflige 50 a 100 puntos de daï¿½o.
 PalabrasMagicas=Pelor In bodem
 HechizeroMsg=Has lanzado Rayo solar sobre
 TargetMsg=lanzo Rayo solar sobre vos.
@@ -1955,20 +1958,20 @@ loops=0
 
 SubeHP=2
 MinHP=50
-MaxHP=60
+MaxHP=100
 
 Ceguera=1
     
 MinSkill=100
-ManaRequerido=700
-StaRequerido=125
+ManaRequerido=1350
+StaRequerido=250
 TimeParticula=10
 Target=3
 ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO78] 'Lvl 33 en adelante
 Nombre=Terremoto
-Desc=Causa entre 50 y 75 puntos de daño en un radio de 3 tiles.
+Desc=Causa entre 50 y 75 puntos de daï¿½o en un radio de 3 tiles.
 PalabrasMagicas=Nature Obad-Hai Event
 
 HechizeroMsg=Has lanzado un terremoto
@@ -1979,18 +1982,18 @@ Tipo=1
 WAV=380
 
 SubeHP=2
-MinHP=50
-MaxHP=75
+MinHP=80
+MaxHP=100
 Particle=44
 TimeParticula=5
 MinSkill=95
-ManaRequerido=1180
+ManaRequerido=450
 StaRequerido=200
 
 Afecta=3
 hechizodearea=1
 areaefecto=3
-Target=4'4 'Efecto área
+Target=4'4 'Efecto ï¿½rea
 ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO79]
@@ -2022,7 +2025,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 [HECHIZO80] 'Lvl 34 en adelante
 Nombre=Sirviente invisible
 Desc=Hechizo De Bardo
-'Desc=Crea una fuerza invisible que obedece tus órdenes
+'Desc=Crea una fuerza invisible que obedece tus ï¿½rdenes
 PalabrasMagicas=Sama geri
 HechizeroMsg=Has invocado un sirviente invisible
 Tipo=4
@@ -2060,7 +2063,7 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 [HECHIZO82] 'lvl 32 en adelante
 Nombre=Intimidar al espiritu
 'Desc=Hechizo deshabilitado temporalmente.
-Desc=Reduce la fuerza y el daño del arma del receptor
+Desc=Reduce la fuerza y el daï¿½o del arma del receptor
 PalabrasMagicas=Mortem
 HechizeroMsg=Has intimidado a
 TargetMsg=te ha intimidado
@@ -2078,13 +2081,13 @@ MinDef=-20
 MaxDef=-20
 
 MinSkill=35
-ManaRequerido=75
-StaRequerido=25
+ManaRequerido=900
+StaRequerido=200
 Target=1
 
-StaRequerido=200
+
 MinSkill=80
-ManaRaquerido=1000
+
 ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO83] 'Lvl 30 en adelante
@@ -2108,8 +2111,8 @@ maxdef=+40
 TimeParticula=50
     
 MinSkill=55
-ManaRequerido=360
-StaRequerido=40
+ManaRequerido=1000
+StaRequerido=300
 
 Target=1
 ClasesProhibidas=1-2-3-4-5-7-8-9-10-11-12-13-14-15-16-17-18
@@ -2117,12 +2120,12 @@ ClasesProhibidas=1-2-3-4-5-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO84] 'Lvl 45 en adelante [EDIT deberia ser catidad / 100, en ese lvl debe tener como 2000 muertes]
 Nombre=Lamento de las almas
-Desc=Castiga al enemigo con el fuego divino, causando entre 80 y 120 puntos de daño e incinerándolo
+Desc=Castiga al enemigo con el fuego divino, causando entre 80 y 120 puntos de daï¿½o e incinerï¿½ndolo
 PalabrasMagicas=Jf Rashida
 
-HechizeroMsg=Has lanzado Descarga Flamígera sobre
-TargetMsg=te ha lanzado Descarga Flamígera
-PropioMsg=Te has lanzado Descarga Flamígera
+HechizeroMsg=Has lanzado Descarga Flamï¿½gera sobre
+TargetMsg=te ha lanzado Descarga Flamï¿½gera
+PropioMsg=Te has lanzado Descarga Flamï¿½gera
 Anillo=1
 Tipo=1
 WAV=98
@@ -2130,14 +2133,14 @@ Particle=30
 loops=0
 
 SubeHP=2
-MinHP=60
-MaxHP=75
+MinHP=116
+MaxHP=118
 
 
 TimeParticula=100
 MinSkill=90
 ManaRequerido=950
-StaRequerido=75
+StaRequerido=150
 
 Target=3
 'HechizoDeArea=1
@@ -2168,8 +2171,8 @@ MinAG=12
 MaxAG=16
     
 MinSkill=85
-ManaRequerido=720
-StaRequerido=250
+ManaRequerido=1000
+StaRequerido=150
 TimeParticula=100
 Target=1
 ClasesProhibidas=1-2-3-4-5-7-8-9-10-11-12-13-14-15-16-17-18
@@ -2205,7 +2208,7 @@ ClasesProhibidas=1-2-3-4-5-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO87]
 Nombre=Castigo Divino
-Desc=Causa 75 a 100 puntos de daño a la victima.
+Desc=Causa 75 a 100 puntos de daï¿½o a la victima.
 PalabrasMagicas=Abra Ainum
 HechizeroMsg=Has lanzado Castigo Divino sobre
 TargetMsg=lanzo Castigo Divino vos.
@@ -2217,12 +2220,12 @@ loops=0
 Resis=1
 TimeParticula=50
 SubeHP=2
-MinHP=55
-MaxHP=65
+MinHP=90
+MaxHP=92
 
 MinSkill=80
-ManaRequerido=570
-StaRequerido=300
+ManaRequerido=600
+StaRequerido=150
 
 Target=3
 ClasesProhibidas=1-2-3-4-5-6-7-8-10-11-12-13-14-15-16-17-18
@@ -2243,22 +2246,22 @@ loops=0
 TimeParticula=50
 SubeHP=1
 'SubeHP=0
-MinHP=45
-MaxHP=60
+MinHP=25
+MaxHP=32
     
 MinSkill=60
-ManaRequerido=560
+ManaRequerido=300
 StaRequerido=150
 
 Target=3
 ClasesProhibidas=1-2-3-4-5-6-7-8-10-11-12-13-14-15-16-17-18
 
 [HECHIZO89] 'Lvl 42 en adelante. Hechizo powa
-Nombre=Honor del Paladín
+Nombre=Honor del Paladï¿½n
 'Desc=Hechizo deshabilitado temporalmente.
-Desc=El Honor del Paladín cura malos estados, aumenta vida y atributos
+Desc=El Honor del Paladï¿½n cura malos estados, aumenta vida y atributos
 PalabrasMagicas=Ar'Cos Sanctis Hic
-PropioMsg=Te sientes más fuerte
+PropioMsg=Te sientes mï¿½s fuerte
 autolanzar=1
 Tipo=1
 WAV=243
@@ -2273,19 +2276,19 @@ SubeAG=1
 MinAG=35
 MaxAG=35
 
-SubeHP=1
-MinHP=40
+SubeHP=0
+MinHP=0
 MaxHP=60
 
 MinSkill=100
-ManaRequerido=500
-StaRequerido=300
+ManaRequerido=650
+StaRequerido=280
 
 Target=1
 ClasesProhibidas=1-2-3-4-5-6-7-8-10-11-12-13-14-15-16-17-18
 
 [HECHIZO90] 'Lvl 20 en adelante
-Nombre=Prevención del mal
+Nombre=Prevenciï¿½n del mal
 'Desc=Hechizo deshabilitado temporalmente.
 Desc=Aumenta tu agilidad y te vuelves invisible
 PalabrasMagicas=Rohl A'Inc
@@ -2311,9 +2314,9 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-10-11-12-13-14-15-16-17-18
 [HECHIZO91] 'Lvl 35 en adelante
 Nombre=Arma magica
 'Desc=Hechizo deshabilitado temporalmente.
-Desc=Crea momentáneamente un arma que inflige un daño considerable
+Desc=Crea momentï¿½neamente un arma que inflige un daï¿½o considerable
 PalabrasMagicas=Sarapiens Herinoenous
-PropioMsg=Un arma mágica se blande en tu mano
+PropioMsg=Un arma mï¿½gica se blande en tu mano
 
 Tipo=10
 Target=1
@@ -2339,12 +2342,12 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 [HECHIZO92]
-Nombre=Misil Mágico
-Desc=Causa 25 a 35 puntos de daño a la victima.
+Nombre=Misil Mï¿½gico
+Desc=Causa 25 a 35 puntos de daï¿½o a la victima.
 PalabrasMagicas=INX TO R
-HechizeroMsg=Has lanzado Misil Mágico sobre
-TargetMsg=lanzo Misil Mágico sobre vos.
-PropioMsg=Has lanzado Misil Mágico sobre ti.
+HechizeroMsg=Has lanzado Misil Mï¿½gico sobre
+TargetMsg=lanzo Misil Mï¿½gico sobre vos.
+PropioMsg=Has lanzado Misil Mï¿½gico sobre ti.
 Tipo=1
 WAV=27
 FXgrh=10
@@ -2369,11 +2372,11 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO93]
 Nombre=Descarga electrica
-Desc=Causa 35 a 60 puntos de daño a la victima.
+Desc=Causa 35 a 60 puntos de daï¿½o a la victima.
 PalabrasMagicas=T'HY KOOOL
-HechizeroMsg=Has lanzado Descarga Eléctrica sobre
-TargetMsg=lanzo Descarga Eléctrica sobre vos.
-PropioMsg=Has lanzado Descarga Eléctrica sobre ti.
+HechizeroMsg=Has lanzado Descarga Elï¿½ctrica sobre
+TargetMsg=lanzo Descarga Elï¿½ctrica sobre vos.
+PropioMsg=Has lanzado Descarga Elï¿½ctrica sobre ti.
 Tipo=1
 WAV=234
 loops=0
@@ -2399,11 +2402,11 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO94]
 Nombre=Rafaga ignea
-Desc=Causa 55 a 70 puntos de daño a la victima.
+Desc=Causa 55 a 70 puntos de daï¿½o a la victima.
 PalabrasMagicas=IGNS XAR
-HechizeroMsg=Has lanzado Ráfaga ígnea sobre
-TargetMsg=lanzo Ráfaga ígnea vos.
-PropioMsg=Has lanzado Ráfaga ígnea sobre ti.
+HechizeroMsg=Has lanzado Rï¿½faga ï¿½gnea sobre
+TargetMsg=lanzo Rï¿½faga ï¿½gnea vos.
+PropioMsg=Has lanzado Rï¿½faga ï¿½gnea sobre ti.
 Tipo=1
 WAV=242
 loops=0
@@ -2411,8 +2414,8 @@ Resis=1
 Particle=11
 TimeParticula=5
 SubeHP=2
-MinHP=135
-MaxHP=138
+MinHP=48
+MaxHP=53
     
 MinSkill=75
 ManaRequerido=720
@@ -2429,7 +2432,7 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO95]
 Nombre=Invocar esqueletos
-Desc=Traerá tres esqueletos de los escombros.
+Desc=Traerï¿½ tres esqueletos de los escombros.
 PalabrasMagicas=Mo crps
 HechizeroMsg=Has invocado tres esqueletos.
 
@@ -2447,8 +2450,8 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO96]
 Nombre=Invocar zombies
-Desc=Invoca la ayuda del los muertos, tres zombies acudirán en tu ayuda.
-PalabrasMagicas=Mo cámus
+Desc=Invoca la ayuda del los muertos, tres zombies acudirï¿½n en tu ayuda.
+PalabrasMagicas=Mo cï¿½mus
 HechizeroMsg=Has invocado tres zombies.
 
 Tipo=4
@@ -2471,11 +2474,11 @@ ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO97]
 Nombre=Bomba magica
-Desc=Causa 10 a 30 puntos de daño en un área de dos tiles.
-PalabrasMagicas=Drac né Xar
-HechizeroMsg=Has lanzado Bomba mágica sobre
-TargetMsg=lanzó Bomba mágica sobre vos.
-PropioMsg=Has lanzado Bomba mágica sobre ti.
+Desc=Causa 10 a 30 puntos de daï¿½o en un ï¿½rea de dos tiles.
+PalabrasMagicas=Drac nï¿½ Xar
+HechizeroMsg=Has lanzado Bomba mï¿½gica sobre
+TargetMsg=lanzï¿½ Bomba mï¿½gica sobre vos.
+PropioMsg=Has lanzado Bomba mï¿½gica sobre ti.
 Tipo=1
 WAV=129
 FXgrh=49
@@ -2504,7 +2507,7 @@ ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
 
 [HECHIZO98]
 Nombre=Adivinacion
-Desc=Detecta todo usuario invisible en el rango de visión de quien lo conjure.
+Desc=Detecta todo usuario invisible en el rango de visiï¿½n de quien lo conjure.
 HechizeroMsg=Has lanzado Adivinacion.
 PalabrasMagicas=Vothaler Visibli
 
@@ -2557,8 +2560,8 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
 
 [HECHIZO101]
 Nombre=Apocalipsis GMs
-Desc=Causa 50 a 90 puntos de daño en un area de cuatro tiles.
-PalabrasMagicas=Rahma Nañarak O'al '^GM^'
+Desc=Causa 50 a 90 puntos de daï¿½o en un area de cuatro tiles.
+PalabrasMagicas=Rahma Naï¿½arak O'al '^GM^'
 HechizeroMsg=Has lanzado Apocalipsis GM sobre
 TargetMsg=lanzo Apocalipsis GM sobre vos.
 PropioMsg=Has lanzado Apocalipsis GM sobre ti.
@@ -2582,7 +2585,7 @@ Afecta=3
 
 '[HECHIZO102]
 'Nombre=Rayo Arcano
-'Desc=Causa 40 a 55 puntos de daño a la victima.
+'Desc=Causa 40 a 55 puntos de daï¿½o a la victima.
 'PalabrasMagicas=XR N R
 'HechizeroMsg=Has lanzado Rayo Arcano sobre
 'TargetMsg=lanzo Rayo Arcano sobre vos.
@@ -2933,9 +2936,9 @@ ClasesProhibidas=
 [HECHIZO115] 'Lvl 35 en adelante
 Nombre=Arma magica
 'Desc=Hechizo deshabilitado temporalmente.
-Desc=Crea momentáneamente un arma que inflige un daño considerable
+Desc=Crea momentï¿½neamente un arma que inflige un daï¿½o considerable
 PalabrasMagicas=Sarapiens Herinoenous
-PropioMsg=Un arma mágica se blande en tu mano
+PropioMsg=Un arma mï¿½gica se blande en tu mano
 
 Tipo=10
 Target=1
@@ -2960,7 +2963,7 @@ Nombre=Temple
 'Desc=
 Desc=Temple cura malos estados, aumenta vida y atributos
 PalabrasMagicas=A sim kel
-PropioMsg=Te sientes más fuerte
+PropioMsg=Te sientes mï¿½s fuerte
 autolanzar=1
 Tipo=1
 WAV=341
@@ -3146,7 +3149,7 @@ MinLevel=15
 MinSkill=35
 ManaRequerido=90
 StaRequerido=15
-Target=3
+Target=2
 ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
 
 [HECHIZO122]
@@ -3167,5 +3170,56 @@ MinLevel=15
 MinSkill=35
 ManaRequerido=130
 StaRequerido=20
-Target=3
+Target=2
 ClasesProhibidas=2-3-5-8-10-11-12-13-14-15-16-17-18
+
+[HECHIZO123]
+Nombre=Invocar Ely
+Desc=Invoca a tu mascota Ely.
+PalabrasMagicas=Ely Anthar
+HechizeroMsg=Has invocado a Ely.
+Tipo=4
+WAV=17
+FXgrh=7
+Invoca=1
+NumNpc=132
+Cant=1
+MinSkill=90
+ManaRequerido=760
+StaRequerido=100
+Target=4
+ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
+
+[HECHIZO124]
+Nombre=Invocar lobo
+Desc=Invoca a tu mascota lobo.
+PalabrasMagicas=Lupus Fidus
+HechizeroMsg=Has invocado a tu lobo.
+Tipo=4
+WAV=17
+FXgrh=7
+Invoca=1
+NumNpc=133
+Cant=1
+MinSkill=0
+ManaRequerido=0
+StaRequerido=60
+Target=4
+ClasesProhibidas=1-2-3-4-5-6-7-8-9-11-12-13-14-15-16-17-18
+
+[HECHIZO125]
+Nombre=Invocar oso pardo
+Desc=Invoca a tu mascota oso pardo.
+PalabrasMagicas=Ursus Fidus
+HechizeroMsg=Has invocado a tu oso pardo.
+Tipo=4
+WAV=17
+FXgrh=7
+Invoca=1
+NumNpc=131
+Cant=1
+MinSkill=0
+ManaRequerido=0
+StaRequerido=60
+Target=4
+ClasesProhibidas=1-2-3-4-5-6-7-8-9-11-12-13-14-15-16-17-18

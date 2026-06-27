@@ -211,9 +211,6 @@ public static class Crafting
     private static void SendAllInv(User u)
     {
         for (int slot = 1; slot <= Constants.MAX_INVENTORY_SLOTS; slot++)
-        {
-            var o = u.Invent.Object[slot];
-            ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, o.ObjIndex, o.Amount, o.Equipped);
-        }
+            ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
     }
 }

@@ -46,6 +46,8 @@ public sealed class GameServer
             }
         }
         Console.WriteLine($"[ServidorCS] Escuchando en 0.0.0.0:{_port}");
+        // Fecha de compilación del exe en ejecución: para verificar qué build está corriendo.
+        try { Console.WriteLine($"[ServidorCS] Build del exe: {File.GetLastWriteTime(Environment.ProcessPath):yyyy-MM-dd HH:mm:ss}"); } catch { }
 
         // Flush periódico de las colas de salida (como el timer del server VB6).
         _ = Task.Run(() => FlushLoopAsync(ct), ct);
@@ -56,9 +58,18 @@ public sealed class GameServer
 
             // AntiDos: limitar conexiones simultáneas por IP (clsAntiDos, máx 5).
             string ip = (socket.RemoteEndPoint as IPEndPoint)?.Address.ToString() ?? "?";
+            // Rate-limit por IP (SecurityIp, 1 conexión/3s): frena el abrir/cerrar rápido.
+            if (!AntiDos.PermiteNuevaConexion(ip))
+            {
+                Console.WriteLine($"[AntiDos] Conexiones demasiado rápidas desde {ip}, rechazando.");
+                GlobalStats.ConexionRechazada();
+                socket.Close();
+                continue;
+            }
             if (!AntiDos.PuedeConectar(ip))
             {
                 Console.WriteLine($"[AntiDos] Demasiadas conexiones desde {ip}, rechazando.");
+                GlobalStats.ConexionRechazada();
                 socket.Close();
                 continue;
             }
@@ -69,9 +80,11 @@ public sealed class GameServer
             {
                 Console.WriteLine("[ServidorCS] Servidor lleno, rechazando conexión");
                 AntiDos.Liberar(ip); // devolver el cupo reservado
+                GlobalStats.ConexionRechazada();
                 socket.Close();
                 continue;
             }
+            GlobalStats.ConexionAceptada();
             var conn = new Connection(socket, userIndex);
             _connections[userIndex] = conn;
             var u = Game.UserListManager.UserList[userIndex];
@@ -91,7 +104,13 @@ public sealed class GameServer
     private void OnClose(Connection conn)
     {
         _connections.TryRemove(conn.UserIndex, out _);
+        GlobalStats.ConexionCerrada();
         AntiDos.Liberar(conn.RemoteIp); // liberar el cupo de la IP
+        Game.PacketRateLimiter.Olvidar(conn.UserIndex); // limpiar sus buckets de rate-limit
+        // Modo espía: sacar esta conexión del espejo, esté de un lado o del otro. Los
+        // objetos Connection se RECICLAN, así que dejarla adentro haría que el espejo
+        // apunte a un jugador nuevo que reusó el objeto.
+        Game.Espia.Olvidar(conn);
         // CloseUser muta UserList/visibilidad de otros (CharacterRemove, AreaVisibility.OnUserLeave):
         // bajo GameLock para no pisarse con un handler o con el tick de IA corriendo en otro hilo.
         lock (Game.UserListManager.GameLock)
@@ -115,6 +134,7 @@ public sealed class GameServer
                     //     corre el tick, ningún handler de packets ni OnClose puede mutar el mundo. No se
                     //     puede mantener un lock a través de un await, así que el flush de red y el
                     //     Task.Delay quedan FUERA del lock.
+                    var _swTick = System.Diagnostics.Stopwatch.StartNew();
                     lock (Game.UserListManager.GameLock)
                     {
                         // IA de NPCs en cada ciclo (~10ms). El ritmo real de cada NPC lo limita
@@ -130,24 +150,36 @@ public sealed class GameServer
                         if (tick % 50 == 0) Game.GameTimer.TickEfectosDanio();
 
                         // Respawn de NPCs, efectos de estado y eventos ~1 vez por segundo (100×10ms).
-                        if (++tick >= 100) { tick = 0; Game.NpcManager.TickRespawns(); Game.Combat.TickEstados(); Game.Events.Tick(); Game.GameTimer.Tick(); Game.Clima.Tick(); Game.DayNightCycle.Tick(); Game.Ruleta.Tick(); Game.InframundoEvento.Verificar(); Game.ArenaEvento.Procesar(); Game.TorneoEvento.Procesar(); Game.Subastas.CheckExpirations();
+                        if (++tick >= 100) { tick = 0; Game.NpcManager.TickRespawns(); Game.Combat.TickEstados(); Game.Events.Tick(); Game.GameTimer.Tick(); Game.Clima.Tick(); Game.DayNightCycle.Tick(); Game.InframundoEvento.Verificar(); Game.ArenaEvento.Procesar(); Game.TorneoEvento.Procesar(); Game.Subastas.CheckExpirations();
                             Game.Centinela.CallUserAttention();
                             if (++_minuteCounter >= 60) { _minuteCounter = 0; Game.Centinela.PasarMinuto(); Game.WorldCleanup.PasarMinuto(); Game.Jail.PurgarPenas(); } }
 
-                        // Autosave / backup: bajo el lock para tomar un snapshot consistente del mundo
-                        // (igual que el VB6, que guardaba en su único hilo).
+                        // Autosave / backup: se toma el snapshot (copia de memoria, sin I/O) bajo el
+                        // lock para tener una foto consistente del mundo, igual que antes — pero el
+                        // I/O de disco en sí (leer/escribir .chr, copiar backups) YA NO corre acá:
+                        // se encola para el PersistenceWorker, que lo procesa en su propio hilo sin
+                        // el GameLock tomado. Ver [[b3_autosave_sin_lock]] / Game/PersistenceWorker.cs.
                         double now = Environment.TickCount64 / 1000.0;
                         if (now >= nextAutosave)
                         {
                             nextAutosave = now + AutosaveSeconds;
-                            Game.CharSaver.SaveAllOnline();
+                            Game.PersistenceWorker.EnqueueAutosave(Game.CharSaver.CaptureAllOnline());
                         }
                         if (now >= nextBackup)
                         {
                             nextBackup = now + BackupSeconds;
-                            Game.Backup.Snapshot();
+                            Game.PersistenceWorker.EnqueueBackup(
+                                Game.CharSaver.CaptureAllOnline(),
+                                Game.BattlePass.CaptureAllOnlineJson(),
+                                Game.Achievements.CaptureAllOnlineJson(),
+                                Game.QuestSystem.CaptureAllOnlineJson());
                         }
                     }
+                    // Monitor de seguridad (auditoría 24-ago-2026): cuánto tardó este ciclo con
+                    // GameLock tomado. Es la señal de "GameLoop latency" que expone /security —
+                    // si esto crece de forma sostenida, algo (IA, un handler lento, contención)
+                    // está demorando al mundo entero, sea por carga legítima o por abuso.
+                    GlobalStats.RegistrarDuracionTick(_swTick.Elapsed.TotalMilliseconds);
 
                     // Flush DESPUÉS de generar los moves: así el CharacterMove se envía en el mismo
                     // ciclo en que se genera, no en el siguiente. Antes, hacer flush primero metía

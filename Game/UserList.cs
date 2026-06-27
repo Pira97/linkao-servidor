@@ -93,6 +93,21 @@ public static class UserListManager
         string cuenta = u.Account;
 
         if (u.Trade != null) UserTrade.Cancel(userIndex);
+
+        // VB6 CloseUser (TCP.bas:1782): al desloguear se DESEQUIPAN la montura (Desequipar→DoEquita:
+        // desmonta, Montando=0, restaura el body a pie) y el ítem mágico ANTES de guardar. Sin esto,
+        // el .chr quedaba con Montando=1 + montura equipada y al reloguear volvías montado con la
+        // velocidad de montura.
+        if (u.Invent.MonturaObjIndex > 0 && u.Invent.MonturaSlot > 0)
+            Inventory.Desequipar(u, u.Invent.MonturaSlot);
+        if (u.Invent.MagicIndex > 0 && u.Invent.MagicSlot > 0)
+            Inventory.Desequipar(u, (byte)u.Invent.MagicSlot);
+
+        // Mascota compañera persistente: no debe quedar huérfana vagando el mapa (Tipo/Nivel/Exp
+        // ya quedan a salvo en el User, se reinvoca con el hechizo al reconectar).
+        Combat.CancelarCasteoMascota(u, avisar: false); // si se va en pleno conjuro, no queda pendiente
+        Combat.DespawnMascotaPersistente(u);
+
         if (u.flags.UserLogged && !string.IsNullOrEmpty(u.Name)) CharSaver.SaveUser(u);
 
         // Sonido de desconexión (SND_DESCONEXION=434): SOLO lo escucha el que se desloguea.
@@ -109,6 +124,11 @@ public static class UserListManager
             }
         }
 
+        // [[b4_usersbymap]] GAP identificado en la auditoría B4.3: este camino (volver al panel de
+        // personajes sin cerrar el socket) NO pasa por AreaVisibility.OnUserLeave — hace su propio
+        // broadcast manual arriba. Sacar del índice acá a mano, antes de resetear Pos.
+        UsersByMapIndex.Remove(u.Pos.Map, userIndex);
+
         u.flags.KillStreak = 0;
         u.flags.UserLogged = false;
         u.Name = "";
@@ -124,8 +144,10 @@ public static class UserListManager
         if (userIndex < 1 || userIndex > MaxUsers) return;
         var u = UserList[userIndex];
 
-        // Cancelar comercio usuario-a-usuario en curso (libera al otro participante).
-        if (u.Trade != null) UserTrade.Cancel(userIndex);
+        // Cancelar comercio usuario-a-usuario en curso (libera al otro participante). No transfiere
+        // nada: mismo camino defensivo que Cancel, con su propio nombre/mensaje para el caso de
+        // desconexión (ver UserTrade.Cleanup).
+        if (u.Trade != null) UserTrade.Cleanup(userIndex);
 
         // Sacar del grupo (CleanupUserParty): disuelve o traspasa liderazgo y avisa al resto.
         if (u.PartyId > 0) PartySystem.Cleanup(userIndex);
@@ -141,14 +163,27 @@ public static class UserListManager
 
         // Si estaba metamorfoseado, revertir antes de guardar para no persistir el body transformado.
         if (u.flags.Metamorfoseado == 1) Combat.RevertirMetamorfosis(userIndex);
-        // Montado/navegando: NO se limpian los flags al desloguear — deben persistir para reaparecer
-        // montado/en barca tal cual se veía en el render (igual que LogoutToCharList). El [INIT] del
-        // .chr igual se guarda con el body a pie (CharSaver.AparienciaAPie detecta estos flags), y el
-        // loader reconstruye el body de montura/barca al reloguear desde Montando/Navegando + el slot.
+
+        // VB6 CloseUser (TCP.bas:1782): al desloguear se DESEQUIPAN la montura (Desequipar→DoEquita:
+        // desmonta, Montando=0, restaura el body a pie) y el ítem mágico ANTES de guardar. Sin esto,
+        // el .chr quedaba con Montando=1 + montura equipada y al reloguear volvías montado con la
+        // velocidad de montura. Navegando sí persiste (el VB6 no baja de la barca al desloguear).
+        if (u.Invent.MonturaObjIndex > 0 && u.Invent.MonturaSlot > 0)
+            Inventory.Desequipar(u, u.Invent.MonturaSlot);
+        if (u.Invent.MagicIndex > 0 && u.Invent.MagicSlot > 0)
+            Inventory.Desequipar(u, (byte)u.Invent.MagicSlot);
+
         // Si tenía atributos buffeados/debuffeados, restaurar para no persistir valores temporales.
         if (u.flags.TomoPocion) Combat.RestaurarAtributos(u);
+        // Ídem el bonus de daño del Scroll del Trueno (vive en Stats.ExtraHIT).
+        Combat.QuitarScrollTrueno(u, avisar: false);
         // Si tenía un portal en curso/abierto, cerrarlo para no dejar el objeto y la salida colgados.
         if (u.PortalTime > 0) GameTimer.CancelarPortal(u);
+
+        // Mascota compañera persistente: no debe quedar huérfana vagando el mapa (Tipo/Nivel/Exp
+        // ya quedan a salvo en el User, se reinvoca con el hechizo al reconectar).
+        Combat.CancelarCasteoMascota(u, avisar: false); // si se va en pleno conjuro, no queda pendiente
+        Combat.DespawnMascotaPersistente(u);
 
         // Persistir el personaje antes de soltar el slot (equivale a SaveUser en logout).
         if (u.flags.UserLogged && !string.IsNullOrEmpty(u.Name))

@@ -41,6 +41,24 @@ public static class Mail
         destinatario = destinatario.Trim();
         if (string.IsNullOrEmpty(destinatario)) return;
 
+        // BUG-011: chequear la bandeja del destinatario ANTES de tocar el inventario del
+        // emisor — si el tope se validara después de descontar el item (como pasaba antes),
+        // un rechazo por bandeja llena hacía desaparecer el objeto adjunto sin entregarlo.
+        // Por qué hace falta el tope: sin él, la lista en memoria de un jugador ONLINE
+        // crece sin límite con cada correo que recibe (CharSaver/CharLoader cortan en
+        // MAX_CORREOS_SLOTS al guardar/cargar, pero eso no achica la lista EN MEMORIA
+        // durante la sesión) y WriteCorreoList manda el conteo como 1 Byte
+        // ((byte)correos.Count): pasados los 255 correos ese byte da la vuelta, el cliente
+        // desincroniza la lectura del paquete y el AbrirFormularios(6) que sigue queda
+        // ilegible — el correo deja de abrir. Tope real: MAX_CORREOS (10, como el juego
+        // original), igual que si la bandeja offline estuviera llena.
+        int destIndex = FindOnline(destinatario);
+        if (destIndex > 0 && UserListManager.UserList[destIndex].Correos.Count >= Constants.MAX_CORREOS)
+        {
+            ServerPackets.ConsoleMsg(u.Conn, $"La bandeja de {destinatario} está llena.", 1);
+            return;
+        }
+
         // Si adjunta item, quitarlo del inventario del emisor.
         if (objIndex > 0 && cantidad > 0)
         {
@@ -52,14 +70,12 @@ public static class Mail
                 u.Invent.Object[slot].ObjIndex = 0; u.Invent.Object[slot].Amount = 0; u.Invent.Object[slot].Equipped = false;
                 if (u.Invent.NroItems > 0) u.Invent.NroItems--;
             }
-            var o = u.Invent.Object[slot];
-            ServerPackets.ChangeInventorySlot(u.Conn, (byte)slot, o.ObjIndex, o.Amount, o.Equipped);
+            ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)slot);
         }
 
         var correo = new Correo { Emisor = u.Name, Mensaje = mensaje, Leida = false, ObjIndex = objIndex, Cantidad = cantidad };
 
-        // Entrega: online (memoria) u offline (charfile).
-        int destIndex = FindOnline(destinatario);
+        // Entrega: online (memoria, ya validado el tope arriba) u offline (charfile).
         if (destIndex > 0)
         {
             var dest = UserListManager.UserList[destIndex];
@@ -68,7 +84,7 @@ public static class Mail
         }
         else if (!EntregarOffline(destinatario, correo))
         {
-            ServerPackets.ConsoleMsg(u.Conn, "El destinatario no existe.", 1);
+            ServerPackets.ConsoleMsg(u.Conn, "El destinatario no existe (o tiene la bandeja llena).", 1);
             return;
         }
         ServerPackets.ConsoleMsg(u.Conn, $"Correo enviado a {destinatario}.", 1);
@@ -86,6 +102,16 @@ public static class Mail
         if (destIndex > 0)
         {
             var dest = UserListManager.UserList[destIndex];
+            // BUG-011: mismo tope que Enviar() (ver ahí el detalle de por qué hace falta).
+            // Nota: NO se cae al camino offline con el jugador conectado — CharSaver
+            // reescribe el [CORREO] entero desde u.Correos (la lista EN MEMORIA) en cada
+            // guardado, así que un correo escrito directo al .chr mientras está online se
+            // perdería en el siguiente autosave/logout.
+            if (dest.Correos.Count >= Constants.MAX_CORREOS)
+            {
+                if (dest.Conn != null) ServerPackets.ConsoleMsg(dest.Conn, "Tenés la bandeja de correo llena — no pudiste recibir un correo.", 1);
+                return;
+            }
             dest.Correos.Add(correo);
             if (dest.Conn != null) ServerPackets.ConsoleMsg(dest.Conn, $"Has recibido un correo de {emisor}.", 1);
         }
@@ -106,8 +132,7 @@ public static class Mail
         // El item ya fue retirado: limpiarlo del correo.
         c.ObjIndex = 0; c.Cantidad = 0; u.Correos[slot - 1] = c;
 
-        var o = u.Invent.Object[dest];
-        ServerPackets.ChangeInventorySlot(u.Conn, (byte)dest, o.ObjIndex, o.Amount, o.Equipped);
+        ServerPackets.ChangeInventorySlot(u.Conn, u, (byte)dest);
         ServerPackets.CorreoList(u.Conn, u.Correos);
     }
 

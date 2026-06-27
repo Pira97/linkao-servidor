@@ -7,9 +7,10 @@ namespace ServidorCS.Game;
 /// </summary>
 public static class Intervals
 {
-    // Valores en milisegundos (Server.ini).
-    public const long Atacar = 1200;        // IntervaloUserPuedeAtacar
-    public const long LanzarSpell = 500;    // IntervaloLanzaHechizo
+    // Valores en milisegundos (Server.ini). Atacar/LanzarSpell viven en Balance.dat [INTERVALOS]
+    // (editables en vivo desde el panel GM, ver BalanceEditor.cs) — el resto sigue fijo en código.
+    public static long Atacar => BalanceData.Intervalos.Atacar;             // IntervaloUserPuedeAtacar
+    public static long LanzarSpell => BalanceData.Intervalos.LanzarSpell;   // IntervaloLanzaHechizo
     public const long Trabajar = 700;       // IntervaloUserPuedeTrabajar (default)
     public const long Usar = 125;           // IntervaloUserPuedeUsar
     public const long ClicsMouse = 200;     // IntervaloClicsMouse (anti-autoclicker)
@@ -56,8 +57,11 @@ public static class Intervals
     public static bool PuedeUsarArco(User u, bool actualizar = true) => Check(ref u.TimerUsarArco, UsarArco, actualizar);
     public static bool PuedeGolpeUsar(User u)  => Check(ref u.TimerGolpeUsar, GolpeUsar);
 
-    /// <summary>IntervaloPermiteAtacarNpc 1:1: gate único por NPC (3000ms) compartido por el golpe
-    /// físico y el casteo del NPC. Pasar el campo TimerAtaque del NPC por referencia.</summary>
+    /// <summary>IntervaloPermiteAtacarNpc 1:1: gate por NPC (3000ms), mismo cooldown de siempre.
+    /// [[FIX3]] Antes se pasaba SIEMPRE el mismo campo TimerAtaque del NPC (compartido por golpe
+    /// físico y casteo): ahora cada caller pasa el timer que corresponde (TimerAtaqueFisico o
+    /// TimerAtaqueHechizo del NpcInstance), así el NPC puede golpear y castear en ventanas
+    /// independientes en vez de "uno u otro cada 3000ms". Los valores de cooldown NO cambiaron.</summary>
     public static bool PuedeAtacarNpc(ref long timerAtaque) => Check(ref timerAtaque, NpcAtacar);
 
     /// <summary>Variante con intervalo propio del NPC (guardias usan 2000ms en vez de 3000ms para

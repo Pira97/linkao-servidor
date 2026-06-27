@@ -99,6 +99,45 @@ public static class CharLoader
         u.flags.Hambre      = (byte)ini.GetInt("FLAGS", "Hambre");
         u.flags.Sed         = (byte)ini.GetInt("FLAGS", "Sed");
         u.flags.RecibioCorreo = (byte)ini.GetInt("FLAGS", "Recibiocorreo");
+        // Scrolls de EXP/Oro: re-armar el vencimiento con los segundos restantes guardados.
+        int scrollExpMult = ini.GetInt("FLAGS", "ScrollExpMult");
+        int scrollExpSeg  = ini.GetInt("FLAGS", "ScrollExpSeg");
+        if (scrollExpMult > 1 && scrollExpSeg > 0)
+        {
+            u.flags.ScrollExpMult = scrollExpMult;
+            u.flags.ScrollExpExpira = Environment.TickCount64 / 1000.0 + scrollExpSeg;
+        }
+        int scrollOroMult = ini.GetInt("FLAGS", "ScrollOroMult");
+        int scrollOroSeg  = ini.GetInt("FLAGS", "ScrollOroSeg");
+        if (scrollOroMult > 1 && scrollOroSeg > 0)
+        {
+            u.flags.ScrollOroMult = scrollOroMult;
+            u.flags.ScrollOroExpira = Environment.TickCount64 / 1000.0 + scrollOroSeg;
+        }
+        // Donador / tag personal / vale de cambio de nombre / última mascota (pociones custom).
+        // En los .chr viejos no existen: 0 y "" son los valores de siempre.
+        u.Char.Donador      = (byte)ini.GetInt("FLAGS", "Donador");
+        u.TagPersonal       = ini.Get("FLAGS", "Tag") ?? "";
+        u.PuedeRenombrar    = ini.GetInt("FLAGS", "PuedeRenombrar") == 1;
+        u.UltimaMascotaNpc  = ini.GetInt("FLAGS", "UltimaMascota");
+        u.PetTipo           = (byte)ini.GetInt("MASCOTA", "Tipo");
+        u.PetNivel          = (byte)Math.Max(1, ini.GetInt("MASCOTA", "Nivel"));
+        u.PetExp            = ini.GetInt("MASCOTA", "Exp");
+        u.PetNombre         = ini.Get("MASCOTA", "Nombre") ?? "";
+        u.PetDead           = ini.GetInt("MASCOTA", "Muerta") == 1;
+        int descanso        = ini.GetInt("MASCOTA", "DescansoHogar");
+        u.PetHogarHasta     = descanso > 0 ? Environment.TickCount64 / 1000.0 + descanso : 0;
+        // Mochila de la mascota (personajes viejos: la sección no existe y quedan los slots en 0).
+        for (int i = 1; i <= Constants.MAX_PETINVENTORY_SLOTS; i++)
+        {
+            var partes = (ini.Get("MASCOTA_INV", "Obj" + i) ?? "0-0").Split('-');
+            short obj = partes.Length > 0 && short.TryParse(partes[0], out var o) ? o : (short)0;
+            int cant = partes.Length > 1 && int.TryParse(partes[1], out var c) ? c : 0;
+            if (obj <= 0 || cant <= 0) { obj = 0; cant = 0; }
+            u.PetInvent.Object[i].ObjIndex = obj;
+            u.PetInvent.Object[i].Amount = cant;
+            if (obj > 0) u.PetInvent.NroItems++;
+        }
         u.flags.Pena        = ini.GetInt("COUNTERS", "Pena");
         u.UpTime            = ini.GetInt("INIT", "UpTime");
 
@@ -128,9 +167,13 @@ public static class CharLoader
         u.Stats.ELU = ini.GetInt("STATS", "ELU");
         u.Stats.GLD = ini.GetInt("STATS", "GLD");
         u.Stats.Banco = ini.GetInt("STATS", "BANCO");
+        u.BovedaPremiumDesbloqueada = ini.GetInt("STATS", "BOVEDA_PREMIUM") == 1;
         u.Stats.Exp = ini.GetInt("STATS", "EXP");
         u.Stats.SkillPts = (short)ini.GetInt("STATS", "SkillPtsLibres");
         u.Stats.ArenaPoints = ini.GetInt("STATS", "ArenaPoints");
+        // Pociones mágicas de vida (0 en los .chr viejos: nunca tomaron ninguna).
+        u.Stats.PocionesVida = ini.GetInt("STATS", "PocionesVida");
+        u.Stats.BonusVidaPociones = ini.GetInt("STATS", "BonusVidaPociones");
         // [MUERTES] — frags persistidos (los usa MiniStats); antes quedaban en 0 al reloguear.
         u.Stats.UsuariosMatados = (short)ini.GetInt("MUERTES", "UserMuertes");
         u.Stats.NPCsMuertos     = (short)ini.GetInt("MUERTES", "NpcsMuertes");
@@ -184,7 +227,7 @@ public static class CharLoader
             });
         }
 
-        // [BancoInventory] ObjN = objindex-amount (40 slots)
+        // [BancoInventory] ObjN = objindex-amount (80 slots)
         u.BancoInvent.NroItems = (short)ini.GetInt("BancoInventory", "CantidadItems");
         for (int slot = 1; slot <= Constants.MAX_BANCOINVENTORY_SLOTS; slot++)
         {
@@ -193,6 +236,28 @@ public static class CharLoader
             {
                 u.BancoInvent.Object[slot].ObjIndex = short.TryParse(parts[0], out var oi) ? oi : (short)0;
                 u.BancoInvent.Object[slot].Amount = int.TryParse(parts[1], out var am) ? am : 0;
+            }
+        }
+
+        // [BancoInventoryPremium1] / [BancoInventoryPremium2] (NUEVO, no VB6) — mismo formato.
+        u.BancoPremium1.NroItems = (short)ini.GetInt("BancoInventoryPremium1", "CantidadItems");
+        for (int slot = 1; slot <= Constants.MAX_BANCOINVENTORY_SLOTS; slot++)
+        {
+            var parts = ini.Get("BancoInventoryPremium1", "Obj" + slot).Split('-');
+            if (parts.Length >= 2)
+            {
+                u.BancoPremium1.Object[slot].ObjIndex = short.TryParse(parts[0], out var oi) ? oi : (short)0;
+                u.BancoPremium1.Object[slot].Amount = int.TryParse(parts[1], out var am) ? am : 0;
+            }
+        }
+        u.BancoPremium2.NroItems = (short)ini.GetInt("BancoInventoryPremium2", "CantidadItems");
+        for (int slot = 1; slot <= Constants.MAX_BANCOINVENTORY_SLOTS; slot++)
+        {
+            var parts = ini.Get("BancoInventoryPremium2", "Obj" + slot).Split('-');
+            if (parts.Length >= 2)
+            {
+                u.BancoPremium2.Object[slot].ObjIndex = short.TryParse(parts[0], out var oi) ? oi : (short)0;
+                u.BancoPremium2.Object[slot].Amount = int.TryParse(parts[1], out var am) ? am : 0;
             }
         }
 
@@ -310,11 +375,21 @@ public static class CharLoader
                 case ObjType.Flechas:
                     if (inv.MunicionEqpSlot == 0) { inv.MunicionEqpSlot = s; inv.MunicionEqpObjIndex = it.ObjIndex; }
                     break;
+                // El "else it.Equipped = false" repara personajes viejos: hasta el 1-ago-2026
+                // DoEquita/DoNavega eran un toggle ciego y al cambiar de montura dejaban la
+                // anterior marcada como equipada, cosa que se guardaba en el .chr. Acá solo
+                // sobrevive la primera (la que realmente se usa); las repetidas se apagan y
+                // quedan limpias en el próximo guardado.
+                // OJO: MonturaSlot ya viene leído del .chr más arriba, así que el slot bueno
+                // puede llegar acá con el puntero YA seteado — por eso se compara contra s en
+                // vez de usar un else pelado, que le desequiparía la montura al que la tiene bien.
                 case ObjType.Monturas:
                     if (inv.MonturaSlot == 0) { inv.MonturaSlot = s; inv.MonturaObjIndex = it.ObjIndex; }
+                    else if (s != inv.MonturaSlot) it.Equipped = false;
                     break;
                 case ObjType.Barcos:
                     if (inv.BarcoSlot == 0) { inv.BarcoSlot = s; inv.BarcoObjIndex = it.ObjIndex; }
+                    else if (s != inv.BarcoSlot) it.Equipped = false;
                     break;
             }
         }

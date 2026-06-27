@@ -17,6 +17,7 @@ public static class NpcData
         public int Domable;    // puntos requeridos para domar (0 = no domable)
         public short[] Spells; // hechizos que lanza (Sp1..LanzaSpells); null = no lanza
         public bool Comercia;
+        public bool NoCompra;   // 1 = el NPC solo vende (no compra ítems al usuario)
         public byte NpcType;   // eNPCType (Declares.bas:424): 1=Revividor,4=Banquero,3=Entrenador,16=Subastador,18=Convertidor,19=Shop,5=facciones,7=transportador, 2=GuardiasCity
         public byte Status;    // facción del NPC (0/3=neutral, 1=imperial, 2=republicano, 4=caos, 5=renegado)
         public byte Ciudad;    // CIUDAD_* (1=Imperial,2=Republicana,3=Caotica,5=Rinkel); derivada de Status si 0. Para guardias.
@@ -108,6 +109,9 @@ public static class NpcData
                 Domable = ini.GetInt("NPC" + i, "Domable"),
                 Spells = LoadSpells(ini, i),
                 Comercia = ini.GetInt("NPC" + i, "Comercia") == 1,
+                // Por defecto los NPC NO compran ítems al usuario; solo compran los marcados con Compra=1
+                // (ej. el Vendedor General). Así "vender" queda habilitado únicamente en esos.
+                NoCompra = ini.GetInt("NPC" + i, "Compra") != 1,
                 NpcType = (byte)ini.GetInt("NPC" + i, "NpcType"),
                 Status = (byte)ini.GetInt("NPC" + i, "Status"),
                 Snd1 = (short)ini.GetInt("NPC" + i, "Snd1"),

@@ -49,6 +49,7 @@ NumNPCs=624
 '**************************** NPCS COMUNES VENDEDORES ****************************
 '--------------> Ventas generales <--------------
 [NPC80]
+Compra=1
 Name=Vendedor General
 PosOrig=1
 Head=9

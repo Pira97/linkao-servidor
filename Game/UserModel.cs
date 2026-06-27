@@ -339,6 +339,7 @@ public sealed class User
     // NPC seleccionado con LeftClick (CharIndex), para comerciar. 0 = ninguno.
     public short TargetNpcCharIndex;
     public bool Comerciando;
+    public bool ComercioNpcNoCompra;   // true si el NPC con el que comercia solo vende (no compra)
 
     // Mascotas (domar): CharIndex de cada mascota viva. 0 = slot vacío. Máx 3.
     public short[] MascotasCharIndex = new short[4]; // 1..3

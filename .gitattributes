@@ -1,0 +1,2 @@
+# Los scripts de shell DEBEN tener fin de línea LF para que el shebang funcione en Linux (VPS).
+*.sh text eol=lf

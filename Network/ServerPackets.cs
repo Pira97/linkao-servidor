@@ -455,11 +455,14 @@ public static class ServerPackets
         Send(conn, p);
     }
 
-    /// <summary>WriteCommerceInit: Byte(id). Abre la ventana de comercio en el cliente.</summary>
-    public static void CommerceInit(Connection conn)
+    /// <summary>WriteCommerceInit: Byte(id) + Byte(compra). Abre la ventana de comercio.
+    /// compra=1 el NPC compra al usuario (muestra inventario y botón Vender); 0 = solo vende.</summary>
+    public static void CommerceInit(Connection conn, bool compra = true, bool esViajes = false)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.CommerceInit);
+        p.WriteByte((byte)(compra ? 1 : 0));      // 1 = el NPC compra ítems al usuario
+        p.WriteByte((byte)(esViajes ? 1 : 0));    // 1 = transportador → abrir form de Viajar
         Send(conn, p);
     }
 

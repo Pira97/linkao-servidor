@@ -1,0 +1,6 @@
+De ahora en más, para actualizar el server:
+En tu PC: corrés SUBIR_A_VM.bat (sube el código a GitHub)
+En el VPS: corrés:
+
+bash /root/linkao-servidor/deploy.sh
+Y solo: baja el código nuevo → compila → reinicia → te muestra el estado y el puerto. Todo en un comando.

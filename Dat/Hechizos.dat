@@ -720,6 +720,7 @@ MinHP=70
 MaxHP=80
     
 MinSkill=80
+MinLevel=36
 ManaRequerido=1000
 StaRequerido=125
 TimeParticula=50
@@ -958,6 +959,7 @@ MinHP=90
 MaxHP=100
     
 MinSkill=100
+MinLevel=40
 ManaRequerido=1500
 StaRequerido=160
 
@@ -1367,6 +1369,7 @@ MinHP=100
 MaxHP=105
     
 MinSkill=100
+MinLevel=40
 ManaRequerido=1800
 StaRequerido=200
 
@@ -1392,6 +1395,7 @@ Particle=52
 loops=0
 TimeParticula=1
 MinSkill=100
+MinLevel=36
 ManaRequerido=2100
 StaRequerido=300
 
@@ -1636,6 +1640,7 @@ MinHP=130
 MaxHP=140
 
 MinSkill=100
+MinLevel=40
 ManaRequerido=1800
 StaRequerido=200
 
@@ -1934,8 +1939,8 @@ loops=0
 Particle=43
 TimeParticula=50
 SubeHP=2
-MinHP=121
-MaxHP=124
+MinHP=98
+MaxHP=101
 Anillo=1
 MinSkill=85
 ManaRequerido=950
@@ -2133,8 +2138,8 @@ Particle=30
 loops=0
 
 SubeHP=2
-MinHP=116
-MaxHP=118
+MinHP=85
+MaxHP=87
 
 
 TimeParticula=100
@@ -2342,7 +2347,7 @@ ClasesProhibidas=1-2-3-4-5-6-7-8-10-11-12-13-14-15-16-17-18
 '&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 [HECHIZO92]
-Nombre=Misil M�gico
+Nombre=Misil Magico
 Desc=Causa 25 a 35 puntos de da�o a la victima.
 PalabrasMagicas=INX TO R
 HechizeroMsg=Has lanzado Misil M�gico sobre
@@ -2384,6 +2389,8 @@ Resis=1
 Particle=49
 
 SubeHP=2
+' Asesino (clase 4): rango fijo 80-84, sin escalar por nivel/INT/raza
+DanoFijoClase=4:80-84
 MinHP=35
 MaxHP=55
 TimeParticula=40
@@ -2414,6 +2421,8 @@ Resis=1
 Particle=11
 TimeParticula=5
 SubeHP=2
+' Asesino (clase 4): rango fijo 96-100, sin escalar por nivel/INT/raza
+DanoFijoClase=4:96-100
 MinHP=48
 MaxHP=53
     
@@ -3223,3 +3232,764 @@ ManaRequerido=0
 StaRequerido=60
 Target=4
 ClasesProhibidas=1-2-3-4-5-6-7-8-9-11-12-13-14-15-16-17-18
+
+' ===== Clones de hechizos SOLO para NPCs hostiles (15-sep-2026): mas dano, tope 146. Los originales los usan jugadores/bots/mascotas. =====
+' clon NPC del 51 (60-100 -> 84-140), 15-sep-2026
+[HECHIZO201]
+Nombre=HechizoNPCC
+Desc=Hechizo de NPC.
+Tipo=1
+WAV=56
+FXgrh=11
+loops=1
+
+SubeHP=2
+MinHP=84
+MaxHP=140
+ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 97 (10-30 -> 14-42), 15-sep-2026
+[HECHIZO202]
+Nombre=Bomba magica
+Desc=Causa 10 a 30 puntos de da�o en un �rea de dos tiles.
+PalabrasMagicas=Drac n� Xar
+HechizeroMsg=Has lanzado Bomba m�gica sobre
+TargetMsg=lanz� Bomba m�gica sobre vos.
+PropioMsg=Has lanzado Bomba m�gica sobre ti.
+Tipo=1
+WAV=129
+FXgrh=49
+loops=0
+
+
+SubeHP=2
+MinHP=14
+MaxHP=42
+
+MinSkill=38
+ManaRequerido=50
+StaRequerido=20
+
+Target=3
+Afecta=3
+HechizoDeArea=1
+AreaEfecto=2
+ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 69 (114-116 -> 143-146), 15-sep-2026
+[HECHIZO203]
+Nombre=Descarga Flamigera
+Desc=Castiga al enemigo con el fuego divino, causando entre 80 y 120 puntos de da�o e inciner�ndolo
+PalabrasMagicas=Jf Rashida
+
+HechizeroMsg=Has lanzado Descarga Flam�gera sobre
+TargetMsg=te ha lanzado Descarga Flam�gera
+PropioMsg=Te has lanzado Descarga Flam�gera
+Anillo=1
+Tipo=1
+WAV=242
+Particle=84
+loops=0
+
+SubeHP=2
+MinHP=143
+MaxHP=146
+
+
+TimeParticula=100
+MinSkill=90
+ManaRequerido=950
+StaRequerido=150
+
+Target=3
+'HechizoDeArea=1
+'AreaEfecto=4
+'Afecta=3
+ClasesProhibidas=2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
+
+' clon NPC del 84 (97-99 -> 136-139), 15-sep-2026
+[HECHIZO204]
+Nombre=Lamento de las almas
+Desc=Castiga al enemigo con el fuego divino, causando entre 80 y 120 puntos de da�o e inciner�ndolo
+PalabrasMagicas=Jf Rashida
+
+HechizeroMsg=Has lanzado Descarga Flam�gera sobre
+TargetMsg=te ha lanzado Descarga Flam�gera
+PropioMsg=Te has lanzado Descarga Flam�gera
+Anillo=1
+Tipo=1
+WAV=98
+Particle=30
+loops=0
+
+SubeHP=2
+MinHP=136
+MaxHP=139
+
+
+TimeParticula=100
+MinSkill=90
+ManaRequerido=950
+StaRequerido=150
+
+Target=3
+'HechizoDeArea=1
+'AreaEfecto=4
+'Afecta=3
+ClasesProhibidas=1-2-3-4-5-7-8-9-10-11-12-13-14-15-16-17-18
+
+' clon NPC del 94 (48-53 -> 67-74), 15-sep-2026
+[HECHIZO205]
+Nombre=Rafaga ignea
+Desc=Causa 55 a 70 puntos de da�o a la victima.
+PalabrasMagicas=IGNS XAR
+HechizeroMsg=Has lanzado R�faga �gnea sobre
+TargetMsg=lanzo R�faga �gnea vos.
+PropioMsg=Has lanzado R�faga �gnea sobre ti.
+Tipo=1
+WAV=242
+loops=0
+Resis=1
+Particle=11
+TimeParticula=5
+SubeHP=2
+MinHP=67
+MaxHP=74
+    
+MinSkill=75
+ManaRequerido=720
+StaRequerido=95
+
+Target=3
+ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&NIGROMANTES&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 37 (90-120 -> 128-140), 15-sep-2026
+[HECHIZO206]
+Nombre=HechizoNPCB
+Desc=Hechizo de NPC.
+Tipo=1
+WAV=10
+FXgrh=14
+loops=0
+
+SubeHP=2
+MinHP=128
+MaxHP=140
+Target=3
+ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 76 (121-124 -> 134-140), 15-sep-2026
+[HECHIZO207]
+Nombre=Semillas de fuego
+Desc=Bellotas y bayas se convierten en bolas de fuego, causando 85 a 120 puntos de da�o.
+PalabrasMagicas=Samarin Tar
+HechizeroMsg=Has lanzado Semillas de fuego sobre
+TargetMsg=lanzo Semillas de fuego sobre vos.
+PropioMsg=Has lanzado Semillas de fuego sobre ti.
+Tipo=1
+WAV=204
+loops=0
+Particle=43
+TimeParticula=50
+SubeHP=2
+MinHP=134
+MaxHP=140
+Anillo=1
+MinSkill=85
+ManaRequerido=950
+StaRequerido=150
+
+Target=3
+ClasesProhibidas=1-2-3-4-5-6-8-9-10-11-12-13-14-15-16-17-18
+
+' clon NPC del 25 (70-80 -> 98-112), 15-sep-2026
+[HECHIZO208]
+Nombre=Apocalipsis
+Desc=Causa 50 a 90 puntos de da�o en un area de cuatro tiles.
+PalabrasMagicas=Rahma Na�arak O'al
+HechizeroMsg=Has lanzado Apocalipsis sobre
+TargetMsg=lanzo Apocalipsis sobre vos.
+PropioMsg=Has lanzado Apocalipsis sobre ti.
+Tipo=1
+WAV=138
+Particle=45
+Anillo=1
+SubeHP=2
+MinHP=98
+MaxHP=112
+    
+MinSkill=80
+MinLevel=36
+ManaRequerido=1000
+StaRequerido=125
+TimeParticula=50
+Target=3
+ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+DanoMagicoMax=0
+DanoMagicoMin=0
+
+' clon NPC del 52 (100-105 -> 139-146), 15-sep-2026
+[HECHIZO209]
+Nombre=Juicio final
+Desc=Causa 150 a 180 puntos de da�o a la victima.
+PalabrasMagicas=Finis Mortem
+HechizeroMsg=Has lanzado Juicio final sobre
+TargetMsg=lanzo Juicio final sobre vos.
+PropioMsg=Has lanzado Juicio final sobre ti.
+Tipo=1
+WAV=66
+FXgrh=20
+loops=0
+Anillo=1
+SubeHP=2
+MinHP=139
+MaxHP=146
+    
+MinSkill=100
+MinLevel=40
+ManaRequerido=1800
+StaRequerido=200
+
+Target=3
+ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+DanoMagicoMin=
+DanoMagicoMax=
+
+' clon NPC del 34 (90-100 -> 126-140), 15-sep-2026
+[HECHIZO210]
+Nombre=Implosion
+Desc=Causa 120 a 150 puntos de da�o a la victima.
+PalabrasMagicas=Nihil Mortem
+HechizeroMsg=Has lanzado Implosi�n sobre
+TargetMsg=lanzo Implosi�n sobre vos.
+PropioMsg=Has lanzado Implosi�n sobre ti.
+Tipo=1
+WAV=65
+FXgrh=18
+loops=0
+Anillo=1
+SubeHP=2
+MinHP=126
+MaxHP=140
+    
+MinSkill=100
+MinLevel=40
+ManaRequerido=1500
+StaRequerido=160
+
+Target=3
+ClasesProhibidas=3-4-5-6-7-8-9-10-11-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 102 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO211]
+Nombre=Fuego elemental ' amarillo
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=98
+WAV=163
+ClasesProhibidas=
+
+' clon NPC del 114 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO212]
+Nombre=NoName 'Lo tira el vampiro, vampiresa
+PalabrasMagicas=Poen'capti
+Desc=Hechizo de NPC.
+Tipo=1
+WAV=32
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=90
+WAV=163 
+ClasesProhibidas=
+
+
+''''91,92, 93 hechizero de agua, tierra, aire
+
+' clon NPC del 103 (120-135 -> 130-146), 15-sep-2026
+[HECHIZO213]
+Nombre=Fuego elemental '(azul)
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=130
+MaxHP=146
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=100
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 93 (35-55 -> 49-77), 15-sep-2026
+[HECHIZO214]
+Nombre=Descarga electrica
+Desc=Causa 35 a 60 puntos de da�o a la victima.
+PalabrasMagicas=T'HY KOOOL
+HechizeroMsg=Has lanzado Descarga El�ctrica sobre
+TargetMsg=lanzo Descarga El�ctrica sobre vos.
+PropioMsg=Has lanzado Descarga El�ctrica sobre ti.
+Tipo=1
+WAV=234
+loops=0
+Resis=1
+Particle=49
+
+SubeHP=2
+MinHP=49
+MaxHP=77
+TimeParticula=40
+MinSkill=65
+ManaRequerido=250
+StaRequerido=60
+
+Target=3
+ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 105 (135-145 -> 136-146), 15-sep-2026
+[HECHIZO215]
+Nombre=Flama Elemental Gris
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=136
+MaxHP=146
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=94
+WAV=163 
+ClasesProhibidas=
+ 
+
+' clon NPC del 104 (135-145 -> 136-146), 15-sep-2026
+[HECHIZO216]
+Nombre=Fuego elemental ' marron
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=136
+MaxHP=146
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=99
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 112 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO217]
+Nombre=Castigo Ilusorio
+PalabrasMagicas=Poen'capti
+Desc=Hechizo de NPC.
+Tipo=1
+WAV=32
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=90
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 110 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO218]
+Nombre=Hechizo de Castigador
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=103
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 111 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO219]
+Nombre=Hechizo de Fantasma.
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=103
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 113 (140-155 -> 132-146), 15-sep-2026
+[HECHIZO220]
+Nombre=Hechizo de Alma cautiva
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=132
+MaxHP=146
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=103
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 92 (25-35 -> 35-49), 15-sep-2026
+[HECHIZO221]
+Nombre=Misil Magico
+Desc=Causa 25 a 35 puntos de da�o a la victima.
+PalabrasMagicas=INX TO R
+HechizeroMsg=Has lanzado Misil M�gico sobre
+TargetMsg=lanzo Misil M�gico sobre vos.
+PropioMsg=Has lanzado Misil M�gico sobre ti.
+Tipo=1
+WAV=27
+FXgrh=10
+loops=0
+
+SubeHP=2
+MinHP=35
+MaxHP=49
+
+MinSkill=30
+ManaRequerido=40
+StaRequerido=20
+
+Target=3
+ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 15 (15-50 -> 21-70), 15-sep-2026
+[HECHIZO222]
+Nombre=Tormenta de fuego
+Desc=Causa 15 a 50 puntos de da�o en un �rea de tres tiles.
+PalabrasMagicas=RAX IN ZAR
+HechizeroMsg=Has lanzado Tormenta de fuego sobre
+TargetMsg=lanzo Tormenta de fuego sobre vos.
+PropioMsg=Has lanzado Tormenta de fuego sobre ti.
+Tipo=1
+WAV=27
+FXgrh=7
+loops=0
+
+SubeHP=2
+MinHP=21
+MaxHP=70
+    
+MinSkill=75
+ManaRequerido=250
+StaRequerido=60
+
+HechizoDeArea=1
+AreaEfecto=3
+Afecta=3
+
+Target=4
+ClasesProhibidas=3-5-8-10-12-13-14-15-16-17
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 37 (90-120 -> 110-146), 15-sep-2026
+[HECHIZO223]
+Nombre=HechizoNPCB
+Desc=Hechizo de NPC.
+Tipo=1
+WAV=10
+FXgrh=14
+loops=0
+
+SubeHP=2
+MinHP=110
+MaxHP=146
+Target=3
+ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 63 (130-140 -> 136-146), 15-sep-2026
+[HECHIZO224]
+Nombre=Lamento de la Banshee
+Desc=Causa 90 a 145 puntos de da�o a la victima.
+PalabrasMagicas=VR NI MS
+HechizeroMsg=Has lanzado Lamento de la Banshee sobre
+TargetMsg=lanzo Lamento de la Banshee sobre vos.
+PropioMsg=Has lanzado Lamento de la Banshee sobre ti.
+Tipo=1
+WAV=94
+FXgrh=45
+loops=0
+Particle=0
+TimeParticula=100
+
+SubeHP=2
+MinHP=136
+MaxHP=146
+
+MinSkill=100
+MinLevel=40
+ManaRequerido=1800
+StaRequerido=200
+
+Anillo=1
+Target=3
+ClasesProhibidas=1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18
+
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+'&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+' clon NPC del 107 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO225]
+Nombre=Fuego elemental '(verde)
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=102
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 106 (120-144 -> 122-146), 15-sep-2026
+[HECHIZO226]
+Nombre=Fuego elemental '(fucsia)
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=122
+MaxHP=146
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=101
+WAV=163
+ClasesProhibidas=
+
+' clon NPC del 108 (40-55 -> 56-77), 15-sep-2026
+[HECHIZO227]
+Nombre=Flama Elemental Verde Oscuro
+Desc=Hechizo de NPC.
+Tipo=1
+SubeFU=0
+MinFU=0
+MaxFU=0
+SubeAG=0
+MinAG=0
+MaxAG=0
+SubeHP=2
+MinHP=56
+MaxHP=77
+MinSta=0
+MaxSta=0
+MinSkill=100
+ManaRequerido=1440
+StaRequerido=100
+Target=1
+TimeParticula=50
+Particle=103
+WAV=163 
+ClasesProhibidas=
+
+' clon NPC del 92 (25-35 -> 64-89) para el Golem de Cristal, 16-sep-2026
+[HECHIZO228]
+Nombre=Misil Magico
+Desc=Hechizo de NPC.
+Tipo=1
+WAV=27
+FXgrh=10
+loops=0
+SubeHP=2
+MinHP=64
+MaxHP=89
+Target=1
+ClasesProhibidas=1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18

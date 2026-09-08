@@ -13,7 +13,7 @@ namespace ServidorCS.Game;
 /// </summary>
 public static class CreditItems
 {
-    private const int MAX_ITEMS = 32;
+    private const int MAX_ITEMS = 64;
     private static readonly List<ServerPackets.CreditShopItem> _catalogo = new();
 
     public static void Init()

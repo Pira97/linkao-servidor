@@ -263,4 +263,14 @@ public enum ClientPacketID : short
     // --- Editor de balance de daño (panel GM, pestaña "Daño") — combina SpellEditor+ObjEditor, mismo patrón ---
     DamageEditorPreviewRequest = 187, // Integer spellIndex, Integer staffObjIndex, Integer casterLevel,
                                        //   Integer casterINT, Byte isPvP, Integer targetResistencia
+
+    // --- Ranking de personajes (NUEVO, no VB6). Ver Game/Ranking.cs y mini/ranking_ui.js ---
+    RankingRequest = 190,       // Byte categoria (0=oro,1=matados,2=criaturas,3=nivel),
+                                //   Byte periodo (0=semanal, 1=histórico)
+
+    // --- Voz de evento / anuncio hablado (NUEVO, no VB6). Ver Game/EventVoice.cs ---
+    // Sólo GM (Semidiós+): el server revalida solo, mandar este paquete a mano no da nada.
+    EventVoice = 191,           // ASCIIString texto (máx 300), Integer mapa (0 = todo el server),
+                                //   Byte voz (índice de EventVoice.Voces), Byte volumen (0-100),
+                                //   Byte flags (bit0 = mostrar el texto en pantalla)
 }

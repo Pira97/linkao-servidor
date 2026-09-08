@@ -28,10 +28,14 @@ cd /root/linkao-servidor || { echo "No existe /root/linkao-servidor"; exit 1; }
 # reponen despues, y queda puesto para siempre: si alguna vez se vuelven a
 # versionar por accidente, esto los salva igual.
 # ------------------------------------------------------------
+#
+# 8-sep-2026: se suma Quests/ a la lista. Tenia el MISMO problema y habia quedado
+# afuera del arreglo de julio: 18 archivos con nombre de personaje dentro de git, que
+# este reset le pisaba a cada jugador en cada despliegue. Ya esta en .gitignore.
 RESGUARDO="/root/.deploy_progreso"
 rm -rf "$RESGUARDO"
 mkdir -p "$RESGUARDO"
-for d in Logros BattlePass MercadoPago; do
+for d in Logros BattlePass MercadoPago Quests; do
     [ -d "$d" ] && cp -a "$d" "$RESGUARDO/"
 done
 echo "=== 0/3 Progreso resguardado en $RESGUARDO ==="
@@ -41,12 +45,12 @@ git fetch origin
 git reset --hard origin/main
 
 # Reponer sin pisar lo que ya este: -n = no sobrescribir archivos existentes.
-for d in Logros BattlePass MercadoPago; do
+for d in Logros BattlePass MercadoPago Quests; do
     [ -d "$RESGUARDO/$d" ] || continue
     mkdir -p "$d"
     cp -an "$RESGUARDO/$d/." "$d/" 2>/dev/null || true
 done
-echo "=== Progreso repuesto: $(ls Logros 2>/dev/null | wc -l) logros, $(ls BattlePass 2>/dev/null | wc -l) pases ==="
+echo "=== Progreso repuesto: $(ls Logros 2>/dev/null | wc -l) logros, $(ls BattlePass 2>/dev/null | wc -l) pases, $(ls Quests 2>/dev/null | wc -l) misiones ==="
 
 echo "=== 2/3 Compilando (dotnet publish) ==="
 dotnet publish -c Release -o publish

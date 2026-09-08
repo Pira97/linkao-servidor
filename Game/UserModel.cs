@@ -184,6 +184,7 @@ public sealed class UserFlags
     public bool Navegando;
     public byte Vuela;         // 1 = vuela (atraviesa agua sin barco). VB6 flags.Vuela
     public byte Oculto;        // 1 = oculto (skill Ocultarse). VB6 flags.Oculto
+    public double OcultoExpira; // cuándo termina el oculto del skill (0 = sin vencimiento: Anillo de las Sombras)
     public byte Invisible;     // 1 = invisible por hechizo (NO se revela al atacar; expira por tiempo)
     public double InvisibleExpira; // segundos hasta que termina la invisibilidad mágica
     public byte Incinerado;    // 1 = incinerado (daño periódico por fuego)
@@ -240,7 +241,7 @@ public sealed class UserFlags
     // Veces que el usuario murió (a manos de otro jugador). .chr [FLAGS] Murio. Usado por MiniStats.
     public int MuertesUsuario;
     // Racha de kills PvP seguidas (killstreak). Se reinicia al morir y al desconectarse.
-    // Dispara sonidos: 1=FIRST_BLOOD(262), 2=DOUBLE_KILL(261), 3=TRIPLE_KILL(270), >=7=KILL_SPREE(175).
+    // Dispara sonidos: Sounds.DeRacha (1-3 los del AO, 4-13+ las voces 720-729).
     public int KillStreak;
     // AFK: momento (TickCount64 ms) de la última actividad/movimiento del usuario, y si tiene la
     // partícula de AFK activa. Si pasa AFK_TIMEOUT sin moverse, se le difunde la partícula; al moverse se quita.
@@ -280,8 +281,9 @@ public struct AmigoSlot
 }
 
 // tFacciones (Declares.bas:1510). Status = facción (1=Renegado, 2=Ciudadano, 3=Republicano,
-// 4=Caos, 5=Armada, 6=Milicia, 0=sin facción). Los *Matados son frags por facción de la víctima,
-// usados como requisito para enlistarse y para las recompensas/rangos. [[facciones_jugador]]
+// 4=Caos, 5=Armada, 6=Milicia, 15=Exordiano, 16=Heraldo, 0=sin facción). Los *Matados son frags
+// por facción de la víctima, usados como requisito para enlistarse y para las recompensas/rangos.
+// [[facciones_jugador]]
 public sealed class Faccion
 {
     public byte Status;
@@ -291,6 +293,8 @@ public sealed class Faccion
     public int MilicianosMatados;
     public int ArmadaMatados;
     public int CaosMatados;
+    public int ExordianosMatados;
+    public int HeraldosMatados;
     public int Rango;
 }
 
@@ -378,6 +382,12 @@ public sealed class User
     }
     public WorldPos Pos;
 
+    // Tile que el personaje acaba de DEJAR, y el tick en que lo dejó. Los escribe
+    // Movement.MoveUserChar en cada paso; los lee la compensación de lag del golpe cuerpo a
+    // cuerpo (Combat.UsuarioAtaca). No se persisten: son estado de la sesión.
+    public WorldPos PosPrev;
+    public long PosPrevMs;
+
     public bool ConnIDValida;
     public int ConnID = -1;
 
@@ -393,9 +403,38 @@ public sealed class User
     // Hechizo seleccionado con CastSpell, pendiente de objetivo (WorkLeftClick). 0 = ninguno.
     public byte SpellPendiente;
 
+    // Casteo DIFERIDO: objetivo de un WorkLeftClick de magia que llegó unos pocos ms antes de
+    // que venciera el intervalo. En vez de descartarlo en silencio (que es "lanzo el segundo
+    // hechizo rápido y no sale"), se guarda acá y lo dispara Combat.TickCastDiferido() apenas
+    // el intervalo vence. CastDiferidoHasta = 0 significa que no hay ninguno esperando.
+    // Ambos en el reloj de Intervals (Intervals.NowMs), NO en Environment.TickCount64: se comparan
+    // contra los mismos intervalos que decide Intervals, y mezclar relojes reintroduce el bug.
+    public long CastDiferidoHasta;
+    // Hasta cuándo se acepta seguir esperando por ESTE clic (deadline absoluto). Si el reintento
+    // llega y el intervalo todavía no venció por unos ms, se reprograma en vez de tirar el clic;
+    // este límite es lo que garantiza que la espera total no se estire nunca.
+    public long CastDiferidoLimite;
+    public byte CastDiferidoX, CastDiferidoY;
+    public int CastDiferidoMap;
+
     // Timers de cooldown (ms del último uso, Environment.TickCount64). Equiv. UserCounters.Timer*.
     public long TimerAtacar, TimerLanzarSpell, TimerTrabajar, TimerUsar, TimerClicsMouse,
         TimerMagiaGolpe, TimerGolpeMagia, TimerGolpeUsar, TimerUsarArco;
+
+    // Último intervalo de golpe (ya con el ExtraTimer del arma equipada) que se le mandó a ESTE
+    // cliente con IntervalConfig. Sirve de compare-and-send en Intervals.SyncConfig: el paquete
+    // sale sólo cuando el número cambia de verdad (equipar/desequipar/romper arma, cambio de
+    // balance por GM). -1 = todavía no se mandó nada, así el primer envío siempre sale.
+    public long UltimoIntervaloAtaqueEnviado = -1;
+
+    // Ídem para el intervalo de HECHIZO. Va aparte y no de yapa: IntervalConfig manda los dos
+    // números en el mismo paquete, pero el compare-and-send miraba SÓLO el de golpe. Cambiar
+    // nada más el cooldown de hechizo desde el panel GM dejaba a SyncConfig devolviéndose por
+    // "el ataque no cambió" y el paquete no salía NUNCA — ni por el reenvío de red de seguridad
+    // de GameTimer, que cae en el mismo compare. El cliente se quedaba con el número viejo,
+    // mandaba el clic antes de tiempo y el server lo descartaba en silencio: eso es el
+    // "el intervalo se desconfigura y el segundo hechizo no sale". -1 = todavía no se mandó.
+    public long UltimoIntervaloSpellEnviado = -1;
 
     // Timers internos del GameTimer (regen/hambre/sed).
     public long _timerSanar, _timerSta, _timerHambre, _timerSed, _tInicioMeditar, _timerMeditar;
@@ -524,6 +563,13 @@ public sealed class User
         Logros = null;
         Quests = null;
         SpellPendiente = 0;
+        // Los slots de User se reciclan entre jugadores. Sin este reset, el que entra hereda el
+        // "ya le mandé estos números" del que se fue: si coinciden, el SyncConfig del login se
+        // devuelve y ese cliente NUNCA recibe IntervalConfig — se queda con su default de 500ms
+        // de arranque, que casi nunca es el intervalo real. Es el mismo síntoma que el compare
+        // incompleto de Intervals.SyncConfig, pero disparado por reloguear en vez de por el GM.
+        UltimoIntervaloAtaqueEnviado = -1; UltimoIntervaloSpellEnviado = -1;
+        CastDiferidoHasta = 0; CastDiferidoLimite = 0; CastDiferidoX = 0; CastDiferidoY = 0; CastDiferidoMap = 0;
         TargetNpcCharIndex = 0; TargetUserCharIndex = 0; Comerciando = false; Trade = null;
         TargetObj = 0; TargetMap = 0; TargetX = 0; TargetY = 0;
         TargetObjMap = 0; TargetObjX = 0; TargetObjY = 0;

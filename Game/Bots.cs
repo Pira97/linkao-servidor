@@ -222,12 +222,7 @@ public static class Bots
         "Sombra", "Belial", "Astra", "Dorian", "Grim", "Hela", "Varko", "Nerion",
     };
     private static readonly Random _nickRng = new();
-    private static int _nickSeq = 0;
-    private static string RandomNick()
-    {
-        // nombre + sufijo numérico corto para que no se repitan visualmente.
-        return _nicks[_nickRng.Next(_nicks.Length)] + (++_nickSeq);
-    }
+    private static string RandomNick() => _nicks[_nickRng.Next(_nicks.Length)];
 
     public static IEnumerable<BotClase> Clases { get { EnsureLoaded(); return _clases.Values; } }
     public static bool ClaseValida(byte clase) { EnsureLoaded(); return _clases.ContainsKey(clase); }
@@ -326,16 +321,24 @@ public static class Bots
         return list.Count > 0 ? list.ToArray() : null;
     }
 
+    // Pociones básicas (obj.dat: OBJ38 "Pocion Roja" cura 30 HP, OBJ37 "Pocion Azul" recupera maná —
+    // mismas que toma el bot vivo vía BotAutoPot) que todo bot suelta al morir, además de su equipo.
+    private const short OBJ_POCION_ROJA = 38;
+    private const short OBJ_POCION_AZUL = 37;
+    private const int POCIONES_DROP_CANT = 5;
+
     /// <summary>Arma el array de Drops (100% de caída) con las piezas REALMENTE equipadas (sacro o,
     /// si es progresivo, lo elegido por MejorEquipoParaNivel — por eso recibe ObjIndex sueltos y
-    /// no un BotClase entero).</summary>
+    /// no un BotClase entero) más un puñado de pociones rojas/azules.</summary>
     private static (short objIndex, int amount, double prob)[] DropsDelSet(int armorObj, int weaponObj, int shieldObj, int cascoObj)
     {
-        var drops = new List<(short, int, double)>(4);
+        var drops = new List<(short, int, double)>(6);
         if (armorObj  > 0) drops.Add(((short)armorObj,  1, 100));
         if (weaponObj > 0) drops.Add(((short)weaponObj, 1, 100));
         if (shieldObj > 0) drops.Add(((short)shieldObj, 1, 100));
         if (cascoObj  > 0) drops.Add(((short)cascoObj,  1, 100));
+        drops.Add((OBJ_POCION_ROJA, POCIONES_DROP_CANT, 100));
+        drops.Add((OBJ_POCION_AZUL, POCIONES_DROP_CANT, 100));
         return drops.ToArray();
     }
 
@@ -465,7 +468,7 @@ public static class Bots
     // primer CharacterCreate (ver el comentario grande en SpawnAt) — evita el "teletransporte" del
     // primer spawn. Poner bot.BotSmart=true DESPUÉS de que Spawn() retorna (como hacía el caller
     // antes) llega tarde: ese primer broadcast ya salió sin el marcador de protocolo.
-    public static NpcManager.NpcInstance Spawn(int map, byte x, byte y, byte clase, byte raza = 0, int owner = 0, byte faccion = 0, byte heading = 0, byte genero = 1, byte nivel = 50, bool leveling = false, bool smart = false)
+    public static NpcManager.NpcInstance Spawn(int map, byte x, byte y, byte clase, byte raza = 0, int owner = 0, byte faccion = 0, byte heading = 0, byte genero = 1, byte nivel = 50, bool leveling = false, bool smart = false, string nick = null, int copiarNpc = 0, int estado = -1, int cabeza = -1, int[] objetos = null)
     {
         EnsureLoaded();
         if (!_clases.TryGetValue(clase, out var cfg)) return null;
@@ -489,11 +492,13 @@ public static class Bots
 
         // Reusar la definición si esta clase+raza+facción+nivel ya se registró (no acumular entradas
         // en NpcData). Los progresivos NUNCA pasan por acá: su equipo/nivel cambia con el tiempo.
-        if (!leveling && _regIndex.TryGetValue((clase, raza, faccion, nivel), out int cached))
+        // Con nick propio (escenas de cine) tampoco: la definición cacheada se llama "Bot <clase>" y
+        // SpawnAt manda el primer CharacterCreate con ESE nombre, antes de que InitBot ponga el nick.
+        if (!leveling && nick == null && _regIndex.TryGetValue((clase, raza, faccion, nivel), out int cached))
         {
             var (fx0, fy0) = NpcManager.FreeTileNear(map, x, y);
             var b0 = NpcManager.SpawnAt(map, cached, fx0, fy0, botSmart: smart);
-            if (b0 != null) { NpcManager.InitBot(b0, owner, RandomNick(), heading); b0.BotFaccion = faccion; b0.BotHealSpell = cfg.HealSpell; b0.BotAtaqueParticula = cfg.AtaqueParticula; b0.MaxMana = b0.MinMana = realMana; b0.EquipArmorObj = armorObj; b0.EquipShieldObj = shieldObj; b0.EquipCascoObj = cascoObj; TalVezDarEstandarte(b0, faccion); }
+            if (b0 != null) { NpcManager.InitBot(b0, owner, nick ?? RandomNick(), heading); b0.BotFaccion = faccion; b0.BotHealSpell = cfg.HealSpell; b0.BotAtaqueParticula = cfg.AtaqueParticula; b0.MaxMana = b0.MinMana = realMana; b0.EquipArmorObj = armorObj; b0.EquipShieldObj = shieldObj; b0.EquipCascoObj = cascoObj; TalVezDarEstandarte(b0, faccion); }
             return b0;
         }
 
@@ -513,7 +518,7 @@ public static class Bots
 
         var info = new NpcData.NpcInfo
         {
-            Name = "Bot " + cfg.Nombre,
+            Name = nick ?? "Bot " + cfg.Nombre,
             Body = body, Head = CabezaPorRaza(raza), Heading = 3,
             MaxHP = realHp,
             Attackable = true, Hostil = true, Movement = 0,
@@ -536,14 +541,45 @@ public static class Bots
             Drops = DropsDelSet(armorObj, weaponObj, shieldObj, cascoObj),
         };
 
+        // Escenas de cine: el bot toma la pinta y el bando de un NPC existente (guardias del
+        // Exordio, Tharvel). Tiene que ir ANTES de registrar: SpawnAt manda el primer
+        // CharacterCreate con esta definición, y cambiar el cuerpo después no le llega a nadie.
+        if (copiarNpc > 0)
+        {
+            var src = NpcData.Get(copiarNpc);   // struct: un índice inexistente vuelve con Body 0
+            if (src.Body > 0)
+            {
+                info.Body = src.Body; info.Head = src.Head;
+                info.WeaponAnim = src.WeaponAnim; info.ShieldAnim = src.ShieldAnim; info.CascoAnim = src.CascoAnim;
+                info.Aura = src.Aura; info.AuraArma = src.AuraArma; info.AuraEscudo = src.AuraEscudo; info.AuraCasco = src.AuraCasco;
+                info.Status = src.Status;
+            }
+        }
+        // Color de nick pedido por la escena (el cliente pinta un bot con la tabla de jugadores:
+        // 1 gris Renegado, 2 azul Ciudadano, 4 rojo Caos; 5 = bando del Exordio, lila).
+        if (estado >= 0) info.Status = (byte)estado;
+        // Cabeza pedida por la escena: va en la definición, así el primer CharacterCreate ya sale con ella.
+        if (cabeza >= 0) info.Head = (short)cabeza;
+        // Equipo pedido por la escena (OBJ de obj.dat): cada objeto pone la parte que tenga
+        // (Ropaje = cuerpo, casco, escudo, arma). Pisa lo copiado del NPC.
+        if (objetos != null)
+            foreach (int o in objetos)
+            {
+                var od = ObjData.Get(o);
+                if (od.Ropaje > 0) info.Body = (short)od.Ropaje;
+                if (od.CascoAnim > 0) info.CascoAnim = (short)od.CascoAnim;
+                if (od.ShieldAnim > 0) info.ShieldAnim = (short)od.ShieldAnim;
+                if (od.WeaponAnim > 0) info.WeaponAnim = (short)od.WeaponAnim;
+            }
+
         int idx = BOT_INDEX_BASE + (_nextOffset++);
         NpcData.Register(idx, info);
-        if (!leveling) _regIndex[(clase, raza, faccion, nivel)] = idx;   // progresivos no se cachean
+        if (!leveling && nick == null) _regIndex[(clase, raza, faccion, nivel)] = idx;   // progresivos y con nick no se cachean
         var (fx, fy) = NpcManager.FreeTileNear(map, x, y);
         var bot = NpcManager.SpawnAt(map, idx, fx, fy, botSmart: smart);
         if (bot != null)
         {
-            NpcManager.InitBot(bot, owner, RandomNick(), heading);
+            NpcManager.InitBot(bot, owner, nick ?? RandomNick(), heading);
             bot.BotFaccion = faccion; bot.BotHealSpell = cfg.HealSpell; bot.BotAtaqueParticula = cfg.AtaqueParticula;
             bot.MaxMana = bot.MinMana = realMana;
             bot.EquipArmorObj = armorObj; bot.EquipShieldObj = shieldObj; bot.EquipCascoObj = cascoObj;

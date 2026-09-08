@@ -291,7 +291,8 @@ public static class Social
         int equidad = u.Hogar switch
         {
             1 => 34, 2 => 194, 3 => 1, 4 => 59, 5 => 20, 6 => 37, 7 => 62,
-            8 => 151, 9 => 218, 10 => 180, 11 => 185, 12 => 111, _ => 0,
+            8 => 151, 9 => 218, 10 => 180, 11 => 185, 12 => 111,
+            CityData.CUMBRAMAR => CityData.MAPA_UMBRAMAR, _ => 0,
         };
         if (u.Pos.Map == equidad)
         { ServerPackets.ConsoleMsg(u.Conn, $"El mapa {u.Pos.Map} es tu hogar.", FONT_INFO); return; }
@@ -300,6 +301,10 @@ public static class Social
         switch (u.Pos.Map)
         {
             case 20:  u.Hogar = cRinkel; break;
+            case CityData.MAPA_UMBRAMAR: // NUEVO: sólo el Exordio puede hacer de Umbramar su hogar.
+                if (!Facciones.EsDelExordio(u))
+                { ServerPackets.ConsoleMsg(u.Conn, "Ciudad invalida.", FONT_INFO); return; }
+                u.Hogar = CityData.CUMBRAMAR; break;
             case 151: u.Hogar = cARGHAL; break;
             case 218: u.Hogar = cTIAMA; break;
             case 180: u.Hogar = cORAC; break;

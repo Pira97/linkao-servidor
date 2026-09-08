@@ -59,7 +59,7 @@ public static class LoginFlow
         ServerPackets.UserIndexInServer(conn, (short)conn.UserIndex);
 
         // Versión del mapa: 0 por ahora (se lee del .map/.dat al portar mapas).
-        ServerPackets.ChangeMap(conn, u.Pos.Map, 0);
+        ServerPackets.ChangeMap(conn, u.Pos.Map, 0, MapLoader.Get(u.Pos.Map)?.Info.Pk ?? true);
 
         ServerPackets.UserCharIndexInServer(conn, u.Char.CharIndex);
 
@@ -105,13 +105,23 @@ public static class LoginFlow
         // Skills del personaje (WriteSendSkills): puntos de cada habilidad.
         ServerPackets.SendSkills(conn, u);
 
+        // Puntos de skill LIBRES (LevelUp/63). SendSkills manda los 27 valores pero NO cuántos te
+        // quedan por repartir, y ese contador SOLO viajaba al subir de nivel: el que entraba con
+        // puntos guardados (los 10 del personaje nuevo, o los que dejó sin gastar la sesión
+        // anterior) veía 0 y no podía asignar nada hasta subir un nivel, momento en que le
+        // aparecían todos juntos. El paquete es solo el número: el cliente web no muestra cartel
+        // ni efecto al recibirlo (el efecto de subir nivel es LevelUpFx/117, aparte).
+        ServerPackets.LevelUp(conn, u.Stats.SkillPts);
+
         // Intervalos de Golpe/Hechizo (editables en vivo por GM, Game/BalanceEditor.cs): el
         // cliente los usa como gate LOCAL antes de mandar el clic, para no spamear paquetes
         // que el server igual va a rechazar. Sin esto el cliente se queda con los valores por
         // default hardcodeados y desincroniza en cuanto un GM cambia el intervalo (el server
         // rechaza en silencio porque el cliente manda el clic demasiado pronto).
-        var iv = BalanceData.Intervalos;
-        ServerPackets.IntervalConfig(conn, iv.Atacar, iv.LanzarSpell);
+        // Va por SyncConfig (no IntervalConfig pelado) para que el número incluya el ExtraTimer
+        // del arma con la que el personaje entra puesta: con un arma lenta, mandarle el intervalo
+        // base dejaba al cliente pegando antes de tiempo y perdiendo la tecla (ver Intervals.cs).
+        Intervals.SyncConfig(u);
 
         // Mascota compañera persistente (NUEVO, no VB6): manda el estado guardado para que el
         // panel de mascota (mini/pet_ui.js) se pueda previsualizar sin tener que invocarla primero.
@@ -119,9 +129,11 @@ public static class LoginFlow
 
         // Personajes creados ANTES de que la mascota existiera: su .chr no tiene [MASCOTA], así que
         // quedaron sin ninguna y sin enterarse. Si su clase puede tener una y todavía no eligió, se
-        // le avisa al entrar (la elige desde el panel de mascota, tecla M → PetElegir).
+        // le avisa al entrar (la elige desde el panel de mascota → PetElegir). El aviso nombra las
+        // dos formas de abrirlo porque en el celular no hay teclado: tecla M en la PC, y la fila
+        // Mascota del desplegable ☰ en Android (ver game.html::construirMenuDesplegableTactil).
         if (u.PetTipo == 0 && PetLeveling.OpcionesPara(u.Clase).Length > 0)
-            ServerPackets.ConsoleMsg(conn, "¡Tu clase puede tener una mascota compañera y todavía no elegiste la tuya! Abrí el panel de mascota (tecla M) para elegirla.", 1);
+            ServerPackets.ConsoleMsg(conn, "¡Tu clase puede tener una mascota compañera y todavía no elegiste la tuya! Abrí el panel de mascota (tecla M, o el botón ☰ → Mascota en el celular) para elegirla.", 1);
 
         // NOTA: las partículas ambientales del mapa las carga el propio cliente desde sus .csm
         // (map_loader.gd → set_map_particle). El servidor NO debe enviarlas. Los teleport los renderiza
@@ -195,7 +207,8 @@ public static class LoginFlow
 
     /// <summary>
     /// Status para el color del nick: si es GM (FaccionStatus 7-10) usa ese; si no, la facción
-    /// del jugador (Faccion.Status 1-6). El cliente colorea el nombre con este valor
+    /// del jugador (Faccion.Status 1-6, o 15-16 del Exordio: 7-14 quedan para el staff en el
+    /// cliente, por eso el Exordio no usa 7/8). El cliente colorea el nombre con este valor
     /// (GeneralUtils.get_nick_color). 0 = nick blanco. [[facciones_jugador]]
     /// </summary>
     public static byte NickStatus(User u) => u.FaccionStatus >= 7 ? u.FaccionStatus : u.Faccion.Status;

@@ -345,7 +345,7 @@ public static class Espia
         // fantasma para el resto del mapa.
         AreaVisibility.OnUserLeave(idxEspia);
 
-        ServerPackets.ChangeMap(conn, (short)u.Pos.Map, 0);       // el cliente borra char_list
+        ServerPackets.ChangeMap(conn, (short)u.Pos.Map, 0, MapLoader.Get(u.Pos.Map)?.Info.Pk ?? true);       // el cliente borra char_list
         ServerPackets.UserCharIndexInServer(conn, u.Char.CharIndex);  // volvés a ser vos
         LoginFlow.SendCharCreate(conn, u);
         if (u.flags.Oculto == 1 || u.flags.Invisible == 1)
@@ -361,6 +361,7 @@ public static class Espia
             ServerPackets.ChangeSpellSlot(conn, slot, h, h > 0 ? SpellData.GetName(h) : "");
         }
         ServerPackets.SendSkills(conn, u);
+        ServerPackets.LevelUp(conn, u.Stats.SkillPts); // y sus puntos libres: SendSkills no los lleva
 
         AreaVisibility.OnUserEnter(idxEspia);   // su área de vuelta (y él visible para los demás)
         Clima.EnviarClimaAUsuario(idxEspia);
@@ -498,7 +499,7 @@ public static class Espia
             espectador.IncomingXorKey = redundance;   // el cliente cambia su clave XOR acá
             ServerPackets.UserIndexInServer(espectador, (short)espectador.UserIndex);
         }
-        ServerPackets.ChangeMap(espectador, (short)objetivo.Pos.Map, 0);
+        ServerPackets.ChangeMap(espectador, (short)objetivo.Pos.Map, 0, MapLoader.Get(objetivo.Pos.Map)?.Info.Pk ?? true);
         ServerPackets.UserCharIndexInServer(espectador, objetivo.Char.CharIndex);
         LoginFlow.SendCharCreate(espectador, objetivo);        // el propio objetivo
         AreaVisibility.CrearVistaDe(espectador, objetivo);     // todo lo que él ve
@@ -588,6 +589,7 @@ public static class Espia
     {
         public NpcManager.NpcInstance Bot;
         public bool Auto;                  // modo "seguir la acción": la cámara salta sola a las peleas
+        public int MapaFijo;               // tour de stream: la cámara no sale de este mapa (0 = libre)
         public double ProximoCambioAt;     // no se cambia de cámara antes de esto (evita el zapping)
         public double UltimoCambioAt;      // cuándo se paró la cámara en el bot actual (para la rotación periódica)
         public int MapaEnviado = -1;             // mapa que el cliente ya tiene cargado
@@ -666,6 +668,7 @@ public static class Espia
             try
             {
                 if (obs.Auto) ElegirCamaraDeAccion(conn, obs);
+                else if (obs.MapaFijo > 0) RotarEnMapa(conn, obs);
                 RefrescarObs(conn, obs);
             }
             catch (Exception ex) { Console.WriteLine($"[Espia] ERROR refrescando observador de bot: {ex.Message}"); }
@@ -784,6 +787,85 @@ public static class Espia
         obs.UltimoHP = elegido.MinHP; obs.UltimoMana = elegido.MinMana;
     }
 
+    // --- Tour de mapas para transmitir (Twitch) ---
+    // El cliente (?espectar=1&pj=__tour__) lleva la lista de mapas y el reloj, y en cada salto
+    // pide "__mapa__:N". Acá solo se elige a QUIÉN seguir dentro de ese mapa: un NPC cualquiera
+    // sirve de camarógrafo, porque el observador de bots ya arma la vista alrededor de cualquier
+    // NpcInstance. Dentro del mapa la cámara cambia de NPC cada TOUR_ROTACION segundos.
+    public const string TOUR_PREFIJO = "__mapa__:";
+    private const double TOUR_ROTACION = 12.0;
+
+    /// <summary>Engancha al espectador a un NPC del mapa pedido. Si el mapa no tiene a nadie no
+    /// hace nada: el cliente ve que el mapa no cambió y pasa al siguiente.</summary>
+    public static void EmpezarEspectadorMapa(Connection espectador, int map)
+    {
+        if (espectador == null || MapLoader.Get(map) == null) return;
+        var elegido = MejorNpcDelMapa(map, null);
+        if (elegido == null)
+        {
+            Directo(espectador, c => ServerPackets.ConsoleMsg(c, $"Mapa {map}: no hay nada que mostrar, se saltea.", 4));
+            return;
+        }
+        EmpezarEspectadorNpc(espectador, elegido);
+        lock (_candado)
+            if (_obsNpc.TryGetValue(espectador, out var obs))
+            {
+                obs.MapaFijo = map;
+                obs.UltimoCambioAt = Environment.TickCount64 / 1000.0;
+            }
+    }
+
+    /// <summary>
+    /// El NPC más "televisable" del mapa: bots y criaturas antes que un vendedor quieto, y entre
+    /// ellos el que tenga más movimiento alrededor (otros NPCs y jugadores). Un poco de azar para
+    /// que dos pasadas por el mismo mapa no muestren siempre el mismo rincón.
+    /// </summary>
+    private static NpcManager.NpcInstance MejorNpcDelMapa(int map, NpcManager.NpcInstance actual)
+    {
+        var npcs = NpcManager.GetMapNpcs(map);
+        NpcManager.NpcInstance mejor = null;
+        int mejorPuntaje = int.MinValue;
+        foreach (var n in npcs)
+        {
+            if (n.Dead || n.MaestroUser > 0) continue;
+            int puntaje = Random.Shared.Next(25);
+            if (n.IsBot) puntaje += 40;
+            else if (n.Hostil) puntaje += 20;
+            foreach (var o in npcs)
+                if (o != n && !o.Dead && Math.Abs(o.X - n.X) <= 10 && Math.Abs(o.Y - n.Y) <= 8) puntaje += 3;
+            for (int i = 1; i <= UserListManager.LastUser; i++)
+            {
+                var u = UserListManager.UserList[i];
+                if (u?.flags.UserLogged == true && u.Pos.Map == map
+                    && Math.Abs(u.Pos.X - n.X) <= 10 && Math.Abs(u.Pos.Y - n.Y) <= 8) puntaje += 30;
+            }
+            if (n == actual) puntaje -= 60;   // rotar de verdad, no volver al mismo
+            if (puntaje > mejorPuntaje) { mejorPuntaje = puntaje; mejor = n; }
+        }
+        return mejor;
+    }
+
+    /// <summary>Tour: cambia de NPC dentro del mismo mapa cada tanto, o si el actual se fue del mapa.</summary>
+    private static void RotarEnMapa(Connection conn, ObsNpc obs)
+    {
+        double now = Environment.TickCount64 / 1000.0;
+        var actual = obs.Bot;
+        bool seFue = actual != null && !actual.Dead && actual.Map != obs.MapaFijo;
+        if (!seFue && now - obs.UltimoCambioAt < TOUR_ROTACION) return;
+        obs.UltimoCambioAt = now;
+
+        var elegido = MejorNpcDelMapa(obs.MapaFijo, actual);
+        if (elegido == null || elegido == actual) return;
+        obs.Bot = elegido;
+        obs.MapaEnviado = -1;   // recarga completa: fija de nuevo el charIndex propio en el cliente
+        obs.UltimoHP = elegido.MinHP; obs.UltimoMana = elegido.MinMana;
+        Directo(conn, c =>
+        {
+            ServerPackets.EspiaVista(c, true, (short)elegido.CharIndex, elegido.Name ?? "NPC");
+            ServerPackets.UpdateUserStatsNpc(c, elegido);
+        });
+    }
+
     /// <summary>Manda a un observador el diff de lo que hay alrededor de su bot.</summary>
     private static void RefrescarObs(Connection conn, ObsNpc obs)
     {
@@ -797,7 +879,9 @@ public static class Espia
         // nada esa vez, y el único camino cuando NO está en modo automático).
         if (bot == null || bot.Dead)
         {
-            var reemplazo = MejorBotDeAccion(null);
+            // En el tour de stream el reemplazo sale del MISMO mapa: saltar a un bot de guerra
+            // de otro lado rompería el recorrido que maneja el cliente.
+            var reemplazo = obs.MapaFijo > 0 ? MejorNpcDelMapa(obs.MapaFijo, null) : MejorBotDeAccion(null);
             if (reemplazo != null)
             {
                 obs.Bot = reemplazo;
@@ -837,16 +921,18 @@ public static class Espia
                 // mapa nuevo — el cliente lo usa para el minimapa y el nombre de la zona. Sin esto
                 // el bot cruzaba de mapa y el minimapa se quedaba mostrando el anterior.
                 var (sgx, sgy) = Continuous.Pos(bot.Map, bot.X, bot.Y);
-                Directo(conn, c => ServerPackets.SeamlessCross(c, (short)bot.Map, sgx, sgy));
+                bool botMapPk = MapLoader.Get(bot.Map)?.Info.Pk ?? true;
+                Directo(conn, c => ServerPackets.SeamlessCross(c, (short)bot.Map, sgx, sgy, botMapPk));
             }
             else
             {
                 obs.VistosChars.Clear();
                 obs.Pos.Clear();
                 obs.Apar.Clear();
+                bool botMapPk = MapLoader.Get(bot.Map)?.Info.Pk ?? true;
                 Directo(conn, c =>
                 {
-                    ServerPackets.ChangeMap(c, (short)bot.Map, 0);
+                    ServerPackets.ChangeMap(c, (short)bot.Map, 0, botMapPk);
                     ServerPackets.UserCharIndexInServer(c, (short)bot.CharIndex);
                 });
             }

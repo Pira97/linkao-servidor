@@ -266,6 +266,52 @@ public static class GuildManager
     }
 
     /// <summary>
+    /// (NUEVO, no VB6) Reemplaza el nombre de un personaje en TODOS los clanes. Lo usa
+    /// CharRename: los archivos de guild guardan a la gente por nombre, así que renombrar sin
+    /// esto dejaba al personaje como miembro fantasma de su clan.
+    ///
+    /// Barre los clanes enteros, no solo el del personaje: se puede ser miembro de uno y
+    /// aspirante de varios otros al mismo tiempo (SolicitarIngreso escribe en el clan al que se
+    /// postula). Toca los cuatro lugares donde vive un nombre de persona:
+    ///   · Members (su clan)  · Aspirantes (cualquiera)  · Founder/Leader  · Votos/YaVotaron
+    /// Las elecciones son estado en memoria y no se persisten, pero igual se arreglan para que
+    /// un renombre en medio de una votación no regale un voto extra ni pierda el emitido.
+    ///
+    /// Solo graba los archivos de los clanes que realmente cambiaron.
+    /// </summary>
+    public static void RenombrarMiembro(string viejo, string nuevo)
+    {
+        EnsureLoaded();
+        // Members y Aspirantes se guardan siempre en MAYÚSCULA (ver LoadMembers/AgregarMiembro);
+        // Founder y Leader, en cambio, con el casing original del personaje.
+        string vUp = viejo.ToUpperInvariant(), nUp = nuevo.ToUpperInvariant();
+
+        foreach (var g in _byNumber.Values)
+        {
+            bool tocoMiembros = false, tocoAspirantes = false, tocoInfo = false;
+
+            int i = g.Members.FindIndex(m => string.Equals(m, viejo, StringComparison.OrdinalIgnoreCase));
+            if (i >= 0) { g.Members[i] = nUp; tocoMiembros = true; }
+
+            int a = g.Aspirantes.FindIndex(m => string.Equals(m, viejo, StringComparison.OrdinalIgnoreCase));
+            if (a >= 0) { g.Aspirantes[a] = nUp; tocoAspirantes = true; }
+
+            if (string.Equals(g.Founder, viejo, StringComparison.OrdinalIgnoreCase)) { g.Founder = nuevo; tocoInfo = true; }
+            if (string.Equals(g.Leader, viejo, StringComparison.OrdinalIgnoreCase)) { g.Leader = nuevo; tocoInfo = true; }
+
+            if (g.EnElecciones)
+            {
+                if (g.YaVotaron.Remove(vUp)) g.YaVotaron.Add(nUp);
+                if (g.Votos.Remove(vUp, out int votos)) g.Votos[nUp] = votos;
+            }
+
+            if (tocoMiembros) SaveMembers(g);
+            if (tocoAspirantes) SaveAspirantes(g);
+            if (tocoInfo) { SaveInfo(); }
+        }
+    }
+
+    /// <summary>
     /// CloseGuild (Protocol.bas:19537) 1:1. El líder disuelve su clan (debe ser el único miembro):
     /// borra los archivos del clan, lo quita de memoria/guildsinfo, limpia el GUILD del .chr del líder.
     /// Las validaciones de muerto/zona segura las hace el caller. error = motivo del fallo.

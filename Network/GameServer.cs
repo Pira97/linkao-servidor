@@ -18,6 +18,13 @@ public sealed class GameServer
     private const double AutosaveSeconds = 300.0;  // autosave cada 5 minutos
     private const double BackupSeconds = 1800.0;    // snapshot de backup cada 30 minutos
 
+    // El cliente manda un Ping cada 5s mientras esté logueado (outgoing.js PING_INTERVAL_MS), así
+    // que 20s sin recibir NADA (4 pings perdidos) es un corte silencioso, no lag. Sin esto, una
+    // wifi que se cae sin FIN/RST en un área vacía del mapa (Fix C3 no se activa porque nadie le
+    // encola nada) deja la cuenta "conectada" indefinidamente, y el que reconecta choca contra
+    // "Ya hay un usuario conectado" para siempre.
+    private const double IdleTimeoutSeconds = 20.0;
+
     private readonly int _port;
     private readonly TcpListener _listener;
     private readonly ConcurrentDictionary<int, Connection> _connections = new();
@@ -101,6 +108,18 @@ public sealed class GameServer
         }
     }
 
+    /// <summary>Cierra las conexiones sin actividad hace más de IdleTimeoutSeconds. Solo llama a
+    /// Close(): el cleanup real (liberar slot, AntiDos, CloseUser, Espia.Olvidar, etc.) pasa por
+    /// el mismo camino de siempre porque Close() rompe el socket, ReceiveLoopAsync sale con
+    /// excepción y su finally dispara OnClose — no hay lógica duplicada acá.</summary>
+    private void CerrarConexionesZombie()
+    {
+        var ahora = DateTime.UtcNow;
+        foreach (var conn in _connections.Values)
+            if ((ahora - conn.LastActivityUtc).TotalSeconds > IdleTimeoutSeconds)
+                conn.Close();
+    }
+
     private void OnClose(Connection conn)
     {
         _connections.TryRemove(conn.UserIndex, out _);
@@ -141,18 +160,25 @@ public sealed class GameServer
                         // NextAiAt (~376ms); el muestreo fino (10ms) evita que el redondeo del ciclo
                         // empuje el intervalo muy por encima de los 376ms de animación del cliente.
                         Game.NpcManager.TickAI();
+                        Game.Escenas.Tick();   // guiones de cine: pasos y diálogos por tiempo
 
                         // Evento "El Barrido": criatura de movimiento rápido (su propio ritmo lo limita
                         // MOVE_INTERVAL_MS internamente; el muestreo fino de ~10ms le da fluidez).
                         Game.BarridoEvento.Tick();
 
+                        // Casteos diferidos: el hechizo que llegó unos ms antes de que venciera su
+                        // intervalo sale acá, apenas vence (ver Combat.LanzarHechizoEn). Tiene que
+                        // ser en el ciclo fino de 10ms, no en el tick de 1/seg.
+                        Game.Combat.TickCastDiferido();
+
                         // Veneno/incineración a ~500ms (50×10ms): el VB6 los aplica cada IntervaloVeneno=500ms (2Hz).
                         if (tick % 50 == 0) Game.GameTimer.TickEfectosDanio();
 
                         // Respawn de NPCs, efectos de estado y eventos ~1 vez por segundo (100×10ms).
-                        if (++tick >= 100) { tick = 0; Game.NpcManager.TickRespawns(); Game.Combat.TickEstados(); Game.Events.Tick(); Game.GameTimer.Tick(); Game.Clima.Tick(); Game.DayNightCycle.Tick(); Game.InframundoEvento.Verificar(); Game.ArenaEvento.Procesar(); Game.TorneoEvento.Procesar(); Game.Subastas.CheckExpirations();
+                        if (++tick >= 100) { tick = 0; Game.NpcManager.TickRespawns(); Game.Combat.TickEstados(); Game.Events.Tick(); Game.GameTimer.Tick(); Game.Clima.Tick(); Game.DayNightCycle.Tick(); Game.InframundoEvento.Verificar(); Game.PoderDioses.Tick(); Game.ArenaEvento.Procesar(); Game.TorneoEvento.Procesar(); Game.Subastas.CheckExpirations();
                             Game.Centinela.CallUserAttention();
-                            if (++_minuteCounter >= 60) { _minuteCounter = 0; Game.Centinela.PasarMinuto(); Game.WorldCleanup.PasarMinuto(); Game.Jail.PurgarPenas(); } }
+                            if (++_minuteCounter >= 60) { _minuteCounter = 0; Game.Centinela.PasarMinuto(); Game.WorldCleanup.PasarMinuto(); Game.Jail.PurgarPenas(); }
+                            CerrarConexionesZombie(); }
 
                         // Autosave / backup: se toma el snapshot (copia de memoria, sin I/O) bajo el
                         // lock para tener una foto consistente del mundo, igual que antes — pero el
@@ -185,8 +211,15 @@ public sealed class GameServer
                     // ciclo en que se genera, no en el siguiente. Antes, hacer flush primero metía
                     // 0-10ms de latencia variable en la LLEGADA al cliente (jitter) aunque el move
                     // se generara a 375ms regular → micro-gaps irregulares en la caminata.
+                    // En paralelo, no secuencial: un foreach+await uno por uno hace que UNA conexión
+                    // lenta (wifi mala, buffer lleno) retrase el Pong de TODOS los demás jugadores
+                    // hasta que termine la suya. FlushAsync además tiene su propio timeout, así que
+                    // esto no puede colgarse esperando a una sola conexión zombie.
+                    var flushTasks = new List<Task>(_connections.Count);
                     foreach (var conn in _connections.Values)
-                        await conn.FlushAsync();
+                        flushTasks.Add(conn.FlushAsync());
+                    if (flushTasks.Count > 0)
+                        await Task.WhenAll(flushTasks);
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex)

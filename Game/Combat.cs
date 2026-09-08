@@ -1,4 +1,4 @@
-﻿using ServidorCS.Network;
+using ServidorCS.Network;
 
 namespace ServidorCS.Game;
 
@@ -86,16 +86,42 @@ public static class Combat
         // [[b4_usersbymap]] atk.Map == u.Pos.Map siempre (HeadtoPos solo mueve X/Y, no el mapa):
         // antes recorría LastUser completo, ahora solo los usuarios de ese mapa.
         int targetUserIdx = -1;
+        // Candidato de respaldo: el que ACABA de salir del tile (ver la compensación de lag
+        // abajo). Sólo se usa si nadie está parado ahí de verdad.
+        int rezagadoIdx = -1;
+        long ventanaLag = BalanceData.Combate.MeleeLagMs;
+        long ahoraMs = Environment.TickCount64;
         foreach (int i in UsersByMapIndex.Get(atk.Map))
         {
             var t = UserListManager.UserList[i];
-            if (i != userIndex && t.flags.UserLogged && t.flags.Muerto == 0
-                && t.Pos.Map == atk.Map && t.Pos.X == atk.X && t.Pos.Y == atk.Y)
-            {
-                targetUserIdx = i;
-                break;
-            }
+            if (i == userIndex || !t.flags.UserLogged || t.flags.Muerto != 0 || t.Pos.Map != atk.Map) continue;
+            if (t.Pos.X == atk.X && t.Pos.Y == atk.Y) { targetUserIdx = i; break; }
+            // COMPENSACIÓN DE LAG DEL CUERPO A CUERPO (agregado, no VB6).
+            //
+            // El server resuelve el golpe por el tile EXACTO de enfrente, contra la posición que
+            // él tiene. Pero el atacante no ve esa posición: ve la de hace un rato. El atraso
+            // tiene dos partes, las dos medidas y documentadas en el cliente:
+            //   · ~0,65 tiles de colchón de animación (FASE_OBJETIVO_NET, el buffer que hace
+            //     que el remoto camine parejo pese al jitter) ≈ 122 ms a 188 ms/tile
+            //   · la subida del paquete hasta el VPS, ~28 ms de ida con el túnel de Cloudflare
+            // O sea que contra alguien que camina, lo que ves está hasta medio tile atrasado, y
+            // al CRUZARSE los dos atrasos se suman en la misma dirección: le pegabas a donde lo
+            // veías y el server contestaba que ahí no había nadie. Ese era el "golpe al aire".
+            //
+            // El arreglo es el estándar de lag compensation: si el tile está vacío, vale el que
+            // estuvo ahí hace menos de MeleeLagMs. Es exactamente lo que el atacante vio, así
+            // que no regala nada — sólo deja de castigarlo por el colchón que el cliente necesita
+            // para dibujar liso. Es UN tile de rastro y una ventana corta: no alcanza para
+            // pegarle a alguien que ya se fue de verdad.
+            //
+            // El clic con hechizos/flechas no necesita esto: ahí el cliente manda el tile y ya lo
+            // corrige por su lado (tileVigenteDe en game.html). El melee no manda tile.
+            if (rezagadoIdx < 0 && ventanaLag > 0
+                && t.PosPrev.Map == atk.Map && t.PosPrev.X == atk.X && t.PosPrev.Y == atk.Y
+                && ahoraMs - t.PosPrevMs <= ventanaLag)
+                rezagadoIdx = i;
         }
+        if (targetUserIdx < 0) targetUserIdx = rezagadoIdx;
 
         if (targetUserIdx > 0)
         {
@@ -148,7 +174,8 @@ public static class Combat
         if (u.Clase == 2 && EsStaff(u.Invent.WeaponEqpObjIndex)) dano = DanoGolpeBaculo(u.Stats.ELV);
 
         // VB6: sistema de apuñalamiento (Asesino/Ladrón con daga, 20% prob)
-        if (PuedeApunalar(u))
+        bool apunalo = PuedeApunalar(u);
+        if (apunalo)
         {
             dano = DanoApunalamiento(u, dano);
             ServerPackets.ConsoleMsg(u.Conn, $"¡Has apuñalado a la criatura por {dano}!", 2); // font 2 = rojo + tab Combate
@@ -156,8 +183,10 @@ public static class Combat
         }
         // Número de daño azul sobre el NPC + "Golpeás por X con <arma>" en consola (lo arma el cliente).
         DanoInfligidoFisico(u, npc.CharIndex, dano);
-        // Sonido de impacto cuerpo a cuerpo (SistemaCombate.bas UsuarioAtacaNpc: SND_IMPACTO=86).
-        BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.IMPACTO);
+        // Sonido de impacto cuerpo a cuerpo: el golpe propio de la clase (ver
+        // SonidoImpactoMelee), y si apuñaló, el de la apuñalada en su lugar — no los dos
+        // encimados, que suena a eco.
+        BroadcastWaveArea(npc.Map, npc.X, npc.Y, SonidoImpactoMelee(u, apunalo));
         // Espada Mata Dragones golpeando a un dragón: sonido especial (149).
         {
             int armaIdx = u.Invent.WeaponEqpObjIndex > 0 ? u.Invent.WeaponEqpObjIndex
@@ -174,6 +203,7 @@ public static class Combat
         // EXP proporcional al daño (CalcularDarExp), antes de restar HP (cap interno a MinHP).
         CalcularDarExp(userIndex, npc, dano);
         npc.MinHP -= dano;
+        NotificarVidaNpc(u, npc);
 
         if (npc.MinHP > 0) return;
 
@@ -325,6 +355,13 @@ public static class Combat
     /// siguen usando modo 3 para no nombrar un arma que no se usó.</summary>
     private static void DanoInfligidoFisico(User dealer, short victimaChar, int dano)
     { if (dealer?.Conn != null) ServerPackets.ChatOverHeadLocale(dealer.Conn, dealer.Char.CharIndex, dano, 5); }
+    /// <summary>Barra de vida debajo del NPC (NUEVO, no VB6): después de restarle HP, le avisa
+    /// SOLO al que le pegó cuánta vida le queda. Si murió no se manda nada: el char se borra.</summary>
+    private static void NotificarVidaNpc(User u, NpcManager.NpcInstance npc)
+    {
+        if (u?.Conn == null || npc.MinHP <= 0 || npc.MaxHP <= 0) return;
+        ServerPackets.NpcHp(u.Conn, (short)npc.CharIndex, npc.MinHP, npc.MaxHP);
+    }
     private static void DanoRecibido(User victima, short atacanteChar, int dano)
     {
         DesmontarPorDanio(victima);
@@ -398,7 +435,29 @@ public static class Combat
     /// Arco con munición → flecha animada(GrhIndex munición) + Snd1 + FX(Snd2) + IMPACTO3 al atacante,
     /// más efectos especiales por tipo de flecha. Arrojadiza(proyectil 2) → arma animada + sonido 68.
     /// Cualquier otra arma (o sin arma) → IMPACTO cuerpo a cuerpo.</summary>
-    private static void ProyectilSonidoPvp(User atk, User vic)
+    /// <summary>
+    /// ¿Este golpe es de artes marciales del Bardo? Clase Bardo(6) con nudillos equipados o
+    /// a mano limpia (sin arma), que son los dos casos que paralizan. Con arma normal, no.
+    /// Se usa para darle al Bardo sus sonidos propios (BARDO_GOLPE/BARDO_PARALIZA) en vez
+    /// de los genéricos IMPACTO(86)/PARALIZAR(203).
+    /// </summary>
+    private static bool GolpeMarcialBardo(User u) =>
+        u.Clase == 6 && (u.Invent.NudiEqpObjIndex > 0 || u.Invent.WeaponEqpObjIndex == 0);
+
+    /// <summary>
+    /// Sonido de impacto cuerpo a cuerpo. Tres escalones, del más específico al más general:
+    ///   1. el Bardo en artes marciales (depende del arma, no sólo de la clase),
+    ///   2. el golpe propio de la clase (Sounds.GolpeDeClase),
+    ///   3. GOLPE_GENERICO para las clases que no tienen uno.
+    /// El IMPACTO(86) del VB6 ya no se usa para golpes de usuario — sigue siendo el de los
+    /// NPC (SND_IMPACTO_NPC), que no tienen clase.
+    /// </summary>
+    private static short SonidoImpactoMelee(User u, bool apunalo = false) =>
+        apunalo && u.Clase == 4 ? Sounds.APUNALA_ASESINO
+        : GolpeMarcialBardo(u) ? Sounds.BARDO_GOLPE
+        : Sounds.GolpeDeClase(u.Clase);
+
+    private static void ProyectilSonidoPvp(User atk, User vic, bool apunalo = false)
     {
         int map = atk.Pos.Map;
         short arma = atk.Invent.WeaponEqpObjIndex;
@@ -408,16 +467,24 @@ public static class Combat
             BroadcastArrow(map, vic.Pos.Map, atk.Char.CharIndex, vic.Char.CharIndex, atk.Pos.X, atk.Pos.Y, vic.Pos.X, vic.Pos.Y, (short)ammo.GrhIndex);
             if (ammo.Snd1 > 0) BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, (short)ammo.Snd1);
             if (ammo.Snd2 > 0) BroadcastFX(map, vic.Char.CharIndex, (short)ammo.Snd2, 0);
+            // La flecha al SALIR (el archivo se llama "Flecha caza antes de llegar"). Va por
+            // arma y no por clase: el que dispara un arco tira una flecha sea cual sea su
+            // clase, y el sonido es de la flecha. Se oye en el área, no sólo el tirador.
+            BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, Sounds.FLECHA_ARCO);
             if (atk.Conn != null) ServerPackets.PlayWave(atk.Conn, Sounds.IMPACTO3, (byte)atk.Pos.X, (byte)atk.Pos.Y);
             AplicarFlechaEspecialUsuario(atk, vic, atk.Invent.MunicionEqpObjIndex, ammo.Name);
         }
         else if (arma > 0 && ObjData.Get(arma).Proyectil == 2)
         {
             BroadcastArrow(map, vic.Pos.Map, atk.Char.CharIndex, vic.Char.CharIndex, atk.Pos.X, atk.Pos.Y, vic.Pos.X, vic.Pos.Y, (short)ObjData.Get(arma).GrhIndex);
-            BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, Sounds.ARROJADIZA);
+            // Proyectil 2 son las dos cosas: la daga/shuriken arrojadiza y el arpón del
+            // Mercenario. Del ObjIndex no sale cuál es, así que decide la clase — que es
+            // exactamente lo que dice el nombre del archivo ("Mercenario arpon").
+            BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y,
+                atk.Clase == 17 ? Sounds.ARPON_MERCENARIO : Sounds.ARROJADIZA);
         }
         else
-            BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, Sounds.IMPACTO);
+            BroadcastWaveArea(map, atk.Pos.X, atk.Pos.Y, SonidoImpactoMelee(atk, apunalo));
     }
 
     /// <summary>Efectos especiales de flechas al impactar a un usuario (UsuarioAtacaUsuario:1557-1611):
@@ -469,7 +536,7 @@ public static class Combat
         {
             BroadcastWaveArea(map, vic.Pos.X, vic.Pos.Y, 16);
             BroadcastFX(map, vic.Char.CharIndex, 8, 0);
-            if (vic.flags.Paralizado == 0)
+            if (vic.flags.Paralizado == 0 && vic.flags.Inmovilizado == 0) // toggle ParalizeOK: ver GolpeOrbeUsuario
             {
                 vic.flags.Paralizado = 1; vic.flags.Inmovilizado = 1;
                 vic.flags.ParalisisExpira = Environment.TickCount64 / 1000.0 + DuracionParalisisUsuario;
@@ -525,6 +592,7 @@ public static class Combat
         NpcManager.ReaccionInmediataANuevoAtacante(npc, u, prevTarget); // [[FIX4]] no esperar al próximo TickAI
         CalcularDarExp(userIndex, npc, dano);
         npc.MinHP -= dano;
+        NotificarVidaNpc(u, npc);
         if (npc.MinHP <= 0) MatarNpc(u, npc);
     }
 
@@ -586,13 +654,34 @@ public static class Combat
         if (u.Clase != 4 && u.Clase != 5) return false;            // Asesino o Ladrón
         if (u.Invent.WeaponEqpObjIndex <= 0) return false;          // requiere daga equipada (no manos)
         if (!DagasApunalar.Contains(u.Invent.WeaponEqpObjIndex)) return false; // debe ser una daga
-        return _rng.Next(1, 101) <= 20;                             // 20% fijo
+        return _rng.Next(1, 101) <= BalanceData.Combate.ApunalarProb;
     }
 
-    /// <summary>VB6: daño apuñalamiento = base * (0.25 + skill/100*1.25), mínimo 5. Sube skill.</summary>
+    // Daga+3 (OBJ366) pega más fuerte al apuñalar que el resto de las dagas: multiplicador propio,
+    // no el general de Balance.dat, a pedido puntual (23-sep). 57/213 → x0.57 a skill 0, x2.70 a
+    // skill 100 (vs. x2.06 del resto); con su base PVE (75-80, +7% Fuerza/Agilidad al máximo) pega
+    // ~216-229 a skill 100.
+    private const int DAGA_MAS_3 = 366;
+    private const double ApunalarBaseDaga3 = 57.0;
+    private const double ApunalarPorSkillDaga3 = 213.0;
+
+    /// <summary>
+    /// Daño del apuñalamiento: REEMPLAZA al golpe normal (no se suma).
+    ///   daño = base * (ApunalarBase + ApunalarPorSkill * skill/100) / 100
+    /// Con los valores históricos (25/125) daba x0.25 a skill 0 y x1.50 a skill 100, o sea que por
+    /// debajo de 60 de skill apuñalar pegaba MENOS que un golpe común. Ahora los tres números salen
+    /// de Balance.dat [COMBATE] y se recargan en caliente con /reloadbalance. Mínimo 5. Sube skill.
+    /// </summary>
     private static int DanoApunalamiento(User u, int danoBase)
     {
-        double porc = 0.25 + (u.Stats.UserSkills[SkillApunalar] / 100.0) * 1.25;
+        double porc;
+        if (u.Invent.WeaponEqpObjIndex == DAGA_MAS_3)
+            porc = (ApunalarBaseDaga3 + ApunalarPorSkillDaga3 * (u.Stats.UserSkills[SkillApunalar] / 100.0)) / 100.0;
+        else
+        {
+            var cc = BalanceData.Combate;
+            porc = (cc.ApunalarBase + cc.ApunalarPorSkill * (u.Stats.UserSkills[SkillApunalar] / 100.0)) / 100.0;
+        }
         int dano = Math.Max(5, (int)(danoBase * porc));
         Skills.SubirSkill(u.id, SkillApunalar); // SubirSkill 1:1 (Trabajo.bas:2105)
         return dano;
@@ -620,7 +709,9 @@ public static class Combat
 
         NpcManager.ParalizarNpc(npc, 60.0); // VB6 Contadores.Paralisis = 60 segundos
         // BUG-012: sonido correcto del hechizo Paralizar (antes 17, genérico).
-        BroadcastWaveArea(npc.Map, npc.X, npc.Y, Sounds.PARALIZAR);
+        // El Bardo tiene sonido propio de parálisis por artes marciales.
+        BroadcastWaveArea(npc.Map, npc.X, npc.Y,
+            u.Clase == 6 ? Sounds.BARDO_PARALIZA : Sounds.GOLPE_PARALIZA);
         BroadcastFX(npc.Map, npc.CharIndex, 8, 0);              // VB6 CreateFX(8)
         if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "Tu golpe ha paralizado a la criatura.", 1);
     }
@@ -709,6 +800,9 @@ public static class Combat
         }
 
         u.SpellPendiente = slot;
+        // Elegir otro hechizo descarta un casteo diferido que todavía no salió: si no, el hechizo
+        // viejo se dispararía al objetivo viejo justo después de haber cambiado de hechizo.
+        u.CastDiferidoHasta = 0; u.CastDiferidoLimite = 0;
 
         var sp = SpellData.Get(hIndex);
         // Arma mágica (Tipo 10) se auto-lanza sobre uno mismo, igual que los AutoLanzar.
@@ -728,10 +822,21 @@ public static class Combat
     /// Lanza el hechizo pendiente sobre el tile (x,y). Lo invoca WorkLeftClick con skill=Magia.
     /// Aplica cura/daño según Hechizos.dat, descuenta maná, muestra FX y maneja muerte.
     /// </summary>
-    public static void LanzarHechizoEn(int userIndex, byte x, byte y, int targetMap = 0)
+    /// <summary>
+    /// Cuánto se acepta esperar a que venza el intervalo antes de tirar el casteo. Cubre de sobra
+    /// medio viaje de red malo hacia el VPS; más que esto ya no es "llegó unos ms antes", es un
+    /// cliente spameando y se descarta como siempre.
+    /// </summary>
+    private const long MAX_ESPERA_CAST_DIFERIDO = 400;
+
+    /// <param name="permitirDiferir">false cuando ya viene del reintento diferido: no abre un
+    /// deadline nuevo, sólo puede reprogramarse dentro del que ya tenía el clic original.</param>
+    public static void LanzarHechizoEn(int userIndex, byte x, byte y, int targetMap = 0, bool permitirDiferir = true)
     {
         var u = UserListManager.UserList[userIndex];
         if (u.flags.Muerto == 1) return;
+        // Un clic nuevo manda sobre cualquier casteo diferido viejo: se pisa, no se acumulan.
+        if (permitirDiferir) { u.CastDiferidoHasta = 0; u.CastDiferidoLimite = 0; }
         if (u.SpellPendiente == 0) return;
         // Mundo continuo: el objetivo del hechizo puede estar en el mapa vecino. targetMap>0 → ese mapa;
         // 0 → mapa actual (clásico). Se usa para el lookup del NPC/usuario apuntado (abajo).
@@ -739,9 +844,45 @@ public static class Combat
 
         // Intervalos de casteo (HandleWorkLeftClick magia, Protocol.bas:3649 1:1):
         //  arco read-only, GolpeMagia (¿pasó el tiempo desde el último golpe?); si no, cae al cooldown de casteo.
-        if (!Intervals.PuedeUsarArco(u, actualizar: false)) return;
-        if (!Intervals.PuedeGolpeMagia(u))
-            if (!Intervals.PuedeLanzarSpell(u)) return;
+        //
+        // EL CASTEO QUE LLEGA UNOS MS ANTES YA NO SE PIERDE. El cliente arranca su cooldown cuando
+        // MANDA el clic y el server lo cuenta cuando lo RECIBE, así que la ventana del server
+        // siempre cierra medio viaje de red después. Al lanzar el segundo hechizo rápido, el clic
+        // caía dentro de esa diferencia y este `return` lo descartaba EN SILENCIO (sin mensaje, y
+        // encima dejando SpellPendiente puesto): ése es el "el segundo hechizo no sale". Compensarlo
+        // desde el cliente con un margen fijo no alcanza — anda mientras el ping se porta y vuelve
+        // a fallar apenas sube o se pone irregular, que es por qué el arreglo "duraba un rato".
+        // Acá se arregla donde está el desfasaje: si falta poco, el casteo espera a que venza el
+        // intervalo y sale solo (TickCastDiferido). No es una cola ni un auto-cast: es UN clic que
+        // el jugador ya hizo, esperando milisegundos, y una sola vez.
+        if (!Intervals.PuedeUsarArco(u, actualizar: false)
+            || (!Intervals.PuedeGolpeMagia(u) && !Intervals.PuedeLanzarSpell(u)))
+        {
+            long ahora = Intervals.NowMs;
+            long falta = Intervals.FaltaParaCastear(u);
+            // Deadline absoluto del clic: en el primer intento se abre acá, y el reintento hereda
+            // el que ya estaba. Así la espera total nunca supera MAX_ESPERA_CAST_DIFERIDO por más
+            // veces que se reprograme, y un cliente spameando sigue viendo el mismo descarte.
+            long limite = permitirDiferir ? ahora + MAX_ESPERA_CAST_DIFERIDO : u.CastDiferidoLimite;
+            if (falta <= 0 || ahora + falta > limite)
+            {
+                // Llegó MUY temprano: no es jitter, es que el cliente está usando otro número.
+                // Se le reenvía el intervalo real (compare-and-send: si ya lo tiene, no sale
+                // ningún paquete, así que esto no se puede usar para inducir tráfico). Sin esta
+                // red, un cliente que por lo que sea se perdió el IntervalConfig queda casteando
+                // contra un gate equivocado para siempre y cada casteo muere en silencio.
+                if (permitirDiferir) Intervals.SyncConfig(u);
+                return;
+            }
+            // Reintento que llegó unos ms corto (redondeo del ciclo de 10ms, jitter del reloj): se
+            // reprograma en vez de tirarse. Antes se descartaba, y ése era el hechizo perdido.
+            // SpellPendiente NO se consumió todavía (el return de arriba pasa antes), así que
+            // alcanza con anotar el objetivo y cuándo reintentar.
+            u.CastDiferidoHasta = ahora + falta;
+            u.CastDiferidoLimite = limite;
+            u.CastDiferidoX = x; u.CastDiferidoY = y; u.CastDiferidoMap = targetMap;
+            return;
+        }
 
         short hechizoIndex = u.Stats.UserHechizos[u.SpellPendiente];
         u.SpellPendiente = 0; // consumir la intención
@@ -845,6 +986,7 @@ public static class Combat
             if (!esGm)
             {
                 if (u.Stats.MinMAN < sp.ManaRequerido) { ServerPackets.ConsoleMsg(u.Conn, "No tienes suficiente maná.", 1); return; }
+                RevelarOculto(u); // lanzar un hechizo saca del oculto, igual que atacar
                 u.Stats.MinMAN = (short)Math.Max(0, u.Stats.MinMAN - sp.ManaRequerido);
                 ServerPackets.UpdateMana(u.Conn, u.Stats.MinMAN);
                 if (sp.StaRequerido > 0)
@@ -862,10 +1004,14 @@ public static class Combat
             return;
         }
 
+        bool ofensivo = sp.SubeHP == 2 || sp.Paraliza || sp.Inmoviliza || sp.Ceguera
+                        || sp.Envenena > 0 || sp.Incinera || sp.Estupidez
+                        || sp.SubeFuerza == 2 || sp.SubeAgilidad == 2;  // debuffs de atributo
+
         // Determinar objetivo en (x,y). Incluye al propio usuario: hacer clic sobre uno mismo
         // es un target válido para hechizos de soporte (VB6 LookatTile no excluye al propio).
         var npc = NpcManager.NpcAt(spellMap, x, y);
-        int targetUser = UserAt(spellMap, x, y, -1);
+        int targetUser = UserAt(spellMap, x, y, -1, userIndex, ofensivo);
 
         // VB6 HandleCastSpell (Protocol.bas:2825): SOLO los hechizos AutoLanzar apuntan a uno
         // mismo automáticamente. El resto requiere apuntar a un objetivo (no se auto-lanzan).
@@ -888,21 +1034,17 @@ public static class Combat
             ServerPackets.ConsoleMsg(u.Conn, "No puedes lanzar hechizos sobre un personaje muerto.", 1);
             return;
         }
-        // BUG-017: caso inverso — Resucitar/Resurrección sobre alguien VIVO. UserAt (arriba)
-        // no devuelve casters muertos, así que targetUser>0 acá significa que hay un vivo en
-        // el tile: sin este corte, el maná/stamina se descontaban más abajo (línea ~971,
-        // común a todo hechizo) y el casteo no hacía nada — la rama sp.Revivir (que sí
-        // revisa Muerto==1) usa UserAtIncluyeMuerto aparte y simplemente no encontraba a
-        // nadie para revivir. Se gastaba el hechizo sin avisar y sin efecto.
-        if (sp.Revivir && targetUser > 0)
+        // BUG-017: caso inverso — Resucitar/Resurrección sobre alguien VIVO. OJO: UserAt (arriba)
+        // NO filtra por Muerto (solo UserLogged+posición), así que targetUser>0 acá puede ser
+        // tanto un vivo como un muerto parado en el tile — hay que confirmar Muerto==0 antes de
+        // bloquear, si no el corte disparaba también sobre cadáveres reales (BUG reportado:
+        // "el personaje no está muerto" al resucitar a alguien que sí lo estaba).
+        if (sp.Revivir && targetUser > 0 && UserListManager.UserList[targetUser].flags.Muerto == 0)
         {
             ServerPackets.ConsoleMsg(u.Conn, "Ese personaje no está muerto.", 1);
             return;
         }
 
-        bool ofensivo = sp.SubeHP == 2 || sp.Paraliza || sp.Inmoviliza || sp.Ceguera
-                        || sp.Envenena > 0 || sp.Incinera || sp.Estupidez
-                        || sp.SubeFuerza == 2 || sp.SubeAgilidad == 2;  // debuffs de atributo
         // Sin objetivo: AutoLanzar (uno mismo), área (terreno) e invocación/revelar.
         // Sin objetivo: auto, área, invocación, revelar, detectar invisibles (12) y familiar (6).
         bool sinObjetivo = sp.AutoLanzar || sp.HechizoDeArea || sp.Invoca == 1 || sp.RemueveInvis
@@ -919,6 +1061,14 @@ public static class Combat
         if (ofensivo && targetUser == userIndex)
         {
             ServerPackets.ConsoleMsg(u.Conn, "No puedes lanzarte ese hechizo a ti mismo.", 1);
+            return;
+        }
+
+        // Dardo Arcano (121) y Centella Menor (122): hechizos de iniciación, SOLO contra NPCs. Su curva de
+        // leveo no baja con el nivel y en PvP pegaría más que los hechizos grandes. ANTES de gastar maná.
+        if (!esGm && (hechizoIndex == 121 || hechizoIndex == 122) && targetUser > 0)
+        {
+            ServerPackets.ConsoleMsg(u.Conn, $"{sp.Nombre} sólo se puede usar contra criaturas, no contra otros jugadores.", 1);
             return;
         }
 
@@ -954,7 +1104,13 @@ public static class Combat
 
         // RemoverParalisis sólo se puede lanzar sobre un objetivo que esté paralizado/inmovilizado.
         // Si el objetivo no lo está, no se castea (ni se gasta maná ni salen las palabras mágicas).
-        if (sp.RemoverParalisis && !sp.Paraliza && !sp.Inmoviliza)
+        // OJO: sólo aplica a hechizos PURAMENTE removedores (Remover Parálisis). Sanar también trae
+        // RemoverParalisis=1, pero además cura HP/veneno/estupidez: tiene que poder lanzarse sobre
+        // alguien que no está paralizado, igual que la versión poción (ver el chequeo de 2818).
+        bool soloRemueveParalisis = sp.RemoverParalisis && !sp.Paraliza && !sp.Inmoviliza
+            && sp.SubeHP == 0 && sp.SubeSta == 0 && !sp.Sanacion && !sp.CuraVeneno
+            && !sp.RemoverEstupidez && !sp.Desencantar && !sp.Revivir && !sp.Invisibilidad;
+        if (soloRemueveParalisis)
         {
             bool objetivoParalizado;
             if (npc != null)
@@ -1056,6 +1212,8 @@ public static class Combat
             }
         }
 
+        // Lanzar un hechizo saca del oculto, igual que atacar (salvo Anillo de las Sombras).
+        RevelarOculto(u);
         // Descontar maná y stamina (los GMs no consumen) y mostrar palabras mágicas.
         if (!esGm)
         {
@@ -1111,7 +1269,10 @@ public static class Combat
         // "martillos"): usan sólo la partícula 18 de casteo sobre el lanzador (más abajo).
         if (sp.Particle > 0 && !sp.Revivir)
         {
-            if (sp.HechizoDeArea)
+            // Revelar/detectar invisibles (Adivinación, Tipo 12) tampoco tiene objetivo: la partícula
+            // va en el tile clickeado, no sobre el lanzador (antes caía en la rama de char y, sin
+            // target, se dibujaba sobre quien lo conjuraba).
+            if (sp.HechizoDeArea || sp.Tipo == 12 || sp.RemueveInvis)
             {
                 // OJO: en el cliente time=0 significa "BORRAR la partícula del tile" (incl. las
                 // ambientales del mapa). Para una partícula transitoria de hechizo, mandar una
@@ -1162,12 +1323,17 @@ public static class Combat
                 dano += BonusBaculoMagico(u);
                 double multRazaPve = BalanceData.RazaDanoMagicoPve(u.raza);
                 if (multRazaPve != 1) dano = (int)(dano * multRazaPve);
-                dano = ClampDanoMagico(sp, dano, pve: true);
+                if (u.Clase == 2 && BalanceData.Combate.MagoDanoMagico != 1) dano = (int)(dano * BalanceData.Combate.MagoDanoMagico);
+                // Rango fijo por clase (DanoFijoClase en Hechizos.dat) reemplaza todo lo anterior y el piso/techo.
+                if (SpellData.TryDanoFijoClase(sp, u.Clase, _rng, out int fijoPve)) dano = fijoPve;
+                else dano = ClampDanoMagico(sp, dano, pve: true);
+                dano = PoderDioses.AplicarDanoANpc(u, dano); // después del techo: el bonus lo pasa
                 if (dano < 0) dano = 0;
                 BroadcastFX(u.Pos.Map, npc.CharIndex, fx, fxLoops);
                 CalcularDarExp(userIndex, npc, dano); // exp proporcional por daño mágico
                 npc.MinHP -= dano;
                 DanoInfligido(u, npc.CharIndex, dano);
+                NotificarVidaNpc(u, npc);
                 int prevTarget = npc.TargetUser; // [[FIX4]] target antes de provocar, para detectar "atacante nuevo"
                 NpcManager.ProvocarNpc(npc, u);   // aggro por hechizo
                 NpcManager.ReaccionInmediataANuevoAtacante(npc, u, prevTarget); // [[FIX4]] no esperar al próximo TickAI
@@ -1187,12 +1353,17 @@ public static class Combat
                 dano += BonusBaculoMagico(u);
                 double multRazaPvp = BalanceData.RazaDanoMagicoPvp(u.raza);
                 if (multRazaPvp != 1) dano = (int)(dano * multRazaPvp);
+                if (u.Clase == 2 && BalanceData.Combate.MagoDanoMagico != 1) dano = (int)(dano * BalanceData.Combate.MagoDanoMagico);
+                // Rango fijo por clase (DanoFijoClase en Hechizos.dat): reemplaza el cálculo del lanzador;
+                // las defensas del objetivo (resistencia, raza, anillo) siguen restando igual.
+                bool fijoPvp = SpellData.TryDanoFijoClase(sp, u.Clase, _rng, out int danoFijoPvp);
+                if (fijoPvp) dano = danoFijoPvp;
                 dano -= ResistenciaMagicaEquipo(tgt);
                 dano -= BalanceData.RazaResistenciaMagica(tgt.raza);
                 // Anillo de Defensa Mágica (708, DisminuyeGolpe(7)): reduce el daño mágico en CuantoAumento%.
                 int redPct = Inventory.CuantoEfectoMagico(tgt, 7);
                 if (redPct > 0) dano -= dano * redPct / 100;
-                dano = ClampDanoMagico(sp, dano, pve: false);
+                if (!fijoPvp) dano = ClampDanoMagico(sp, dano, pve: false);
                 if (dano < 0) dano = 0;
                 Skills.SubirSkill(targetUser, 9); // eSkill.Resistencia = 9
                 BroadcastFX(u.Pos.Map, tgt.Char.CharIndex, fx, fxLoops);
@@ -1311,8 +1482,10 @@ public static class Combat
                     u.ResucitandoTarget = vm;
                     u.ResucitandoFull = esResurreccion;
                     u.ResucitandoX = (byte)u.Pos.X; u.ResucitandoY = (byte)u.Pos.Y; // posición para detectar movimiento
-                    // Partícula 18 sobre el LANZADOR mientras castea (vida larga; se borra al terminar/cancelar).
-                    BroadcastParticulaChar(u.Pos.Map, u.Char.CharIndex, 18, -1);
+                    // Partícula 60 "Resucitar - Casteo" (particles.ini) sobre el LANZADOR mientras
+                    // castea (vida larga; se borra al terminar/cancelar). Antes usaba la 18
+                    // ("Green Ruin", sin relación con Resucitar) por error.
+                    BroadcastParticulaChar(u.Pos.Map, u.Char.CharIndex, 60, -1);
                     ServerPackets.ConsoleMsg(u.Conn, $"Comienzas a revivir a {tgt.Name}... no te muevas.", 1);
                 }
             }
@@ -1377,7 +1550,10 @@ public static class Combat
             }
             // No re-aplicar si ya está paralizado o inmovilizado: ParalizeOK es un toggle
             // en el cliente, reenviarlo lo desactivaría y dejaría el estado desincronizado.
-            if ((sp.Paraliza || sp.Inmoviliza) && tgt.flags.Paralizado == 0 && tgt.flags.Inmovilizado == 0)
+            // tgt.Muerto: un hechizo que daña Y paraliza puede haberlo matado más arriba (UserDie ya
+            // limpió la parálisis); volver a aplicarla acá lo deja paralizado de fantasma.
+            if ((sp.Paraliza || sp.Inmoviliza) && tgt.flags.Muerto == 0
+                && tgt.flags.Paralizado == 0 && tgt.flags.Inmovilizado == 0)
             {
                 if (sp.Paraliza)
                 {
@@ -1448,7 +1624,8 @@ public static class Combat
                 // Invisibilidad mágica (NO la del skill Ocultarse): no se revela al atacar, sólo
                 // termina cuando se acaba el tiempo (30s). Por eso usa flags.Invisible (no Oculto).
                 tgt.flags.Invisible = 1;
-                tgt.flags.InvisibleExpira = ahora + 30.0;
+                tgt.flags.InvisibleExpira = ahora + INVISIBLE_DURACION_SEG;
+                EnviarTimerEstado(tgt, TIMER_INVISIBLE, tgt.flags.InvisibleExpira);
                 if (tgt.Conn != null) ServerPackets.ConsoleMsg(tgt.Conn, "Te has vuelto invisible.", 1);
             }
             // VB6 InfoHechizo (modHechizos.bas:2149): el FX del hechizo se ve SIEMPRE sobre el
@@ -1665,8 +1842,10 @@ public static class Combat
         if (atk.PartyId > 0 && vic.PartyId > 0 && atk.PartyId == vic.PartyId)
         { Msg("No puedes atacar a un miembro de tu grupo."); return false; }
 
-        // Facciones aliadas: no se atacan entre sí (Imperiales: ciuda+armada; Legión: repu+milicia).
+        // Facciones aliadas: no se atacan entre sí (Imperiales: ciuda+armada; Legión: repu+milicia;
+        // Exordio: exordiano+heraldo — enemigos de todos los demás, pero no entre ellos).
         bool aliados =
+            (Facciones.EsDelExordio(vic) && Facciones.EsDelExordio(atk)) ||
             (Facciones.EsRepu(vic) && Facciones.EsRepu(atk)) ||
             (Facciones.EsMili(vic) && Facciones.EsMili(atk)) ||
             (Facciones.EsRepu(vic) && Facciones.EsMili(atk)) ||
@@ -1736,6 +1915,12 @@ public static class Combat
         {
             if (Facciones.EsCaos(t)) return true;
             Msg("No puedes ayudar a miembros de otras facciones. Solo a legionarios del caos.");
+            return false;
+        }
+        if (Facciones.EsDelExordio(u))
+        {
+            if (Facciones.EsDelExordio(t)) return true;
+            Msg("No puedes ayudar a miembros de otras facciones. Solo a exordianos y heraldos del Exordio.");
             return false;
         }
         if (Facciones.EsRene(u))
@@ -1871,6 +2056,7 @@ public static class Combat
             NpcManager.ReaccionInmediataANuevoAtacante(n, caster, prevTarget); // [[FIX4]] no esperar al próximo TickAI
             CalcularDarExp(caster.id, n, m);           // exp proporcional al daño de área
             n.MinHP -= m;
+            NotificarVidaNpc(caster, n);
             if (n.MinHP <= 0) MatarNpc(caster, n);
         }
     }
@@ -1975,6 +2161,34 @@ public static class Combat
     public const double DURACION_PARALISIS_NPC_HECHIZO = 8.0;
 
     public const short FX_INVOCAR_MASCOTA = 200;
+
+    // Efecto de KILL sobre el que acaba de matar a un jugador (otro jugador o un bot).
+    // Es la partícula "Muerte Kill <facción>" de particles.ini (387-392), con el color de la
+    // facción del MATADOR. Venían en el pack y nadie las mandaba. El Exordio y los bots sin
+    // facción no tienen la suya: usan la de Renegado (blanca, la más neutra).
+    public const short PART_KILL_RENEGADO = 387, PART_KILL_CIUDADANO = 388, PART_KILL_ARMADA = 389,
+                       PART_KILL_REPUBLICANO = 390, PART_KILL_MILICIA = 391, PART_KILL_CAOS = 392;
+    // Vida del emisor en ticks del motor de partículas (~72 por segundo): ~1 s de chorro.
+    private const int VIDA_PART_KILL = 70;
+
+    /// <summary>Partícula "Muerte Kill" según el Faccion.Status del matador.</summary>
+    public static short ParticulaKillDeFaccion(byte status) => status switch
+    {
+        Facciones.CIUDADANO   => PART_KILL_CIUDADANO,
+        Facciones.REPUBLICANO => PART_KILL_REPUBLICANO,
+        Facciones.ARMADA      => PART_KILL_ARMADA,
+        Facciones.MILICIA     => PART_KILL_MILICIA,
+        Facciones.CAOS        => PART_KILL_CAOS,
+        _ => PART_KILL_RENEGADO,
+    };
+
+    /// <summary>Partícula de kill sobre el MATADOR (jugador o bot), visible para todo el que lo vea.
+    /// Va sobre el que mata y no sobre el cadáver: es el festejo del que hizo la kill.</summary>
+    public static void EfectoKill(int map, short charIndex, short particula)
+    {
+        if (charIndex <= 0 || particula <= 0) return;
+        BroadcastParticulaChar(map, charIndex, particula, VIDA_PART_KILL);
+    }
 
     /// <summary>
     /// Invoca/reinvoca la mascota compañera PERSISTENTE del jugador (elemental/Ely para Mago-
@@ -2328,6 +2542,33 @@ public static class Combat
     /// así que hace falta recorrer a TODOS los logueados igual que antes. Sólo el loop INTERNO de la
     /// rama de invisibilidad (más abajo) se migró, porque ESE sí difunde solo al mapa del usuario.
     /// </summary>
+    /// <summary>
+    /// Dispara los casteos diferidos cuyo intervalo ya venció (ver LanzarHechizoEn). Corre en cada
+    /// ciclo del loop principal (~10ms) porque la espera se mide en milisegundos: con la cadencia
+    /// de 1/seg de GameTimer el hechizo saldría tardísimo y el jugador ya habría vuelto a clickear.
+    /// Es un recorrido de comparaciones sobre los logueados, sin trabajo por usuario salvo cuando
+    /// hay uno esperando — que es lo normal: casi siempre no hay ninguno.
+    /// </summary>
+    public static void TickCastDiferido()
+    {
+        // Mismo reloj que usa Intervals para decidir los gates: agendar con Environment.TickCount64
+        // (que salta de a ~15.6ms) hacía vencer la espera antes que el intervalo real y el reintento
+        // se perdía, de forma intermitente según el momento del clic.
+        long ahora = Intervals.NowMs;
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var u = UserListManager.UserList[i];
+            if (u == null || u.CastDiferidoHasta == 0) continue;
+            if (!u.flags.UserLogged || u.Conn == null) { u.CastDiferidoHasta = 0; u.CastDiferidoLimite = 0; continue; }
+            if (ahora < u.CastDiferidoHasta) continue;
+            byte x = u.CastDiferidoX, y = u.CastDiferidoY;
+            int map = u.CastDiferidoMap;
+            u.CastDiferidoHasta = 0;
+            // permitirDiferir:false — puede reprogramarse dentro de CastDiferidoLimite, nunca más allá.
+            LanzarHechizoEn(i, x, y, map, permitirDiferir: false);
+        }
+    }
+
     public static void TickEstados()
     {
         ProcesarRemocionParticulas(); // borra partículas de char vencidas (hechizos de guerrero, etc.)
@@ -2394,6 +2635,29 @@ public static class Combat
                 {
                     u.flags.Maldecido = 0;
                     ServerPackets.ConsoleMsg(u.Conn, "La maldición se ha desvanecido.", 1);
+                }
+            }
+
+            // Ocultarse (skill): vence a los OCULTO_DURACION_SEG. Con el Anillo de las Sombras
+            // puesto el oculto es permanente: se descarta el vencimiento y sigue oculto.
+            if (u.flags.OcultoExpira > 0 && ahora >= u.flags.OcultoExpira)
+            {
+                u.flags.OcultoExpira = 0;
+                EnviarTimerEstado(u, TIMER_OCULTO, 0);
+                if (u.flags.Oculto == 1 && !Inventory.TieneEfectoMagico(u, 13))
+                {
+                    u.flags.Oculto = 0;
+                    // Si además está invisible por hechizo, sigue sin verse: no se lo muestra.
+                    if (u.flags.Invisible == 0)
+                    {
+                        foreach (int p in UsersByMapIndex.Get(u.Pos.Map))
+                        {
+                            var o = UserListManager.UserList[p];
+                            if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+                                ServerPackets.SetInvisible(o.Conn, u.Char.CharIndex, false);
+                        }
+                    }
+                    ServerPackets.ConsoleMsg(u.Conn, "Dejaste de estar oculto.", 1);
                 }
             }
 
@@ -2544,6 +2808,7 @@ public static class Combat
                 break;
         }
 
+        RevelarOculto(u); // lanzar un hechizo saca del oculto, igual que atacar
         // Maná + palabras mágicas + skill (común a todos).
         if (!esGm)
         {
@@ -2645,7 +2910,8 @@ public static class Combat
                     ServerPackets.SetInvisible(o.Conn, u.Char.CharIndex, true);
             }
             u.flags.Invisible = 1;
-            u.flags.InvisibleExpira = ahora + 30.0; // misma duración que el hechizo (30s)
+            u.flags.InvisibleExpira = ahora + INVISIBLE_DURACION_SEG; // misma duración que el hechizo (30s)
+            EnviarTimerEstado(u, TIMER_INVISIBLE, u.flags.InvisibleExpira);
             ServerPackets.ConsoleMsg(u.Conn, "Te has vuelto invisible.", 1);
             casteado = true;
         }
@@ -2740,6 +3006,7 @@ public static class Combat
         if (u.PortalTime > 0)
         { ServerPackets.ConsoleMsg(u.Conn, "Ya estás creando un portal.", 1); return; }
 
+        RevelarOculto(u); // lanzar un hechizo saca del oculto, igual que atacar
         // Consumo (HandleHechizoTerreno tras castear): maná, stamina, skill de Magia. Palabras mágicas.
         if (!esGm)
         {
@@ -2833,7 +3100,7 @@ public static class Combat
     /// balance sin castear nada de verdad. targetResistencia/targetRazaResistencia solo aplican en PvP.</summary>
     public static DamageBreakdown PreviewSpellDamage(in SpellData.Spell sp, int magnitud, int casterLevel,
         int casterINT, int staffBonus, bool isPvP, int casterRaza, int targetResistencia = 0,
-        int targetRazaResistencia = 0, int targetAnilloReduccionPct = 0)
+        int targetRazaResistencia = 0, int targetAnilloReduccionPct = 0, int casterClase = 0)
     {
         var b = new DamageBreakdown { BaseMagnitud = magnitud };
         int dano = magnitud + Porcentaje(magnitud, EscalaNivelHechizo(sp, pve: !isPvP) * casterLevel);
@@ -2846,6 +3113,7 @@ public static class Combat
         double razaMult = isPvP ? BalanceData.RazaDanoMagicoPvp(casterRaza) : BalanceData.RazaDanoMagicoPve(casterRaza);
         b.RazaMult = razaMult;
         if (razaMult != 1) dano = (int)(dano * razaMult);
+        if (casterClase == 2 && BalanceData.Combate.MagoDanoMagico != 1) dano = (int)(dano * BalanceData.Combate.MagoDanoMagico);
         if (isPvP)
         {
             dano -= targetResistencia;
@@ -2996,16 +3264,28 @@ public static class Combat
         }
     }
 
-    /// <summary>Devuelve el userIndex parado en (map,x,y) distinto de 'excepto', o 0.</summary>
-    private static int UserAt(int map, int x, int y, int excepto)
+    /// <summary>Devuelve el userIndex parado en (map,x,y) distinto de 'excepto', o 0. Si hay
+    /// más de un usuario apilado en el mismo tile y se pasa 'lanzador', prioriza al que el
+    /// lanzador podría legítimamente afectar según la naturaleza del hechizo (PuedeAtacar si
+    /// es ofensivo, PuedeAyudar si es de soporte) en vez de quedarse con el primero que
+    /// aparezca en UsersByMapIndex — antes, si el aliado paralizado tenía a otro jugador
+    /// parado encima (mismo tile), Remover Parálisis podía resolver al de encima y fallar con
+    /// "no puedes ayudar a miembros de otra facción" aunque el aliado sí fuera un target válido.
+    /// Si ninguno de los apilados pasa el chequeo, cae en el primero (mismo comportamiento que
+    /// antes) para no cambiar el mensaje de error cuando de verdad no hay nadie válido ahí.</summary>
+    private static int UserAt(int map, int x, int y, int excepto, int lanzador = 0, bool ofensivo = false)
     {
+        int primero = 0;
         foreach (int i in UsersByMapIndex.Get(map))
         {
             if (i == excepto) continue;
             var u = UserListManager.UserList[i];
-            if (u.flags.UserLogged && u.Pos.Map == map && u.Pos.X == x && u.Pos.Y == y) return i;
+            if (!u.flags.UserLogged || u.Pos.Map != map || u.Pos.X != x || u.Pos.Y != y) continue;
+            if (primero == 0) primero = i;
+            if (lanzador > 0 && (ofensivo ? PuedeAtacar(lanzador, i, notificar: false) : PuedeAyudar(lanzador, i, notificar: false)))
+                return i;
         }
-        return 0;
+        return primero;
     }
 
     /// <summary>Mata un NPC y da la recompensa al usuario (reutilizado por melee y magia).</summary>
@@ -3031,6 +3311,12 @@ public static class Combat
         AreaVisibility.OnNpcRemoved(npc);
         CharIndexPool.Free(npc.CharIndex);   // el respawn pedirá un índice nuevo (puede ser éste reciclado)
         ServerPackets.ConsoleMsg(u.Conn, $"¡Has matado a {npc.Name}!", 2); // font 2 = rojo + tab Combate
+        // Contador de criaturas matadas. Existía en UserModel y se guardaba en el .chr
+        // ([MUERTES] NpcsMuertes), pero NADIE lo incrementaba: la ventana de Estadísticas y el
+        // ranking mostraban 0 siempre. Las mascotas de otro jugador no cuentan (MaestroUser>0):
+        // matar la mascota de alguien es PvP, no cacería. Es short: se clava en el tope en vez
+        // de dar la vuelta a negativo.
+        if (npc.MaestroUser <= 0 && u.Stats.NPCsMuertos < short.MaxValue) u.Stats.NPCsMuertos++;
         // La EXP se reparte por golpe en CalcularDarExp (pool ExpCount); el golpe mortal ya entregó
         // la porción final. NO dar exp acá para no duplicar (VB6: MuereNpc no re-otorga el total).
         if (npc.GiveGLD > 0)
@@ -3039,6 +3325,7 @@ public static class Combat
             // oro personal (poción SubTipo 11) sobre el oro soltado por el NPC.
             int gldBase = (int)(npc.GiveGLD * BalanceData.Exp.TasaGlobalOro * BattlePass.OroMult(u) * Math.Max(1, Events.OroMultiplicador));
             int oroMult = ScrollOroMultActivo(u);
+            gldBase = PoderDioses.AplicarOro(u, gldBase); // Poder de los Dioses: +50% al portador
             int gld = gldBase * oroMult;
             u.Stats.GLD += gld;
             // VB6 NPCTirarOro: WriteLocaleMsg(29) "¡Has ganado #1 monedas de oro!". Se manda como
@@ -3143,6 +3430,7 @@ public static class Combat
         // (VB6 Protocol.bas:2290 / SistemaCombate.bas:1121: TieneAnilloSombras).
         if (Inventory.TieneEfectoMagico(u, 13)) return;
         u.flags.Oculto = 0;
+        u.flags.OcultoExpira = 0;
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
@@ -3150,6 +3438,31 @@ public static class Combat
                 ServerPackets.SetInvisible(o.Conn, u.Char.CharIndex, false);
         }
         ServerPackets.ConsoleMsg(u.Conn, "¡Has vuelto a ser visible!", 1);
+    }
+
+    // Contadores de estado sobre la cabeza (paquete EstadoTimer, NUEVO no VB6).
+    public const byte TIMER_OCULTO = 1, TIMER_INVISIBLE = 2;
+    public const double OCULTO_DURACION_SEG = 10.0;
+    private const double INVISIBLE_DURACION_SEG = 30.0;
+
+    /// <summary>Le manda al propio jugador cuánto le queda de un estado (expira = instante de
+    /// vencimiento). Vencimiento 0 o infinito (espionaje GM) → 0 segundos, que borra la barra.</summary>
+    public static void EnviarTimerEstado(User u, byte tipo, double expira)
+    {
+        if (u?.Conn == null) return;
+        double ahora = Environment.TickCount64 / 1000.0;
+        int segs = expira <= 0 || expira == double.MaxValue ? 0 : (int)Math.Ceiling(expira - ahora);
+        byte total = (byte)(tipo == TIMER_OCULTO ? OCULTO_DURACION_SEG : INVISIBLE_DURACION_SEG);
+        ServerPackets.EstadoTimer(u.Conn, u.Char.CharIndex, tipo, (byte)Math.Clamp(segs, 0, 255), total);
+    }
+
+    /// <summary>Tras recrear el char propio (cambio de mapa) el cliente perdió las barras: se reenvían.</summary>
+    public static void ReenviarTimersEstado(User u)
+    {
+        if (u.flags.Oculto == 1 && u.flags.OcultoExpira > 0)
+            EnviarTimerEstado(u, TIMER_OCULTO, u.flags.OcultoExpira);
+        if (u.flags.Invisible == 1 && u.flags.InvisibleExpira > 0)
+            EnviarTimerEstado(u, TIMER_INVISIBLE, u.flags.InvisibleExpira);
     }
 
     /// <summary>Un NPC golpea a un usuario (lo llama la IA). Aplica daño y puede matarlo.</summary>
@@ -3220,8 +3533,7 @@ public static class Combat
 
         if (u.Invent.EscudoEqpObjIndex > 0) userEvasion += poderEvasionEscudo;
 
-        var cc = BalanceData.Combate;
-        long probExito = Math.Max(cc.ImpactoMin, Math.Min(cc.ImpactoMax, cc.ImpactoBase + (npcPoderAtaque - userEvasion)));
+        long probExito = ProbImpacto(npcPoderAtaque, userEvasion);
         bool impacto = _rng.Next(1, 101) <= probExito;
 
         if (u.Invent.EscudoEqpObjIndex > 0 && !impacto && (skillDefensa + skillTacticas) > 0)
@@ -3229,7 +3541,7 @@ public static class Combat
             long probRechazo = Math.Max(10, Math.Min(90, 100L * skillDefensa / (skillDefensa + skillTacticas)));
             if (_rng.Next(1, 101) <= probRechazo)
             {
-                const short SND_ESCUDO = 37;
+                const short SND_ESCUDO = Sounds.ESCUDO_BLOQUEO;   // era 37 (el wav del VB6)
                 if (u.Conn != null)
                 {
                     ServerPackets.PlayWave(u.Conn, SND_ESCUDO, (byte)u.Pos.X, (byte)u.Pos.Y);
@@ -3898,7 +4210,7 @@ public static class Combat
 
         // VB6 (UsuarioAtacaUsuario:1539): proyectil visual + sonido según arma. Arco con munición →
         // flecha animada + Snd1 + FX(Snd2) + IMPACTO3; arrojadiza → arma animada + 68; resto → IMPACTO.
-        ProyectilSonidoPvp(atk, vic);
+        ProyectilSonidoPvp(atk, vic, apunalo);
 
         vic.Stats.MinHP = (short)Math.Max(0, vic.Stats.MinHP - dano);
         ServerPackets.UpdateHP(vic.Conn, vic.Stats.MinHP);
@@ -3922,7 +4234,10 @@ public static class Combat
         // El Guerrero NO paraliza jugadores, solo NPCs (ver GolpeParalizaNpc).
         // Con nudillos equipados → prob = Wrestling/2 (50% máx); a mano limpia (sin arma ni nudillos)
         // → prob = Wrestling/3 (33% máx). No aplica con arma normal equipada.
-        if ((atk.Clase == 8 || atk.Clase == 6) && vic.flags.Paralizado == 0)
+        // El chequeo incluye Inmovilizado: si ya estaba inmovilizado (telaraña), el cliente ya está
+        // en estado "paralizado" y ParalizeOK es un TOGGLE — reenviarlo lo sacaría, y al morir el
+        // ParalizeOK de UserDie lo volvería a poner, dejándolo paralizado como fantasma.
+        if ((atk.Clase == 8 || atk.Clase == 6) && vic.flags.Paralizado == 0 && vic.flags.Inmovilizado == 0)
         {
             int prob = -1;
             if (atk.Invent.NudiEqpObjIndex > 0) prob = atk.Stats.UserSkills[SK_WRESTLING] / 2;
@@ -3933,6 +4248,9 @@ public static class Combat
                 vic.flags.ParalisisExpira = Environment.TickCount64 / 1000.0 + DuracionParalisisUsuario;
                 // A diferencia de la parálisis mágica, la parálisis por nudillos SÍ muestra FX sobre el usuario.
                 BroadcastFX(vic.Pos.Map, vic.Char.CharIndex, 8, 0);
+                // Sonido propio del Bardo al paralizar con nudillos/manos (el Gladiador no lo tiene).
+                if (atk.Clase == 6)
+                    BroadcastWaveArea(vic.Pos.Map, vic.Pos.X, vic.Pos.Y, Sounds.BARDO_PARALIZA);
                 if (vic.Conn != null) { ServerPackets.ParalizeOK(vic.Conn); ServerPackets.ConsoleMsg(vic.Conn, $"¡{atk.Name} te ha paralizado!", 4); }
                 DifundirParalisisUsuario(vic, DuracionParalisisUsuario);
                 ServerPackets.ConsoleMsg(atk.Conn, $"¡Has paralizado a {vic.Name}!", 1);
@@ -3965,6 +4283,7 @@ public static class Combat
         u.flags.Muerto = 1;
         u.flags.MuertesUsuario++;                  // contador de muertes (se ve en stats)
         u.flags.KillStreak = 0;                     // muere → se corta su racha de kills
+        PoderDioses.OnUsuarioMuere(userIndex);      // sin asesino (el traspaso al asesino ya pasó en ContarMuerte)
 
         // AFK: al morir se limpia el estado de inactividad (quita la partícula 238 si la tenía y
         // reinicia el contador), si no quedaba el flag en true y la partícula no volvía a aparecer.
@@ -4090,7 +4409,7 @@ public static class Combat
             else
             {
                 u.Char.body = 8;
-                u.Char.Head = 500;
+                u.Char.Head = 621;
             }
             u.Char.WeaponAnim = 0;
             u.Char.ShieldAnim = 0;
@@ -4353,9 +4672,9 @@ public static class Combat
         u.ResucitandoHasta = 0; u.ResucitandoTarget = 0;
     }
 
-    /// <summary>Borra (remove) la partícula 18 de casteo sobre el lanzador.</summary>
+    /// <summary>Borra (remove) la partícula 60 "Resucitar - Casteo" sobre el lanzador.</summary>
     private static void QuitarParticulaResucitar(User u)
-        => BroadcastParticulaChar(u.Pos.Map, u.Char.CharIndex, 18, 0, remove: true);
+        => BroadcastParticulaChar(u.Pos.Map, u.Char.CharIndex, 60, 0, remove: true);
 
     /// <param name="hpForzado">HP con el que revive; -1 = vida completa (MaxHP).</param>
     public static void Resucitar(int userIndex, int hpForzado = -1)
@@ -4459,14 +4778,20 @@ public static class Combat
         {
             danoBase = _rng.Next(120, 171);
             if (u.Stats.ExtraHIT > 0) danoBase += u.Stats.ExtraHIT;
-            return danoBase;
+            return pve ? PoderDioses.AplicarDanoANpc(u, danoBase) : danoBase;
         }
         // Munición: si el arma es un arco (Proyectil=1) y hay una flecha equipada, el daño lo define
         // SÓLO la flecha (el arco no interfiere). Así "Flecha Paralizante", "Flecha de Plata", etc.
         // pegan exactamente su MinHIT/MaxHIT y cambiar de arco no altera el daño del disparo.
         if (u.Invent.WeaponEqpObjIndex > 0 && u.Invent.MunicionEqpObjIndex > 0
             && ObjData.Get(u.Invent.WeaponEqpObjIndex).Proyectil == 1)
-            danoBase = DanoArma(ObjData.Get(u.Invent.MunicionEqpObjIndex), pve);
+        {
+            // Flechas especiales (explosiva, eléctrica, incendiaria, envenenante, paralizantes):
+            // su daño completo es exclusivo del Cazador (10); cualquier otra clase pega 40-60.
+            var ammo = ObjData.Get(u.Invent.MunicionEqpObjIndex);
+            bool especial = ammo.SubTipo > 0 || u.Invent.MunicionEqpObjIndex == 1889;
+            danoBase = especial && u.Clase != 10 ? _rng.Next(40, 61) : DanoArma(ammo, pve);
+        }
         else if (u.Invent.WeaponEqpObjIndex > 0) danoBase = DanoArma(ObjData.Get(u.Invent.WeaponEqpObjIndex), pve);
         else if (u.Invent.NudiEqpObjIndex > 0) danoBase = DanoArma(ObjData.Get(u.Invent.NudiEqpObjIndex), pve);
         else danoBase = RangoOMin(u.Stats.MinHIT, u.Stats.MaxHIT);
@@ -4487,7 +4812,7 @@ public static class Combat
         if (u.Stats.UserAtributos[1] >= MAXATRIB && u.Stats.UserAtributos[2] >= MAXATRIB)
             danoBase += (int)(danoBase * BalanceData.Combate.BonusStatsMax);
 
-        return danoBase;
+        return pve ? PoderDioses.AplicarDanoANpc(u, danoBase) : danoBase; // Poder de los Dioses: sólo contra NPCs
     }
 
     /// <summary>
@@ -4512,6 +4837,8 @@ public static class Combat
         // Boost de exp personal del Battle Pass (encima del multiplicador global de evento).
         double bpExpMult = BattlePass.ExpMult(u);
         if (bpExpMult > 1.0) expaDar = (int)(expaDar * bpExpMult);
+        // Poder de los Dioses: el portador multiplica la exp de lo que él mismo daña.
+        expaDar = PoderDioses.AplicarExp(u, expaDar);
         // [[b4_usersbymap]] Antes recorría LastUser completo buscando compañeros de party; como ya
         // exige m.Pos.Map == npc.Map, restringir la búsqueda a ese mapa es exactamente equivalente
         // (cualquier candidato válido está, por definición, en ese subconjunto).
@@ -4584,6 +4911,28 @@ public static class Combat
     /// <summary>PoderEvasionEscudo (SistemaCombate.bas:121): SkillDefensa * ModEscudo * 2.</summary>
     private static long PoderEvasionEscudo(User u) => (long)(u.Stats.UserSkills[SK_DEFENSA] * BalanceData.Get(u.Clase).Escudo * 2);
 
+    /// <summary>
+    /// Probabilidad (%) de que un golpe conecte, recortada a [ImpactoMin, ImpactoMax].
+    /// VB6 (SistemaCombate.bas:1378): ProbExito = 50 + (PoderAtaque - PoderEvasion) * 0.4.
+    ///
+    /// 🔴 16-sep-2026: ese **0.4** no estaba — se hacía `ImpactoBase + (ataque - evasión)` a secas,
+    /// con peso 1. Como los poderes viven en el orden de los cientos y la curva sólo tiene 58
+    /// puntos de recorrido (40..98), cualquier diferencia de más de ~20 puntos clavaba el
+    /// resultado contra un clamp: la probabilidad era binaria, 98% o 40%, y nada en el medio.
+    /// Eso es lo que se veía como "golpe al aire" entre guerreros: dos guerreros nivel 50 con
+    /// skills al máximo dan ataque 258 contra evasión 129, pero un escudo suma 200 de golpe
+    /// (SkillDefensa × ModEscudo × 2) y lleva la evasión a 329 → 80 + (258-329) = 9 → piso, 40%.
+    /// Con el 0.4 del original la misma pelea queda en ~52% y la curva vuelve a ser gradual.
+    /// El PvE casi no se mueve: contra la evasión baja de un bicho el término sigue pasándose
+    /// de 98 y se clava en el techo igual que antes.
+    /// </summary>
+    internal static long ProbImpacto(long poderAtaque, long poderEvasion)
+    {
+        var cc = BalanceData.Combate;
+        long prob = (long)Math.Round(cc.ImpactoBase + (poderAtaque - poderEvasion) * cc.ImpactoEscala);
+        return Math.Max(cc.ImpactoMin, Math.Min(cc.ImpactoMax, prob));
+    }
+
     /// <summary>Selecciona poder de ataque + skill según el arma equipada (nudillos/proyectil/arpón/arma/puños).</summary>
     private static (long poder, int skill) PoderAtaqueUsuario(User u)
     {
@@ -4604,8 +4953,7 @@ public static class Combat
     {
         var u = UserListManager.UserList[userIndex];
         var (poder, skill) = PoderAtaqueUsuario(u);
-        var cc = BalanceData.Combate;
-        long prob = Math.Max(cc.ImpactoMin, Math.Min(cc.ImpactoMax, cc.ImpactoBase + (poder - npc.PoderEvasion)));
+        long prob = ProbImpacto(poder, npc.PoderEvasion);
         if (u.flags.SacrificioImpio) { prob = 100; u.flags.SacrificioImpio = false; ServerPackets.ConsoleMsg(u.Conn, "¡Tu Sacrificio Impío guía tu golpe!", 1); }
         bool hit = _rng.Next(1, 101) <= prob;
         if (hit) Skills.SubirSkill(userIndex, skill);
@@ -4622,7 +4970,7 @@ public static class Combat
 
         var (poder, skill) = PoderAtaqueUsuario(atk);
         var cc = BalanceData.Combate;
-        long prob = Math.Max(cc.ImpactoMin, Math.Min(cc.ImpactoMax, cc.ImpactoBase + (poder - evas)));
+        long prob = ProbImpacto(poder, evas);
         if (vic.flags.Meditando) { long pe = (long)((100 - prob) * 0.75); prob = Math.Min(cc.ImpactoMax, 100 - pe); }
         if (atk.flags.SacrificioImpio) { prob = 100; atk.flags.SacrificioImpio = false; ServerPackets.ConsoleMsg(atk.Conn, "¡Tu Sacrificio Impío guía tu golpe!", 1); }
 
@@ -4638,7 +4986,7 @@ public static class Combat
                 int prRech = Math.Max(25, Math.Min(99, 100 * sd / (sd + st)));
                 if (_rng.Next(1, 101) <= prRech)
                 {
-                    const short SND_ESCUDO = 37;
+                    const short SND_ESCUDO = Sounds.ESCUDO_BLOQUEO;   // era 37 (el wav del VB6)
                     if (vic.Conn != null) { ServerPackets.PlayWave(vic.Conn, SND_ESCUDO, (byte)vic.Pos.X, (byte)vic.Pos.Y); ServerPackets.ConsoleMsg(vic.Conn, $"¡Has rechazado el ataque de {atk.Name} con tu escudo!", 1); }
                     ServerPackets.ConsoleMsg(atk.Conn, $"¡{vic.Name} rechazó tu ataque con su escudo!", 1);
                     Skills.SubirSkill(vicIdx, SK_DEFENSA);

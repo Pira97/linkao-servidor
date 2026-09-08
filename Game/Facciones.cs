@@ -4,12 +4,17 @@ namespace ServidorCS.Game;
 
 /// <summary>
 /// Sistema de facciones (ModFacciones.bas + GameLogic.bas). Facción del jugador en
-/// User.Faccion.Status (1=Renegado, 2=Ciudadano, 3=Republicano, 4=Caos, 5=Armada, 6=Milicia).
+/// User.Faccion.Status (1=Renegado, 2=Ciudadano, 3=Republicano, 4=Caos, 5=Armada, 6=Milicia,
+/// 15=Exordiano, 16=Heraldo del Exordio).
 /// Cubre: helpers es*(), conteo de frags por facción (ContarMuerte) y enlistamiento.
 /// </summary>
 public static class Facciones
 {
     public const byte RENEGADO = 1, CIUDADANO = 2, REPUBLICANO = 3, CAOS = 4, ARMADA = 5, MILICIA = 6;
+    // El Exordio (NUEVO, 13-sep-2026) no sigue en 7/8: el Status viaja crudo como "privileges" del
+    // nick (LoginFlow.NickStatus) y el cliente lee 7-14 como staff. Enemigos de todos; su ciudad es
+    // Umbramar (CityData.CUMBRAMAR, mapa 957).
+    public const byte EXORDIANO = 15, HERALDO = 16;
     private const int LIMITE_NEWBIE = 15; // Declares.bas:224
 
     // GameLogic.bas:17-43
@@ -19,17 +24,22 @@ public static class Facciones
     public static bool EsRene(User u)   => u.Faccion.Status == RENEGADO;
     public static bool EsCiuda(User u)  => u.Faccion.Status == CIUDADANO;
     public static bool EsRepu(User u)   => u.Faccion.Status == REPUBLICANO;
-    public static bool EsFaccion(User u) => u.Faccion.Status is CAOS or ARMADA or MILICIA;
+    public static bool EsExordiano(User u) => u.Faccion.Status == EXORDIANO;
+    public static bool EsHeraldo(User u)   => u.Faccion.Status == HERALDO;
+    /// <summary>Bando del Exordio completo (alineación + ejército), como ciuda+armada para el Imperio.</summary>
+    public static bool EsDelExordio(User u) => u.Faccion.Status is EXORDIANO or HERALDO;
+    public static bool EsFaccion(User u) => u.Faccion.Status is CAOS or ARMADA or MILICIA or HERALDO;
     public static bool EsNewbie(User u) => u.Stats.ELV <= LIMITE_NEWBIE;
 
     public const byte CDUNGEON_NEWBIE = 6; // eCiudad
 
     /// <summary>Ciudad de la facción del jugador: imperiales (Ciudadano/Armada) → Nix,
-    /// republicanos (Republicano/Milicia) → Illiandor, renegados/caos → Rinkel.</summary>
+    /// republicanos (Republicano/Milicia) → Illiandor, renegados/caos → Rinkel, Exordio → Umbramar.</summary>
     public static byte CiudadDeFaccion(User u) => u.Faccion.Status switch
     {
         REPUBLICANO or MILICIA => cIlliandor,
         RENEGADO or CAOS => cRinkel,
+        EXORDIANO or HERALDO => CityData.CUMBRAMAR,
         _ => cNix, // Ciudadano/Armada (imperiales)
     };
 
@@ -65,8 +75,26 @@ public static class Facciones
         }
     }
 
+    // Partículas de meditación del EXORDIO, una por tramo de nivel como tiene cada facción
+    // (NUEVO, 15-sep-2026). Antes el Exordio caía en la rama `_` y compartía las genéricas
+    // 42/81/41/107 con Caos/Armada/Milicia de nivel bajo: era la única facción sin progresión
+    // propia, y encima el 41 cubría dos tramos y el 107 otros dos, así que ni el cliente podía
+    // distinguirlos.
+    //
+    // Son índices RESERVADOS, no existen en particles.ini/particles.json a propósito: el arte
+    // de la meditación exordiana es el SHADER del cliente (mini/meditaciones_fx.js), que elige
+    // dibujo por facción (Exordiano común / Heraldo) y detalle por tramo. Un cliente viejo que
+    // reciba uno de estos no rompe: ParticleSystem._make devuelve null si no conoce el stream
+    // y simplemente no dibuja nada.
+    //
+    // 420-425 porque el catálogo premium llega hasta 414 (PremiumParticles.cs) y de ahí para
+    // arriba está libre.
+    private const int EXO_1_14 = 420, EXO_15_29 = 421, EXO_30_39 = 422,
+                      EXO_40_44 = 423, EXO_45_49 = 424, EXO_50 = 425;
+
     /// <summary>ParticleToLevel (Modulo_UsUaRiOs.bas:3331) 1:1: índice de partícula de meditación según
-    /// nivel + facción. GM → 128. cambioStats=true mira el nivel+1 (al subir de nivel).</summary>
+    /// nivel + facción. GM → 128. cambioStats=true mira el nivel+1 (al subir de nivel).
+    /// El Exordio (15/16) usa sus propios índices reservados, ver EXO_*.</summary>
     public static int ParticleToLevel(User u, bool cambioStats = false)
     {
         // Partícula premium equipada (NUEVO, no VB6): pisa el cálculo por nivel/facción
@@ -75,12 +103,12 @@ public static class Facciones
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return 128;
         int nivel = u.Stats.ELV + (cambioStats ? 1 : 0);
         int st = u.Faccion.Status;
-        if (nivel < 15) return st switch { 1 => 299, 2 => 281, 3 => 289, _ => 42 };
-        if (nivel < 30) return st switch { 1 => 300, 2 => 282, 3 => 290, _ => 81 };
-        if (nivel < 40) return st switch { 1 => 303, 2 => 283, 3 => 291, 4 => 37, 5 => 38, 6 => 66, _ => 41 };
-        if (nivel < 45) return st switch { 1 => 301, 2 => 284, 3 => 292, 4 => 155, 5 => 38, 6 => 66, _ => 41 };
-        if (nivel < 50) return st switch { 1 => 302, 2 => 285, 3 => 293, 4 => 298, 5 => 287, 6 => 295, _ => 107 };
-        if (nivel == 50) return st switch { 1 => 304, 2 => 286, 3 => 294, 4 => 297, 5 => 288, 6 => 296, _ => 107 };
+        if (nivel < 15) return st switch { 1 => 299, 2 => 281, 3 => 289, EXORDIANO or HERALDO => EXO_1_14, _ => 42 };
+        if (nivel < 30) return st switch { 1 => 300, 2 => 282, 3 => 290, EXORDIANO or HERALDO => EXO_15_29, _ => 81 };
+        if (nivel < 40) return st switch { 1 => 303, 2 => 283, 3 => 291, 4 => 37, 5 => 38, 6 => 66, EXORDIANO or HERALDO => EXO_30_39, _ => 41 };
+        if (nivel < 45) return st switch { 1 => 301, 2 => 284, 3 => 292, 4 => 155, 5 => 38, 6 => 66, EXORDIANO or HERALDO => EXO_40_44, _ => 41 };
+        if (nivel < 50) return st switch { 1 => 302, 2 => 285, 3 => 293, 4 => 298, 5 => 287, 6 => 295, EXORDIANO or HERALDO => EXO_45_49, _ => 107 };
+        if (nivel == 50) return st switch { 1 => 304, 2 => 286, 3 => 294, 4 => 297, 5 => 288, 6 => 296, EXORDIANO or HERALDO => EXO_50, _ => 107 };
         return 107;
     }
 
@@ -134,11 +162,16 @@ public static class Facciones
         if (atacante == null || muerto == null) return;
 
         // Killstreak (racha de kills seguidas): suena a los cercanos del matador. Se reinicia al morir
-        // o desconectarse (UserDie/CloseUser). 1=primera sangre, 2=doble, 3=triple, >=7=racha.
+        // o desconectarse (UserDie/CloseUser). 1=primera sangre, 2=doble, 3=triple, 4+=voces DotA.
         SonarKillstreak(atacante);
+        Combat.EfectoKill(atacante.Pos.Map, atacante.Char.CharIndex,
+            Combat.ParticulaKillDeFaccion(atacante.Faccion.Status));
 
         // Evento Cacería por Facción: contar el kill por facción del atacante (VB6: en ContarMuerte).
         CaceriaEvento.SumarKill(atacanteIdx, muertoIdx);
+
+        // Poder de los Dioses: quien mata al portador se queda con el poder (antes de UserDie).
+        PoderDioses.OnUsuarioMatado(muertoIdx, atacanteIdx);
 
         // El atacante con >10 niveles de ventaja no suma frag (evita farmeo de bajos).
         if (atacante.Stats.ELV > muerto.Stats.ELV + 10)
@@ -155,6 +188,12 @@ public static class Facciones
         // Battle Pass: puntos de pase por kill legítimo en PvP (ya pasó nivel/newbie).
         BattlePass.OnPvpKill(atacanteIdx);
 
+        // Total de personajes matados. Igual que NPCsMuertos: el campo existía, se cargaba y se
+        // guardaba ([MUERTES] UserMuertes) y viajaba en MINI_STATS, pero NADIE lo incrementaba —
+        // la ventana de Estadísticas y el ranking mostraban 0 para todo el mundo. Va acá, después
+        // de los filtros de nivel y newbie, así cuenta lo mismo que los frags por facción.
+        if (atacante.Stats.UsuariosMatados < short.MaxValue) atacante.Stats.UsuariosMatados++;
+
         // Sumar al contador del atacante según la facción de la víctima.
         switch (muerto.Faccion.Status)
         {
@@ -164,21 +203,17 @@ public static class Facciones
             case ARMADA:      atacante.Faccion.ArmadaMatados++;       break;
             case MILICIA:     atacante.Faccion.MilicianosMatados++;   break;
             case CAOS:        atacante.Faccion.CaosMatados++;         break;
+            case EXORDIANO:   atacante.Faccion.ExordianosMatados++;   break;
+            case HERALDO:     atacante.Faccion.HeraldosMatados++;     break;
         }
     }
 
     /// <summary>Avanza la racha de kills del matador y difunde el sonido correspondiente a los del mapa
-    /// cercanos a su posición (262 1ª, 261 2da, 270 3ra, 175 a partir de la 7ma).</summary>
+    /// cercanos a su posición (escala en Sounds.DeRacha).</summary>
     private static void SonarKillstreak(User atacante)
     {
         atacante.flags.KillStreak++;
-        short snd = atacante.flags.KillStreak switch
-        {
-            1 => Sounds.FIRST_BLOOD,
-            2 => Sounds.DOUBLE_KILL,
-            3 => Sounds.TRIPLE_KILL,
-            _ => 0,
-        };
+        short snd = Sounds.DeRacha(atacante.flags.KillStreak);
         if (snd == 0) return;
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
@@ -293,7 +328,7 @@ public static class Facciones
         if (EsArmada(u)) { OverHead(u, npcCharIndex, "Ya perteneces a las tropas reales, ve a combatir enemigos."); return; }
         if (u.Faccion.Status != CIUDADANO)
         { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "No aceptamos seguidores de facciones enemigas, lárgate de aquí.", FONT_INFO); return; }
-        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.RepublicanosMatados + u.Faccion.MilicianosMatados;
+        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.RepublicanosMatados + u.Faccion.MilicianosMatados + MatadosExordio(u);
         if (matados < 15) { OverHead(u, npcCharIndex, $"Para unirte a nuestras fuerzas debes matar al menos 15 enemigos, solo has matado {matados}."); return; }
         if (u.Stats.ELV < 25) { OverHead(u, npcCharIndex, "Para unirte a nuestras fuerzas debes ser al menos nivel 25."); return; }
 
@@ -319,7 +354,7 @@ public static class Facciones
         if (EsMili(u)) { OverHead(u, npcCharIndex, "Ya perteneces a las tropas milicianas, ve a combatir enemigos."); return; }
         if (u.Faccion.Status != REPUBLICANO)
         { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "No aceptamos seguidores de facciones enemigas, lárgate de aquí.", FONT_INFO); return; }
-        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados;
+        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados + MatadosExordio(u);
         if (matados < 15) { OverHead(u, npcCharIndex, $"Para unirte a nuestras fuerzas debes matar al menos 15 enemigos, solo has matado {matados}."); return; }
         if (u.Stats.ELV < 25) { OverHead(u, npcCharIndex, "Para unirte a nuestras fuerzas debes ser al menos nivel 25."); return; }
 
@@ -337,7 +372,7 @@ public static class Facciones
         if (EsCaos(u)) { OverHead(u, npcCharIndex, "Ya perteneces a la horda del caos, tráeme más almas."); return; }
         if (u.Faccion.Status != RENEGADO)
         { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "No aceptamos seguidores de facciones enemigas, lárgate de aquí.", FONT_INFO); return; }
-        int matados = u.Faccion.RenegadosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados + u.Faccion.MilicianosMatados + u.Faccion.RepublicanosMatados;
+        int matados = u.Faccion.RenegadosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados + u.Faccion.MilicianosMatados + u.Faccion.RepublicanosMatados + MatadosExordio(u);
         if (matados < 30) { OverHead(u, npcCharIndex, $"Para unirte a nuestras fuerzas debes matar al menos 30 enemigos, solo has matado {matados}."); return; }
         if (u.Stats.ELV < 40) { OverHead(u, npcCharIndex, "Para unirte a nuestras fuerzas debes ser al menos nivel 40."); return; }
 
@@ -357,7 +392,53 @@ public static class Facciones
         if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "Has sido enlistado en las Hordas del Caos.", FONT_GUILD);
     }
 
+    /// <summary>EnlistarHeraldos (NUEVO, no VB6): exordiano → Heraldos del Exordio (15 frags, nivel 25,
+    /// igual que Armada/Milicia). Como son enemigos de todos, cuenta cualquier frag fuera del Exordio.
+    /// Al enlistarse recibe la vestimenta de 1ª Jerarquía de su clase (RopaHeraldo).</summary>
+    public static void EnlistarHeraldos(User u, short npcCharIndex)
+    {
+        if (EsHeraldo(u)) { OverHead(u, npcCharIndex, "Ya eres un Heraldo del Exordio. Ve y defiende el origen."); return; }
+        if (u.Faccion.Status != EXORDIANO)
+        { if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "Solo los nacidos en el Exordio pueden ser Heraldos, lárgate de aquí.", FONT_INFO); return; }
+        int matados = MatadosNoExordio(u);
+        if (matados < 15) { OverHead(u, npcCharIndex, $"Para unirte a los Heraldos debes matar al menos 15 enemigos, solo has matado {matados}."); return; }
+        if (u.Stats.ELV < 25) { OverHead(u, npcCharIndex, "Para unirte a los Heraldos debes ser al menos nivel 25."); return; }
+
+        u.Faccion.Status = HERALDO;
+        u.Faccion.Rango = 1;
+        short ropa = RopaHeraldo(u);
+        if (ropa > 0) Inventory.AddItemToInventory(u, ropa, 1);
+        BroadcastCharStatus(u);
+        OverHead(u, npcCharIndex, ropa > 0 ? "¡Bienvenido a los Heraldos del Exordio! Aquí tienes tus vestimentas."
+                                           : "¡Bienvenido a los Heraldos del Exordio! El origen te reclama.");
+        if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, "Has sido enlistado en los Heraldos del Exordio.", FONT_GUILD);
+    }
+
+    /// <summary>Frags sobre el Exordio (exordianos + heraldos): suman en los requisitos de los otros tres ejércitos.</summary>
+    private static int MatadosExordio(User u) => u.Faccion.ExordianosMatados + u.Faccion.HeraldosMatados;
+
+    /// <summary>Frags sobre todo el que no es del Exordio: los enemigos de los Heraldos.</summary>
+    private static int MatadosNoExordio(User u) => u.Faccion.RenegadosMatados + u.Faccion.CiudadanosMatados
+        + u.Faccion.RepublicanosMatados + u.Faccion.ArmadaMatados + u.Faccion.MilicianosMatados + u.Faccion.CaosMatados;
+
     private static bool EsBajo(User u) => u.raza == RAZA_ENANO || u.raza == RAZA_GNOMO;
+
+    /// <summary>Vestimenta de los Heraldos del Exordio por jerarquía (1, 2 o 3), arte de VLADEK (14-sep-2026):
+    /// OBJ2565-2582 en tres grupos de seis — magos; clérigos, bardos, druidas y nigromantes; y el resto de las
+    /// clases de combate con armadura. Dentro del grupo: 1ª alto, 1ª bajo, 2ª alto, 2ª bajo, 3ª alto, 3ª bajo.
+    /// (La túnica negra y dorada OBJ2563/2564 quedó para los guardias magos NPC.)</summary>
+    private static short RopaHeraldo(User u, int jerarquia = 1)
+    {
+        int grupo = u.Clase switch
+        {
+            MAGO => 0,
+            CLERIGO or BARDO or DRUIDA or NIGROMANTE => 1,
+            GUERRERO or ASESINO or GLADIADOR or PALADIN or CAZADOR or MERCENARIO => 2,
+            _ => -1,
+        };
+        if (grupo < 0 || jerarquia < 1 || jerarquia > 3) return 0;
+        return (short)(2565 + grupo * 6 + (jerarquia - 1) * 2 + (EsBajo(u) ? 1 : 0));
+    }
 
     /// <summary>Entrega la armadura faccionaria correspondiente al jugador (misma tabla que el
     /// enlistado por NPC: Caos 1500+, Armada 1544+, Milicia 1588/1589 según raza baja y clase) y
@@ -383,9 +464,10 @@ public static class Facciones
                 MERCENARIO => (short)(1562 + bajos), NIGROMANTE => (short)(1564 + bajos), _ => (short)0,
             },
             MILICIA => EsBajo(u) ? (short)1589 : (short)1588,
+            HERALDO => RopaHeraldo(u),
             _ => (short)0,
         };
-        if (u.Faccion.Status is CAOS or ARMADA or MILICIA) u.Faccion.Rango = 1;
+        if (u.Faccion.Status is CAOS or ARMADA or MILICIA or HERALDO) u.Faccion.Rango = 1;
         if (ropa > 0) Inventory.AddItemToInventory(u, ropa, 1);
         return ropa;
     }
@@ -403,7 +485,7 @@ public static class Facciones
     public static void RecompensaArmadaReal(User u, short npcCharIndex)
     {
         if (u.Faccion.Rango == 10) { OverHead(u, npcCharIndex, "Ya alcanzaste el rango más alto aquí."); return; }
-        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.MilicianosMatados + u.Faccion.RepublicanosMatados;
+        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.MilicianosMatados + u.Faccion.RepublicanosMatados + MatadosExordio(u);
         if (matados < MatadosArmada(u.Faccion.Rango))
         { OverHead(u, npcCharIndex, $"Mata {MatadosArmada(u.Faccion.Rango) - matados} criminales más para recibir la próxima recompensa."); return; }
 
@@ -430,7 +512,7 @@ public static class Facciones
     public static void RecompensaCaos(User u, short npcCharIndex)
     {
         if (u.Faccion.Rango == 10) { OverHead(u, npcCharIndex, "Ya alcanzaste el rango más alto aquí."); return; }
-        int matados = u.Faccion.RenegadosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados + u.Faccion.MilicianosMatados + u.Faccion.RepublicanosMatados;
+        int matados = u.Faccion.RenegadosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados + u.Faccion.MilicianosMatados + u.Faccion.RepublicanosMatados + MatadosExordio(u);
         if (matados < MatadosCaos(u.Faccion.Rango))
         { OverHead(u, npcCharIndex, $"Mata {MatadosCaos(u.Faccion.Rango) - matados} enemigos más para recibir la próxima recompensa."); return; }
 
@@ -457,7 +539,7 @@ public static class Facciones
     public static void RecompensaMilicia(User u, short npcCharIndex)
     {
         if (u.Faccion.Rango == 7) { OverHead(u, npcCharIndex, "Ya alcanzaste el rango más alto aquí."); return; }
-        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados;
+        int matados = u.Faccion.RenegadosMatados + u.Faccion.CaosMatados + u.Faccion.ArmadaMatados + u.Faccion.CiudadanosMatados + MatadosExordio(u);
         if (matados < MatadosMilicia(u.Faccion.Rango))
         { OverHead(u, npcCharIndex, $"Mata {MatadosMilicia(u.Faccion.Rango) - matados} criminales más para recibir la próxima recompensa."); return; }
 
@@ -495,6 +577,41 @@ public static class Facciones
         5 => "Soldado Raso", 6 => "Soldado Elite", 7 => "Comandante de la República", _ => "",
     };
 
+    // --- Heraldos del Exordio (NUEVO, no VB6) ---
+    // Escalera de frags del Caos (20→100) y no la de la Armada: enemigos de todos, tienen más
+    // blancos que cualquier otro ejército y con la escalera corta llegarían a rango 10 antes que nadie.
+    private static int MatadosHeraldos(int rango) => rango switch
+    { 1 => 20, 2 => 30, 3 => 40, 4 => 50, 5 => 60, 6 => 70, 7 => 80, 8 => 90, 9 => 100, _ => 0 };
+
+    /// <summary>RecompensaHeraldos: sube de rango al re-hablar con el reclutador si juntó los frags.
+    /// Máx rango 10. Jerarquías (elegido por el usuario, 14-sep-2026): la 2ª al llegar a rango 6 y la 3ª al
+    /// llegar a rango 10 — una sola vez cada una, no en cada rango como la Armada del VB6.</summary>
+    public static void RecompensaHeraldos(User u, short npcCharIndex)
+    {
+        if (u.Faccion.Rango == 10) { OverHead(u, npcCharIndex, "Ya alcanzaste el rango más alto aquí."); return; }
+        int matados = MatadosNoExordio(u);
+        if (matados < MatadosHeraldos(u.Faccion.Rango))
+        { OverHead(u, npcCharIndex, $"Mata {MatadosHeraldos(u.Faccion.Rango) - matados} enemigos más para recibir la próxima recompensa."); return; }
+
+        u.Faccion.Rango++;
+        OverHead(u, npcCharIndex, "¡Felicidades! Has subido de rango.");
+        if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, $"¡Felicidades! Has alcanzado el rango de {TituloHeraldo(u)}.", FONT_GUILD);
+        int jerarquia = u.Faccion.Rango == 6 ? 2 : u.Faccion.Rango == 10 ? 3 : 0;
+        if (jerarquia > 0)
+        {
+            short ropa = RopaHeraldo(u, jerarquia);
+            if (ropa > 0) Inventory.AddItemToInventory(u, ropa, 1);
+            if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, $"Has recibido tu vestimenta de {(jerarquia == 2 ? "Segunda" : "Tercera")} Jerarquía por tu lealtad al Exordio.", FONT_GUILD);
+        }
+    }
+
+    public static string TituloHeraldo(User u) => u.Faccion.Rango switch
+    {
+        1 => "Iniciado del Exordio", 2 => "Heraldo", 3 => "Heraldo Juramentado", 4 => "Portador del Sello",
+        5 => "Guardián del Origen", 6 => "Heraldo de la Aurora", 7 => "Custodio de la Primera Llama",
+        8 => "Caballero del Exordio", 9 => "Voz del Principio", 10 => "Primer Heraldo", _ => "",
+    };
+
     /// <summary>ExpulsarFaccionReal/Caos/Milicia (ModFacciones.bas:724-819): saca de la facción,
     /// vuelve a la facción base (Armada→Ciudadano, Caos→Renegado, Milicia→Republicano), rango 0,
     /// quita los items faccionarios.</summary>
@@ -505,6 +622,7 @@ public static class Facciones
             case ARMADA:  u.Faccion.Status = CIUDADANO;   break;
             case CAOS:    u.Faccion.Status = RENEGADO;    break;
             case MILICIA: u.Faccion.Status = REPUBLICANO; break;
+            case HERALDO: u.Faccion.Status = EXORDIANO;   break;
             default: return; // no está en facción de guerra
         }
         u.Faccion.Rango = 0;
@@ -561,7 +679,9 @@ public static class Facciones
                 }; break;
             case MILICIA:
                 ropa = EsBajo(u) ? (short)1587 : (short)1588; break;
-            default: // Renegado/Ciudadano/Republicano: sin items
+            case HERALDO: // rango 1 y sin vestimenta: todavía no hay arte de los Heraldos
+                break;
+            default: // Renegado/Ciudadano/Republicano/Exordiano: sin items
                 u.Faccion.Rango = 0;
                 BroadcastCharStatus(u);
                 if (u.Conn != null) ServerPackets.ConsoleMsg(u.Conn, $"Has sido asignado a la facción {faccion}.", FONT_GUILD);
@@ -577,7 +697,7 @@ public static class Facciones
 
     /// <summary>
     /// HandleEnlist (Protocol.bas:7413) 1:1. Valida NPC de facciones seleccionado + distancia ≤4,
-    /// y enlista según el Status del NPC (1=Armada, 2=Milicia, 4=Caos).
+    /// y enlista según el Status del NPC (1=Armada, 2=Milicia, 4=Caos, 5=Heraldos del Exordio).
     /// </summary>
     public static void Enlist(int userIndex)
     {
@@ -598,6 +718,7 @@ public static class Facciones
                 case 1: EnlistarArmadaReal(u, npc.CharIndex); break;
                 case 2: EnlistarMilicia(u, npc.CharIndex);    break;
                 case 4: EnlistarCaos(u, npc.CharIndex);       break;
+                case 5: EnlistarHeraldos(u, npc.CharIndex);   break;
             }
         });
     }
@@ -627,11 +748,15 @@ public static class Facciones
                     ExpulsarFaccion(u);
                     u.Hogar = cRinkel;
                     break;
+                case HERALDO: // Heraldo → Exordiano (sigue siendo de Umbramar)
+                    ExpulsarFaccion(u);
+                    u.Hogar = CityData.CUMBRAMAR;
+                    break;
                 case ARMADA:  // Armada → Imperial/Ciudadano (hogar imperial según mapa actual)
                     ExpulsarFaccion(u);
                     u.Hogar = u.Pos.Map switch { 1 => cUllathorpe, 34 => cNix, 59 => cBanderbill, _ => cUllathorpe };
                     break;
-                default:      // Ciudadanos/Republicanos: se vuelven renegados
+                default:      // Ciudadanos/Republicanos/Exordianos: se vuelven renegados
                     u.Faccion.Status = RENEGADO;
                     u.Hogar = cRinkel;
                     break;

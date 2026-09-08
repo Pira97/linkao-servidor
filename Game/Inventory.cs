@@ -14,6 +14,21 @@ public static class Inventory
 {
     // FLAGORO = MAX_INVENTORY_SLOTS + 1 (Declares.bas:617). El cliente Godot manda este mismo valor
     // (Constants.FLAG_ORO) al tirar oro. Antes estaba en 200 → el drop de oro nunca matcheaba.
+    /// <summary>Gladiador (eClass=8): la clase de artes marciales.</summary>
+    public const byte CLASE_GLADIADOR = 8;
+
+    /// <summary>
+    /// El Gladiador pelea SOLO con los puños: a mano limpia o con nudillos (otNudillos), nunca
+    /// con un arma (otWeapon). Es coherente con el resto de la clase — su parálisis de artes
+    /// marciales sólo sale con nudillos/manos (Combat.GolpeParalizaNpc) y su kit de nacimiento
+    /// son los nudillos newbie (NACIMIENTO.ini, seccion 8).
+    /// La regla vive acá y no en obj.dat porque ahí sólo estaba puesta en 52 de las 243 armas:
+    /// la mayoría (todas las nuevas) ni siquiera trae ClasesProhibidas, así que el Gladiador las
+    /// podía equipar. Acá cubre también las armas que se agreguen después.
+    /// </summary>
+    public static bool ArmaProhibidaPorClase(byte clase, in ObjData.Obj od)
+        => clase == CLASE_GLADIADOR && od.Type == ObjType.Weapon;
+
     /// <summary>
     /// ¿Puede el usuario USAR/EQUIPAR este objeto? Valida clase, raza, nivel y sexo (obj.dat).
     /// Devuelve true si puede; si no, motivo trae el texto a mostrar. Los GM pueden todo.
@@ -22,6 +37,8 @@ public static class Inventory
     {
         motivo = "";
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return true; // GM sin restricciones
+        if (ArmaProhibidaPorClase(u.Clase, od))
+        { motivo = "El Gladiador pelea con los puños: no puede usar armas."; return false; }
         if (od.ClasesProhibidas != null && Array.IndexOf(od.ClasesProhibidas, (int)u.Clase) >= 0)
         { motivo = "Tu clase no puede usar este objeto."; return false; }
         // Pergaminos: restricción de clase definida en el hechizo (ver MotivoNoUsable).
@@ -44,6 +61,7 @@ public static class Inventory
         if (od.Real == 1 && !Facciones.EsArmada(u)) { motivo = "Solo la Armada Real puede usar este objeto."; return false; }
         if (od.Caos == 1 && !Facciones.EsCaos(u)) { motivo = "Solo la Legión del Caos puede usar este objeto."; return false; }
         if (od.Milicia == 1 && !Facciones.EsMili(u)) { motivo = "Solo la Milicia puede usar este objeto."; return false; }
+        if (od.Exordio == 1 && !Facciones.EsHeraldo(u)) { motivo = "Solo los Heraldos del Exordio pueden usar este objeto."; return false; }
         return true;
     }
 
@@ -54,6 +72,7 @@ public static class Inventory
     public static byte MotivoNoUsable(User u, in ObjData.Obj od)
     {
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return 0; // GM: todo
+        if (ArmaProhibidaPorClase(u.Clase, od)) return 1; // Gladiador: sólo puños/nudillos
         if (od.ClasesProhibidas != null && Array.IndexOf(od.ClasesProhibidas, (int)u.Clase) >= 0) return 1;
         // Pergaminos de hechizo: la restricción de clase está en el HECHIZO (ClasesProhibidas de
         // Hechizos.dat), no en el objeto (el obj usa CPO=, que no se parsea). Sin esto la tienda no
@@ -67,7 +86,8 @@ public static class Inventory
         if (od.Mujer != 0 && od.Hombre == 0 && u.Genero != 2) return 3;
         if (od.Hombre != 0 && od.Mujer == 0 && u.Genero != 1) return 3;
         if ((od.Real == 1 && !Facciones.EsArmada(u)) || (od.Caos == 1 && !Facciones.EsCaos(u))
-            || (od.Milicia == 1 && !Facciones.EsMili(u))) return 4; // facción
+            || (od.Milicia == 1 && !Facciones.EsMili(u))
+            || (od.Exordio == 1 && !Facciones.EsHeraldo(u))) return 4; // facción
         if (od.MinELV > 0 && u.Stats.ELV < od.MinELV) return 5; // nivel (el cliente muestra el motivo genérico)
         return 0;
     }
@@ -183,6 +203,11 @@ public static class Inventory
         {
             byte ms = u.Invent.MonturaSlot;
             DoEquita(u, ref u.Invent.Object[ms], ms, ObjData.Get(u.Invent.MonturaObjIndex));
+            // DoEquita puede NEGARSE a desmontar (montura voladora sobre agua/estructura: ver
+            // la guarda de PosicionLegalAPie allá). Si sigue montado hay que abortar el tiro:
+            // si no, la montura caía al piso y el usuario quedaba montado sin el ítem, volando
+            // sobre un tile del que ya no se podría bajar nunca. El mensaje ya lo mandó DoEquita.
+            if (u.flags.Montando == 1) return;
         }
 
         // Los GMs (Consejero+) pueden tirar cualquier objeto sin restricción, aunque se pierda.
@@ -193,7 +218,7 @@ public static class Inventory
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes hacer eso mientras navegas.", 1); return; }
 
         // Items faccionarios (Real/Caos/Milicia): no se pueden tirar al piso.
-        if (!esGM && (od.Real == 1 || od.Caos == 1 || od.Milicia == 1))
+        if (!esGM && (od.Real == 1 || od.Caos == 1 || od.Milicia == 1 || od.Exordio == 1))
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes desprenderte de un objeto faccionario.", 1); return; }
 
         // Destruir==1 → confirmación de destrucción (ShowMessageBox accion 1 → cliente reenvía DropDestroy).
@@ -226,7 +251,7 @@ public static class Inventory
         bool esGM = u.FaccionStatus >= 7;
 
         // Bloqueo total para items faccionarios o con NoSeCae (DropObj:430).
-        if (!esGM && (od.Real > 0 || od.Caos > 0 || od.Milicia > 0 || od.NoSeCae > 0))
+        if (!esGM && (od.Real > 0 || od.Caos > 0 || od.Milicia > 0 || od.Exordio > 0 || od.NoSeCae > 0))
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes desprenderte de ese objeto.", 1); return; } // msg 260
 
         // Item newbie: los jugadores comunes no pueden tirarlos.
@@ -450,9 +475,9 @@ public static class Inventory
                 ToggleEquip(u, ref item, slot, ref u.Invent.WeaponEqpObjIndex, ref u.Invent.WeaponEqpSlot,
                     equip => { // A diferencia del body, el arma se dibuja como overlay propio en este
                                // cliente (igual que el casco, ver el comentario en ObjType.Casco más abajo),
-                               // así que también se ve montado/navegando. Antes tenía el guard AparienciaAPie()
-                               // heredado del VB6 original (ahí SÍ compartía sprite con el caballo/barco).
-                               u.Char.WeaponAnim = (short)(equip ? od.WeaponAnim : 0);
+                               // así que se ve montado. NAVEGANDO NO: la barca oculta arma/escudo/casco
+                               // (DoNavega los pone en 0 y al bajar RestaurarAparienciaAPie los repone).
+                               u.Char.WeaponAnim = (short)(equip && !u.flags.Navegando ? od.WeaponAnim : 0);
                                SetAura(u, ref u.Char.Arma_Aura, 1, equip ? od.Aura : 0);
                                // SND_SACARARMA al equipar (salvo anim 2 = desarmado). El cliente VB6 lo
                                // tocaba en CharacterChangeSlot Case 4, pero este server usa CharacterChange
@@ -491,18 +516,18 @@ public static class Inventory
                 }
                 ToggleEquip(u, ref item, slot, ref u.Invent.EscudoEqpObjIndex, ref u.Invent.EscudoEqpSlot,
                     equip => { // Mismo caso que arma/casco: el escudo es overlay propio, se ve
-                               // aunque estés montado o navegando.
-                               u.Char.ShieldAnim = (short)(equip ? od.ShieldAnim : 0);
+                               // montado, pero no navegando (la barca lo oculta).
+                               u.Char.ShieldAnim = (short)(equip && !u.flags.Navegando ? od.ShieldAnim : 0);
                                SetAura(u, ref u.Char.Escudo_Aura, 3, equip ? od.Aura : 0);
                                SndAura(u, od, equip); });
                 break;
             case ObjType.Casco:
                 // A diferencia de body/arma/escudo, el casco NO comparte sprite con la montura/barco
                 // en este cliente: se dibuja como overlay propio sobre la cabeza (ver HIDE_HEAD_BODIES
-                // en game.html), así que sí tiene que verse aunque estés montado o navegando. Antes
-                // tenía el mismo guard AparienciaAPie() que el resto y quedaba invisible hasta bajarse.
+                // en game.html), así que sí tiene que verse montado. Navegando NO: la barca no tiene
+                // cabeza (DoNavega pone Head=0) y el casco quedaba flotando sobre el barco.
                 ToggleEquip(u, ref item, slot, ref u.Invent.CascoEqpObjIndex, ref u.Invent.CascoEqpSlot,
-                    equip => { u.Char.CascoAnim = (short)(equip ? od.CascoAnim : 0);
+                    equip => { u.Char.CascoAnim = (short)(equip && !u.flags.Navegando ? od.CascoAnim : 0);
                                SetAura(u, ref u.Char.Head_Aura, 4, equip ? od.Aura : 0); });
                 break;
 
@@ -639,6 +664,22 @@ public static class Inventory
                                && u.Invent.MonturaSlot <= Constants.MAX_INVENTORY_SLOTS
                                && u.Invent.MonturaSlot != slot;
 
+        // MISMA regla que las Alas (case ObjType.Escudo, más arriba): si el vuelo es lo único
+        // que te sostiene sobre agua o una estructura, no se puede tocar tierra ahí — quedarías
+        // atascado a pie en un tile ilegal. Cubre los dos caminos que apagan el vuelo: bajarse,
+        // y cambiar a una montura que NO vuela. Montar nunca es peligroso (venís de un tile
+        // legal a pie), y por eso el `Montando != 0`.
+        // Lo que esto NO cubre es "parado arriba de un techo": el server no tiene cargada la
+        // capa 4. Ese caso lo ataja el cliente en onInventoryEquipShortcut, igual que con las
+        // Alas — ver el comentario de Movement.PosicionLegalAPie.
+        if (u.flags.Montando != 0 && u.flags.Vuela == 1
+            && !(cambioDeMontura && od.Vuela == 1)
+            && !Movement.PosicionLegalAPie(u))
+        {
+            ServerPackets.ConsoleMsg(u.Conn, "No podés bajarte de la montura ahí arriba: aterrizá en un lugar seguro primero.", 1);
+            return;
+        }
+
         // Al MONTAR o al CAMBIAR (no al desmontar): skill Equitación (PuedeUsarSkill) + clase/raza/sexo/facción
         // (VB6 DoEquita, Trabajo.bas:2682). El nivel NO se valida (se usa la skill, no MinELV).
         if (u.flags.Montando == 0 || cambioDeMontura)
@@ -669,6 +710,18 @@ public static class Inventory
             u.Char.body = (short)od.Ropaje;
             u.Char.Head = u.OrigChar.Head != 0 ? u.OrigChar.Head : u.Char.Head;
             u.Char.WeaponAnim = 0; // montado: sin arma a la vista
+            // OcultaEquipo=1: la montura ya trae su propio jinete dibujado en el sprite (los
+            // dragones), así que del jugador no se ve NADA. Mismo trato que la barca en
+            // DoNavega. Sin esto aparece la cabeza suelta: esos cuerpos vienen con
+            // HeadOffset 0,0 y la celda mide 400x230, así que cae en la esquina.
+            // No hace falta deshacerlo al desmontar: RestaurarAparienciaAPie reconstruye
+            // cabeza y los tres anims desde lo que esté equipado.
+            if (od.OcultaEquipo == 1)
+            {
+                u.Char.Head = 0;
+                u.Char.ShieldAnim = 0;
+                u.Char.CascoAnim = 0;
+            }
             u.flags.Montando = 1;
             u.flags.Vuela = (byte)(od.Vuela == 1 ? 1 : 0); // monturas voladoras: ignoran paredes/agua-tierra (Movement.cs)
             item.Equipped = true;
@@ -747,7 +800,7 @@ public static class Inventory
 
             u.flags.Navegando = false;
             // Muerto → fantasma a pie (body 8, cabeza de muerto); vivo → apariencia normal (Trabajo.bas:218).
-            if (u.flags.Muerto == 1) { u.Char.body = 8; u.Char.Head = 500; u.Char.WeaponAnim = 0; u.Char.ShieldAnim = 0; u.Char.CascoAnim = 0; }
+            if (u.flags.Muerto == 1) { u.Char.body = 8; u.Char.Head = 621; u.Char.WeaponAnim = 0; u.Char.ShieldAnim = 0; u.Char.CascoAnim = 0; }
             else RestaurarAparienciaAPie(u);
             item.Equipped = false;
             u.Invent.BarcoObjIndex = 0; u.Invent.BarcoSlot = 0;
@@ -969,9 +1022,10 @@ public static class Inventory
                 break;
 
             case ObjType.Pociones:
-                // Cooldown de uso de pociones (IntervaloGolpeUsar = 400ms). Se aplica también al
-                // autopot: antes el autopot lo salteaba y solo lo frenaba el rate-limit de 10/seg
-                // (~100ms), por lo que poteaba 4× más rápido que el uso manual.
+                // Cooldown de uso de pociones (Intervals.GolpeUsar, con la tolerancia de jitter
+                // que explica PuedeGolpeUsar). Se aplica también al autopot: antes el autopot lo
+                // salteaba y solo lo frenaba el rate-limit de 10/seg (~100ms), por lo que poteaba
+                // 4× más rápido que el uso manual.
                 if (!Intervals.PuedeGolpeUsar(u)) return;
                 consumir = UsarPocion(userIndex, u, od, item.ObjIndex);
                 break;
@@ -1169,13 +1223,25 @@ public static class Inventory
                 return;
             }
 
-            // otRegalos=53: caja/regalo que entrega los ítems de su campo "Items=" y se consume.
+            // otRegalos=53: caja/regalo/cofre que entrega los ítems de su campo "Items=" y se consume.
             // Si algún ítem no entra en el inventario, se tira al piso (TirarItemAlPiso).
             case ObjType.Regalos:
             {
                 if (u.flags.Muerto == 1) return; // DeadCheck
                 if (od.RegaloItems == null || od.RegaloItems.Length == 0)
                 { ServerPackets.ConsoleMsg(u.Conn, "Este regalo está vacío.", 1); return; }
+                // Los cofres grandes (Nesan 3 reparte 23 ítems distintos) no entran en los 25
+                // slots si el inventario ya viene cargado, y DropItemToFloor DESCARTA en silencio
+                // cuando el tile ya tiene otro objeto encima: el jugador perdía el contenido sin
+                // enterarse. Se cuenta primero cuántos slots libres hace falta y no se abre si no
+                // alcanzan, así el cofre queda intacto para reintentar con espacio.
+                int slotsNecesarios = SlotsLibresQueNecesita(u, od.RegaloItems);
+                if (slotsNecesarios > ContarSlotsLibres(u))
+                {
+                    ServerPackets.ConsoleMsg(u.Conn,
+                        $"No tienes espacio suficiente: {od.Name} necesita {slotsNecesarios} espacios libres en el inventario.", 1);
+                    return;
+                }
                 foreach (var (oi, amt) in od.RegaloItems)
                 {
                     if (oi <= 0 || amt <= 0) continue;
@@ -1502,7 +1568,7 @@ public static class Inventory
         if (it.ObjIndex == 0) return;
 
         var od = ObjData.Get(it.ObjIndex);
-        if (od.Real > 0 || od.Caos > 0 || od.Milicia > 0)
+        if (od.Real > 0 || od.Caos > 0 || od.Milicia > 0 || od.Exordio > 0)
         { ServerPackets.ConsoleMsg(u.Conn, "No puedes destruir ese objeto.", 1); return; }
         // NoSeCae bloquea destruir, salvo newbies/permanentes (Permanente==2) o items newbie:
         // el jugador debe poder eliminar los items newbie confirmando.
@@ -2088,6 +2154,34 @@ public static class Inventory
         for (int s = 1; s <= Constants.MAX_INVENTORY_SLOTS; s++)
             if (u.Invent.Object[s].ObjIndex == 0) return s;
         return 0;
+    }
+
+    /// <summary>Slots del inventario que están vacíos (ObjIndex 0).</summary>
+    private static int ContarSlotsLibres(User u)
+    {
+        int libres = 0;
+        for (int s = 1; s <= Constants.MAX_INVENTORY_SLOTS; s++)
+            if (u.Invent.Object[s].ObjIndex == 0) libres++;
+        return libres;
+    }
+
+    /// <summary>
+    /// Cuántos slots VACÍOS hace falta para recibir 'items' completos, con el mismo criterio de
+    /// FindSlotForObject: un ObjIndex que ya está en el inventario apila en su slot y no consume
+    /// uno nuevo. Lo usa el case Regalos para no abrir un cofre cuyo contenido se perdería.
+    /// </summary>
+    private static int SlotsLibresQueNecesita(User u, (short ObjIndex, int Amount)[] items)
+    {
+        var nuevos = new List<short>();
+        foreach (var (oi, amt) in items)
+        {
+            if (oi <= 0 || amt <= 0) continue;
+            if (nuevos.Contains(oi)) continue;          // ya contado en esta misma tanda
+            if (FindSlotForObject(u, oi) is var s && s != 0
+                && u.Invent.Object[s].ObjIndex == oi) continue; // apila en un slot existente
+            nuevos.Add(oi);
+        }
+        return nuevos.Count;
     }
 
     private static void SendSlot(User u, int slot)

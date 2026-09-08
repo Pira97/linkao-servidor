@@ -33,6 +33,7 @@ public static class MapasPorNivel
     {
         [205] = new Rango(25, 39),        // expulsa al llegar a 40
         [207] = new Rango(20, 37),        // expulsa al llegar a 38
+        [753] = new Rango(19, 25),        // Cueva Orca: expulsa al llegar a 26
         [755] = new Rango(35, SIN_TOPE),
         [756] = new Rango(40, SIN_TOPE),
         [760] = new Rango(45, SIN_TOPE),

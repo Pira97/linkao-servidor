@@ -58,4 +58,46 @@ public static class Sounds
     public const short FLAUTA           = 393;   // tocar la flauta (instrumento)
     public const short DESCONEXION      = 434;   // el usuario se desconecta del juego
     public const short COLLAR_PENDIENTE = 458;   // equipar collar/pendiente
+    // Artes marciales del Bardo (12-sep-2026, pedido del usuario): reemplazan al IMPACTO(86) y
+    // al PARALIZAR(203) genéricos, SOLO para la clase Bardo(6) peleando con nudillos.
+    public const short BARDO_GOLPE      = 600;   // golpe cuerpo a cuerpo del Bardo con nudillos
+    public const short BARDO_PARALIZA   = 601;   // el golpe del Bardo con nudillos paraliza
+
+    // --- Golpes propios por clase (16-sep-2026) -------------------------------------------
+    // Los trajo el usuario con nombre ("Clerigo golpe.mp3", "pala.mp3", ...) y los importa
+    // web-poc-pixi/importar_sonidos_golpes.py a assets/sfx/<n>.ogg. Arrancan en 700 para que
+    // se vea de un vistazo qué vino del AO original (<= 601) y qué se agregó a mano.
+    public const short GOLPE_GENERICO   = 700;   // impacto cuerpo a cuerpo sin clase propia
+    public const short GOLPE_GUERRERO   = 701;
+    public const short GOLPE_PALADIN    = 702;
+    public const short GOLPE_CLERIGO    = 703;
+    public const short GOLPE_NIGROMANTE = 704;
+    public const short GOLPE_GLADIADOR  = 705;
+    public const short GOLPE_ASESINO    = 706;   // el golpe normal, sin apuñalar
+    public const short APUNALA_ASESINO  = 707;   // la apuñalada (reemplaza al golpe de arriba)
+    public const short ARPON_MERCENARIO = 708;   // arpón al salir (proyectil 2)
+    public const short FLECHA_ARCO      = 709;   // flecha al salir, antes de llegar
+    public const short GOLPE_MAGO       = 710;
+    public const short ESCUDO_BLOQUEO   = 711;   // bloqueo con escudo, todas las clases
+    public const short GOLPE_PARALIZA   = 712;   // el golpe de artes marciales que paraliza
+
+    /// <summary>
+    /// Sonido de impacto cuerpo a cuerpo según la clase del que pega (eClass, el mismo
+    /// numerito que documenta Dat/BotClases.dat). Las clases sin sonido propio —Ladrón(5),
+    /// Druida(7) y las de trabajo— caen en GOLPE_GENERICO. El Bardo(6) NO está acá: tiene su
+    /// propia rama en Combat.SonidoImpactoMelee porque su sonido depende del arma (nudillos),
+    /// no sólo de la clase.
+    /// </summary>
+    public static short GolpeDeClase(int clase) => clase switch
+    {
+        1  => GOLPE_CLERIGO,
+        2  => GOLPE_MAGO,
+        3  => GOLPE_GUERRERO,
+        4  => GOLPE_ASESINO,
+        8  => GOLPE_GLADIADOR,
+        9  => GOLPE_PALADIN,
+        17 => ARPON_MERCENARIO,
+        18 => GOLPE_NIGROMANTE,
+        _  => GOLPE_GENERICO,
+    };
 }

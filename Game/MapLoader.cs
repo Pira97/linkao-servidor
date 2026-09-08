@@ -211,7 +211,8 @@ public static class MapLoader
                     // mundo nuevo y se rompían la pesca y la navegación.
                     bool agua = (g1 >= 1505 && g1 <= 1520) || (g1 >= 5665 && g1 <= 5680)
                               || (g1 >= 13547 && g1 <= 13562)
-                              || (g1 >= 490000 && g1 <= 490020);
+                              || (g1 >= 490000 && g1 <= 490020)
+                              || (g1 >= 440054 && g1 <= 440069);   // agua celeste de la 5040 (Mar de las Agujas, mapa 959)
                     map.Water[x, y] = agua && !graphic2[x, y];
                 }
 

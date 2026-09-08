@@ -1,0 +1,43 @@
+# Trailer "Los Desterrados del Mar" — 12. Los guardias rodean al explorador y habla Tharvel (mapa 644, plaza).
+# Voz: 2:28.0 "Los habitantes lo rodearon" hasta 3:02.1 "...decidieron mostrarle la verdad".
+# El segundo 0 de este guion = 2:28.0 del audio.
+#
+# Todo pasa en la plaza entre la escalera del castillo (arriba) y la estatua (54,41), que tapaba
+# la escena si se juntaban ahí. Guardias y Tharvel copian a los NPC reales del Exordio (npc=N).
+# La cámara va a un costado (58,34) para no quedar en el camino de nadie, y alta para que la
+# estatua no ocupe el centro del cuadro.
+
+0     lugar 644 58 34
+0     aparece explorador guerrero 54 34 norte bando=2 Explorador
+
+# --- Los habitantes lo rodearon (2:28.0) ---
+0     aparece guardia1 paladin 50 31 este npc=719 Guardia <Exordiano>
+0.2   aparece guardia2 guerrero 58 31 oeste npc=718 Guardia <Exordiano>
+0.4   aparece guardia3 nigromante 50 36 este npc=723 Guardia <Exordiano>
+0.6   aparece guardia4 guerrero 58 36 oeste npc=718 Guardia <Exordiano>
+1.2   dice guardia1 ¡Alto, forastero!
+1.7   camina guardia1 52 33
+1.7   camina guardia2 56 33
+1.7   camina guardia3 52 35
+1.7   camina guardia4 56 35
+3.7   dice explorador Por favor... no busco pelea.
+
+# --- Nadie levantó su espada (2:35.8) ---
+8.2   dice guardia2 Bajen las armas. Él lo decide.
+
+# --- El líder de la ciudad se acercó (2:41.0) ---
+13    aparece tharvel paladin 54 27 sur npc=712 bando=16 Tharvel
+13.5  camina tharvel 54 32
+16.7  mira explorador norte
+
+# --- "Si hubiéramos querido matarte, jamás habrías visto nuestra ciudad." (2:48.0) ---
+20    dice tharvel Si hubiéramos querido matarte, jamás habrías visto nuestra ciudad.
+
+# --- En lugar de ejecutarlo, decidieron mostrarle la verdad (2:56.0) ---
+28.2  dice tharvel Seguime. Vas a ver lo que construimos.
+29.7  camina tharvel 54 28
+30.7  camina explorador 54 30
+31.7  camina guardia1 52 31
+31.7  camina guardia2 56 31
+
+36    fin

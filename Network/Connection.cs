@@ -72,6 +72,30 @@ public sealed class Connection
     public bool SoportaObjInfoUpdate => (Caps & 8) != 0;
 
     /// <summary>
+    /// ¿Este cliente entiende PortalInfo (218)? (bit4 de Caps). Es la decoración de los
+    /// teleports creados con /ct. Bit propio, y comprobado a la mala: sin el candado, un
+    /// cliente con el JS viejo cacheado recibe el 218, no sabe saltear el id y lee basura
+    /// desde ahí — al jugador le aparecen teleports en tiles al azar por todo el mapa.
+    /// </summary>
+    public bool SoportaPortales => (Caps & 16) != 0;
+
+    /// <summary>
+    /// ¿Este cliente entiende EventVoice (219)? (bit5 de Caps). Es el anuncio hablado que un GM
+    /// difunde desde el panel (ver Game/EventVoice.cs). Bit propio y no colgado de ninguno de
+    /// los anteriores por la misma razón que SoportaPortales, con el agravante de que esto es un
+    /// BROADCAST A TODOS: sin el candado, un solo anuncio le rompería el stream a cualquiera que
+    /// todavía tenga el JS viejo cacheado.
+    /// </summary>
+    public bool SoportaVozEvento => (Caps & 32) != 0;
+
+    /// <summary>
+    /// ¿Este cliente entiende EstadoTimer (220)? (bit6 de Caps). Es la cuenta regresiva de oculto
+    /// e invisibilidad que se dibuja sobre la cabeza. Bit propio por el motivo de siempre: un JS
+    /// viejo cacheado no sabría saltear el id y se le desincronizaría el stream.
+    /// </summary>
+    public bool SoportaEstadoTimer => (Caps & 64) != 0;
+
+    /// <summary>
     /// Modo espía: true mientras el server le pidió a ESTE cliente que reporte lo que no
     /// viaja en el protocolo normal —su mouse y qué tiene abierto en la interfaz— porque un
     /// Dios lo está espiando. Sirve para no volver a pedírselo y para descartar reportes de

@@ -110,7 +110,7 @@ public static class NpcManager
         public long TimerAtaqueFisico;   // TickCount del último golpe físico (melee)
         public long TimerAtaqueHechizo;  // TickCount del último hechizo lanzado (NPCs no-bot; los bots siguen usando TimerLanzarSpell)
         public long TimerLanzarSpell; // TickCount del último hechizo (intervalo de magia propio del bot, separado del golpe)
-        public long TimerPocion;    // TickCount de la última poción bebida (autopot del bot, intervalo real GolpeUsar=300ms)
+        public long TimerPocion;    // TickCount de la última poción bebida (autopot del bot, intervalo real Intervals.GolpeUsar)
         // Aggro/loot (flags del NPC en VB6): estado original para restaurar al perder al atacante,
         // y nombres del atacante actual / primero (dueño del loot/exp).
         public bool OldHostil;      // Hostil original (al spawnear)
@@ -152,6 +152,8 @@ public static class NpcManager
         public int FormTotal;            // total de bots en la fila (para centrar)
         public bool EnBarca;             // true = el bot está en barca (siguiendo al dueño por agua)
         public short LandBody, LandWeapon, LandShield, LandCasco; // apariencia en tierra (para restaurar al bajar)
+        public short LandHead;           // en barca la cabeza va en 0 (como un jugador navegando) y se restaura al bajar
+        public short BarcaBody;          // cuerpo de barca propio (0 = la Barca común, BOAT_BODY)
         // ---- Guerra mundial de facciones (GuerraFacciones.cs) ----
         public bool BotGuerra;           // true = bot de campaña: recorre el mundo buscando a la facción enemiga
         public bool BotDungeon;          // true = guardián permanente de un dungeon (DungeonBots.cs): NUNCA marcha (ViajarGuerra), patrulla local si no hay rival/presa
@@ -161,11 +163,18 @@ public static class NpcManager
         public double UltimoCombateAt;   // segundos del último golpe/hechizo dado o recibido (cámara automática)
         public byte GuerraMontura;       // 0 = a pie, 1 = montado (body de montura), 2 = con alas (ShieldAnim 88)
         public double GuerraLlegadaAt;   // segundos en que llegó al objetivo (se queda un rato y elige otro)
+        // Bot de una escena de cine (Escenas.cs): sin IA propia, el guion lo mueve y lo hace hablar.
+        public bool BotEscena;
         public bool IsBot => NpcIndex >= Bots.BOT_INDEX_BASE;
         // ---- IA inteligente (custom) ----
         public int LastSeenX, LastSeenY;     // última posición conocida del enemigo (investigar)
         public byte InvestigateTicks;        // ticks restantes yendo a la última posición vista
         public short GreetTimer;             // ticks hasta el próximo giro (mudo) para mirar a un ciudadano cercano
+        // ---- Criaturas salvajes: correa (CriaturaAI) ----
+        // true = se alejó CRIATURA_LEASH de su spawn y vuelve a casa: ignora a todos, no se la puede
+        // atacar (UsuarioPuedeAtacarNpc) y al llegar se cura entera. VueltaHasta = tope por si se traba.
+        public bool VolviendoAlSpawn;
+        public double VueltaHasta;
 
         // ---- Bot inteligente (prototipo Utility AI, NUEVO) ----
         // Distinto de todos los demás modos: en vez de un if/else fijo, TickBotSmart puntúa un
@@ -173,7 +182,7 @@ public static class NpcManager
         // mayor puntaje. La puntuación decide QUÉ quiere hacer el bot; el golpe/hechizo en sí
         // sigue pasando por Combat.NpcAtacaUsuario/NpcLanzaSpell (mismos intervalos reales que
         // cualquier otro bot/NPC) y la poción sigue siendo BotAutoPot sin tocar (mismo intervalo
-        // Intervals.GolpeUsar=300ms que un jugador real manteniendo mantenido el autopot). Sólo
+        // Intervals.GolpeUsar que un jugador real manteniendo mantenido el autopot). Sólo
         // UN bot (el prototipo) tiene BotSmart=true; todos los demás modos de TickBot siguen
         // exactamente igual.
         public bool BotSmart;
@@ -497,6 +506,90 @@ public static class NpcManager
             Assert(mascota.Heading == 9, "una mascota (MaestroUser>0) queda excluida de este fix");
         }
 
+        Console.WriteLine("=== IA criaturas: aggro por atacante y correa al spawn ===");
+        {
+            if (!_byMap.TryGetValue(TEST_MAP, out var list)) { list = new List<NpcInstance>(); _byMap[TEST_MAP] = list; }
+            double ahora = Environment.TickCount64 / 1000.0;
+
+            var lobo = new NpcInstance
+            {
+                CharIndex = CharIndexPool.Next(), Name = "TestLobo", Map = TEST_MAP,
+                X = 70, Y = 80, SpawnX = 70, SpawnY = 80, Heading = 3,
+                Hostil = true, OldHostil = true, Attackable = true, MaxHP = 100, MinHP = 100,
+            };
+            list.Add(lobo);
+            int curioso  = NuevoUsuario(68, 80, FAC_CAOS); // dist=2, más cerca pero no le pegó
+            int atacante = NuevoUsuario(74, 80, FAC_CAOS); // dist=4, el que le pegó
+            lobo.TargetUser = atacante;
+            CriaturaAI(TEST_MAP, lobo, ahora);
+            Assert(lobo.TargetUser == atacante && lobo.X == 71, $"persigue a quien le pegó, no al más cercano (target={lobo.TargetUser} x={lobo.X})");
+
+            lobo.X = 70; lobo.TargetUser = 0; lobo.PathCache = null;
+            CriaturaAI(TEST_MAP, lobo, ahora);
+            Assert(lobo.TargetUser == curioso && lobo.X == 69, $"sin objetivo adquiere al más cercano en visión (target={lobo.TargetUser} x={lobo.X})");
+
+            var oso = new NpcInstance
+            {
+                CharIndex = CharIndexPool.Next(), Name = "TestOso", Map = TEST_MAP,
+                X = 42, Y = 95, SpawnX = 20, SpawnY = 95, Heading = 3, OrigHeading = 3,
+                Hostil = true, OldHostil = true, Attackable = true, MaxHP = 100, MinHP = 40,
+                GiveEXP = 500, ExpCount = 0, AttackedFirstBy = "TestUserX",
+            };
+            list.Add(oso);
+            int kiter = NuevoUsuario(45, 95, FAC_CAOS);
+            oso.TargetUser = kiter;
+            CriaturaAI(TEST_MAP, oso, ahora);
+            Assert(oso.VolviendoAlSpawn && oso.TargetUser == 0 && oso.X == 42, "a CRIATURA_LEASH de casa suelta al objetivo y no da el paso");
+            Assert(!UsuarioPuedeAtacarNpc(UserListManager.UserList[kiter], oso, out _), "mientras vuelve a casa no se la puede atacar");
+
+            oso.TargetUser = kiter; // un golpe que se coló igual
+            for (int i = 0; i < 40 && oso.VolviendoAlSpawn; i++) CriaturaAI(TEST_MAP, oso, ahora);
+            Assert(!oso.VolviendoAlSpawn && oso.X == 20 && oso.Y == 95, $"llega a su spawn (x={oso.X} y={oso.Y})");
+            Assert(oso.MinHP == 100 && oso.ExpCount == 500 && oso.AttackedFirstBy == "", "al llegar: vida y exp completas, sin dueño de loot");
+            Assert(oso.Heading == 3, $"al llegar vuelve a mirar hacia su dirección original (heading={oso.Heading})");
+            Assert(UsuarioPuedeAtacarNpc(UserListManager.UserList[kiter], oso, out _), "ya en casa vuelve a ser atacable");
+
+            var ciervo = new NpcInstance
+            {
+                CharIndex = CharIndexPool.Next(), Name = "TestCiervo", Map = TEST_MAP,
+                X = 55, Y = 30, SpawnX = 50, SpawnY = 30, Heading = 3,
+                Hostil = true, OldHostil = true, Attackable = true, MaxHP = 100, MinHP = 100,
+            };
+            list.Add(ciervo);
+            int lejano = NuevoUsuario(75, 30, FAC_CAOS); // dist=20 > CRIATURA_PERSECUCION
+            ciervo.TargetUser = lejano;
+            CriaturaAI(TEST_MAP, ciervo, ahora);
+            Assert(ciervo.TargetUser == 0 && ciervo.X == 54 && !ciervo.VolviendoAlSpawn, $"objetivo fuera de persecución: lo suelta y vuelve caminando (x={ciervo.X})");
+
+            // Bug reportado: provocado con un hechizo desde el borde de la pantalla (12 en X, 8 en Y,
+            // fuera del cuadro de visión 8×6) no perseguía.
+            var loboLejos = new NpcInstance
+            {
+                CharIndex = CharIndexPool.Next(), Name = "TestLoboLejos", Map = TEST_MAP,
+                X = 80, Y = 20, SpawnX = 80, SpawnY = 20, Heading = 3, OrigHeading = 3,
+                Hostil = true, OldHostil = true, Attackable = true, MaxHP = 100, MinHP = 100,
+            };
+            list.Add(loboLejos);
+            int tirador = NuevoUsuario(92, 28, FAC_CAOS);
+            ProvocarNpc(loboLejos, UserListManager.UserList[tirador]);
+            CriaturaAI(TEST_MAP, loboLejos, ahora);
+            Assert(loboLejos.TargetUser == tirador && Math.Abs(loboLejos.X - 80) + Math.Abs(loboLejos.Y - 20) == 1,
+                $"provocado desde lejos lo persigue (target={loboLejos.TargetUser} pos={loboLejos.X},{loboLejos.Y})");
+
+            // Fuera incluso del cuadro de persecución: igual va hacia donde vino el golpe.
+            var loboMuyLejos = new NpcInstance
+            {
+                CharIndex = CharIndexPool.Next(), Name = "TestLoboMuyLejos", Map = TEST_MAP,
+                X = 30, Y = 60, SpawnX = 30, SpawnY = 60, Heading = 3, OrigHeading = 3,
+                Hostil = true, OldHostil = true, Attackable = true, MaxHP = 100, MinHP = 100,
+            };
+            list.Add(loboMuyLejos);
+            int francotirador = NuevoUsuario(30, 72, FAC_CAOS); // 12 en Y > CRIATURA_PERSECUCION_Y
+            ProvocarNpc(loboMuyLejos, UserListManager.UserList[francotirador]);
+            CriaturaAI(TEST_MAP, loboMuyLejos, ahora);
+            Assert(loboMuyLejos.Y == 61, $"fuera de persecución va hacia donde vino el golpe (y={loboMuyLejos.Y})");
+        }
+
         Console.WriteLine($"\n=== {(fallos == 0 ? "TODOS los tests pasaron" : $"{fallos} test(s) FALLARON")} ===");
         return fallos;
     }
@@ -760,70 +853,8 @@ public static class NpcManager
                 // Protegido: un error en la IA de un bot NO debe tirar todo el servidor.
                 if (n.IsBot) { try { TickBot(map, n); } catch (Exception ex) { Console.WriteLine($"[Bot AI] ERROR: {ex}"); } continue; }
 
-                // ¿Mascota adyacente? → pegarle a ELLA en vez de ignorarla (la mascota "tanquea":
-                // si está pegándole al NPC cuerpo a cuerpo, el NPC se defiende de ella primero,
-                // no solo persigue al dueño). Antes que el chequeo de usuario adyacente.
-                var petAdyacente = AdjacentPet(n, map, n.X, n.Y, out byte headingToPet);
-                if (petAdyacente != null)
-                {
-                    FaceTarget(map, n, petAdyacente.X, petAdyacente.Y);
-                    n.Heading = headingToPet;
-                    if (n.Spells != null && n.Spells.Length > 0 && _aiRng.Next(2) == 0)
-                        Combat.NpcLanzaSpellANpc(n, petAdyacente);
-                    else
-                        NpcAtacaNpc(map, n, petAdyacente);
-                    continue;
-                }
-
-                // ¿Usuario adyacente? → atacar (prioridad absoluta, todos los tipos).
-                int target = AdjacentUser(n, map, n.X, n.Y, out byte headingToUser);
-                if (target > 0)
-                {
-                    // VB6 (AI_NPC.bas:422-431): gira hacia el usuario y difunde el cambio (ChangeNPCChar)
-                    // ANTES de atacar, para que el NPC se vea mirando a quien pega.
-                    var uTgt = UserListManager.UserList[target];
-                    FaceTarget(map, n, uTgt.Pos.X, uTgt.Pos.Y);
-                    n.Heading = headingToUser;
-                    // VB6: si lanza hechizos, 50% magia / 50% golpe físico.
-                    if (n.Spells != null && n.Spells.Length > 0 && _aiRng.Next(2) == 0)
-                        Combat.NpcLanzaSpell(n, target);
-                    else
-                        Combat.NpcAtacaUsuario(n, target);
-                    continue;
-                }
-
-                // NPCs que lanzan hechizos pueden atacar a distancia dentro del rango de visión.
-                if (n.Spells != null && n.Spells.Length > 0)
-                {
-                    var uMago = NearestUser(n, map, n.X, n.Y, out _);
-                    if (uMago != null && Math.Abs(uMago.Pos.X - n.X) <= RANGO_VISION_X && Math.Abs(uMago.Pos.Y - n.Y) <= RANGO_VISION_Y)
-                    {
-                        // 50% lanza hechizo a distancia; si no, persigue (salvo estático).
-                        // SOLO salta el movimiento si REALMENTE casteó: si el hechizo está en cooldown
-                        // (NpcLanzaSpell→false) cae al StepToward de abajo y sigue persiguiendo, sino el
-                        // NPC se "trababa" parado medio tiempo esperando el intervalo de casteo.
-                        if (_aiRng.Next(2) == 0)
-                        {
-                            FaceTarget(map, n, uMago.Pos.X, uMago.Pos.Y);
-                            if (Combat.NpcLanzaSpell(n, uMago.id)) continue;
-                        }
-                    }
-                }
-
-                // VB6 TipoAI: Movement=1 (ESTATICO) no persigue, solo ataca adyacente.
-                if (n.Movement == 1) continue;
-
-                // Movement=0 (persigue): ir al usuario más cercano dentro del rango de visión (8×6).
-                var u = NearestUser(n, map, n.X, n.Y, out _);
-                if (u != null && Math.Abs(u.Pos.X - n.X) <= RANGO_VISION_X && Math.Abs(u.Pos.Y - n.Y) <= RANGO_VISION_Y)
-                    StepToward(map, n, u.Pos.X, u.Pos.Y);
-                else if (!n.OldHostil)
-                {
-                    // NPC pasivo PROVOCADO que se quedó sin enemigos en vista → vuelve a su estado
-                    // original (AI_NPC.bas: restaura OldMovement/OldHostil y limpia AttackedBy).
-                    n.Hostil = n.OldHostil; n.Movement = n.OldMovement;
-                    n.AttackedBy = ""; n.AttackedFirstBy = ""; n.TargetUser = 0;
-                }
+                // Criaturas salvajes: aggro por atacante + correa al spawn.
+                CriaturaAI(map, n, now);
             }
         }
 
@@ -848,6 +879,190 @@ public static class NpcManager
     private const int RANGO_VISION_X = 8, RANGO_VISION_Y = 6;
     private static readonly Random _aiRng = new();
 
+    // ---- IA de criaturas salvajes (custom, NO 1:1 VB6) ----
+    // Distancia Manhattan máxima desde su spawn que una criatura se aleja persiguiendo. Al tocarla
+    // suelta al objetivo y vuelve a casa sin poder ser atacada (sin esto se la arrastraba por el
+    // mapa pegándole a distancia); al llegar se cura entera.
+    // Mayor que el alcance máximo de un golpe a distancia (CRIATURA_PERSECUCION_X+_Y): si no, a una
+    // criatura provocada desde el borde de la pantalla le saltaba la correa a un tile del atacante.
+    private const int CRIATURA_LEASH = 22;
+    // Cuadro (por eje) dentro del cual una criatura YA enganchada sigue a su objetivo. Los hechizos a
+    // NPCs no tienen tope de distancia en el server (alcanza con verlo en pantalla, ~±14×±8), así que
+    // tiene que cubrir la pantalla entera: si no, la provocabas desde lejos y te soltaba en el acto.
+    private const int CRIATURA_PERSECUCION_X = 15, CRIATURA_PERSECUCION_Y = 10;
+    // Ticks (~0.38s c/u) que camina hacia la última posición donde vio a su objetivo antes de rendirse.
+    private const byte CRIATURA_MEMORIA_TICKS = 8;
+    // Tope de la vuelta a casa: si se traba en el camino, el reset igual termina donde esté.
+    private const double CRIATURA_VUELTA_TOPE_SEG = 20.0;
+
+    /// <summary>
+    /// IA de criatura salvaje hostil (no guardia, sacerdote, mascota ni bot). Sobre la base VB6
+    /// (pega adyacente, castea a distancia, persigue) agrega:
+    ///  · aggro por atacante: sigue a TargetUser (lo setea ProvocarNpc con quien le pegó) aunque
+    ///    haya otro jugador más cerca; solo elige "el más cercano en visión" si no tiene objetivo.
+    ///    Un pasivo provocado (OldHostil=false) SOLO persigue a quien lo provocó, nunca a terceros.
+    ///  · memoria: si pierde al objetivo va CRIATURA_MEMORIA_TICKS hacia donde lo vio por última vez.
+    ///  · correa: a CRIATURA_LEASH de su spawn suelta todo y vuelve (VolviendoAlSpawn). Sin objetivo
+    ///    y lejos de casa, vuelve caminando (pudiendo re-engancharse en el camino).
+    /// </summary>
+    private static void CriaturaAI(int map, NpcInstance n, double now)
+    {
+        if (n.VolviendoAlSpawn) { PasoDeVueltaAlSpawn(map, n, now); return; }
+
+        bool pasivoProvocado = !n.OldHostil;
+
+        // ¿Mascota adyacente? → pegarle a ELLA en vez de ignorarla (la mascota "tanquea":
+        // si está pegándole al NPC cuerpo a cuerpo, el NPC se defiende de ella primero,
+        // no solo persigue al dueño). Antes que el chequeo de usuario adyacente.
+        var petAdyacente = AdjacentPet(n, map, n.X, n.Y, out byte headingToPet);
+        if (petAdyacente != null)
+        {
+            FaceTarget(map, n, petAdyacente.X, petAdyacente.Y);
+            n.Heading = headingToPet;
+            if (n.Spells != null && n.Spells.Length > 0 && _aiRng.Next(2) == 0)
+                Combat.NpcLanzaSpellANpc(n, petAdyacente);
+            else
+                NpcAtacaNpc(map, n, petAdyacente);
+            return;
+        }
+
+        var objetivo = ObjetivoDeCriatura(map, n);
+
+        // ¿Usuario adyacente? → atacar. Si su objetivo está al lado, a él; si no, a cualquiera
+        // adyacente (no pasa de largo al que lo tapa). Un pasivo provocado solo a su provocador.
+        int target = 0; byte headingToUser = 0;
+        if (objetivo != null && Math.Abs(objetivo.Pos.X - n.X) + Math.Abs(objetivo.Pos.Y - n.Y) == 1)
+        { target = objetivo.id; headingToUser = HeadingTo(n.X, n.Y, objetivo.Pos.X, objetivo.Pos.Y); }
+        else if (!pasivoProvocado)
+            target = AdjacentUser(n, map, n.X, n.Y, out headingToUser);
+        if (target > 0)
+        {
+            if (n.TargetUser == 0) n.TargetUser = target;
+            // VB6 (AI_NPC.bas:422-431): gira hacia el usuario y difunde el cambio (ChangeNPCChar)
+            // ANTES de atacar, para que el NPC se vea mirando a quien pega.
+            var uTgt = UserListManager.UserList[target];
+            FaceTarget(map, n, uTgt.Pos.X, uTgt.Pos.Y);
+            n.Heading = headingToUser;
+            // VB6: si lanza hechizos, 50% magia / 50% golpe físico.
+            if (n.Spells != null && n.Spells.Length > 0 && _aiRng.Next(2) == 0)
+                Combat.NpcLanzaSpell(n, target);
+            else
+                Combat.NpcAtacaUsuario(n, target);
+            return;
+        }
+
+        // NPCs que lanzan hechizos pueden atacar a distancia dentro del rango de visión.
+        if (n.Spells != null && n.Spells.Length > 0)
+        {
+            var uMago = objetivo ?? (pasivoProvocado ? null : NearestUser(n, map, n.X, n.Y, out _));
+            if (uMago != null && Math.Abs(uMago.Pos.X - n.X) <= RANGO_VISION_X && Math.Abs(uMago.Pos.Y - n.Y) <= RANGO_VISION_Y)
+            {
+                // 50% lanza hechizo a distancia; si no, persigue (salvo estático).
+                // SOLO salta el movimiento si REALMENTE casteó: si el hechizo está en cooldown
+                // (NpcLanzaSpell→false) cae al StepToward de abajo y sigue persiguiendo, sino el
+                // NPC se "trababa" parado medio tiempo esperando el intervalo de casteo.
+                if (_aiRng.Next(2) == 0)
+                {
+                    FaceTarget(map, n, uMago.Pos.X, uMago.Pos.Y);
+                    if (Combat.NpcLanzaSpell(n, uMago.id)) return;
+                }
+            }
+        }
+
+        // VB6 TipoAI: Movement=1 (ESTATICO) no persigue, solo ataca adyacente. Sin objetivo,
+        // deja de mirar hacia el último que atacó y vuelve a su dirección original.
+        if (n.Movement == 1)
+        {
+            if (objetivo == null) RestaurarHeadingOriginal(map, n);
+            return;
+        }
+
+        // Sin objetivo: adquiere al usuario más cercano dentro del rango de visión (8×6).
+        if (objetivo == null && !pasivoProvocado)
+        {
+            var u = NearestUser(n, map, n.X, n.Y, out _);
+            if (u != null && Math.Abs(u.Pos.X - n.X) <= RANGO_VISION_X && Math.Abs(u.Pos.Y - n.Y) <= RANGO_VISION_Y)
+            { n.TargetUser = u.id; objetivo = u; }
+        }
+
+        bool tieneCasa = n.SpawnX != 0 && n.SpawnY != 0;
+        int distCasa = tieneCasa ? Math.Abs(n.X - n.SpawnX) + Math.Abs(n.Y - n.SpawnY) : 0;
+
+        if (objetivo != null)
+        {
+            n.LastSeenX = objetivo.Pos.X; n.LastSeenY = objetivo.Pos.Y;
+            n.InvestigateTicks = CRIATURA_MEMORIA_TICKS;
+            if (tieneCasa && distCasa >= CRIATURA_LEASH) { IniciarVueltaAlSpawn(n, now); return; }
+            StepToward(map, n, objetivo.Pos.X, objetivo.Pos.Y);
+            return;
+        }
+
+        // Lo perdió de vista: va a donde lo vio por última vez un rato antes de rendirse.
+        if (n.InvestigateTicks > 0)
+        {
+            n.InvestigateTicks--;
+            if (tieneCasa && distCasa >= CRIATURA_LEASH) { IniciarVueltaAlSpawn(n, now); return; }
+            if (n.X != n.LastSeenX || n.Y != n.LastSeenY) { StepToward(map, n, n.LastSeenX, n.LastSeenY); return; }
+            n.InvestigateTicks = 0;
+        }
+
+        // Sin nadie: vuelve caminando a casa (spawn ocupado por otro NPC = alcanza con quedar al lado).
+        bool enCasa = !tieneCasa || distCasa == 0
+            || (distCasa == 1 && !PuedeNpc(map, n.SpawnX, n.SpawnY, n.AguaValida, n.TierraInvalida));
+        if (!enCasa) { StepToward(map, n, n.SpawnX, n.SpawnY, PET_PATHFIND_STEPS); return; }
+        RestaurarHeadingOriginal(map, n);
+
+        if (pasivoProvocado)
+        {
+            // NPC pasivo PROVOCADO que se quedó sin enemigos y ya está en casa → vuelve a su estado
+            // original (AI_NPC.bas: restaura OldMovement/OldHostil y limpia AttackedBy).
+            n.Hostil = n.OldHostil; n.Movement = n.OldMovement;
+            n.AttackedBy = ""; n.AttackedFirstBy = ""; n.TargetUser = 0;
+        }
+    }
+
+    /// <summary>El TargetUser de la criatura si todavía lo puede perseguir; si no, lo suelta y
+    /// devuelve null (LastSeenX/Y quedan del último tick en que sí lo tenía, para investigar).</summary>
+    private static User ObjetivoDeCriatura(int map, NpcInstance n)
+    {
+        int idx = n.TargetUser;
+        if (idx <= 0) return null;
+        var u = idx <= UserListManager.LastUser ? UserListManager.UserList[idx] : null;
+        if (u == null || !u.flags.UserLogged || u.flags.Muerto != 0 || u.Pos.Map != map
+            || EsGmIntocable(u) || !NpcVeUsuario(n, u)
+            || Math.Abs(u.Pos.X - n.X) > CRIATURA_PERSECUCION_X || Math.Abs(u.Pos.Y - n.Y) > CRIATURA_PERSECUCION_Y)
+        {
+            n.TargetUser = 0;
+            return null;
+        }
+        return u;
+    }
+
+    private static void IniciarVueltaAlSpawn(NpcInstance n, double now)
+    {
+        n.VolviendoAlSpawn = true;
+        n.VueltaHasta = now + CRIATURA_VUELTA_TOPE_SEG;
+        n.TargetUser = 0; n.InvestigateTicks = 0;
+        n.PathCache = null; n.PathCacheCount = 0; n.PathCacheIdx = 0;
+    }
+
+    /// <summary>Un paso de la vuelta a casa tras romper la correa. Al llegar (o al vencer el tope)
+    /// termina el reset: vida y pool de exp completos, sin dueño de loot, estado original.</summary>
+    private static void PasoDeVueltaAlSpawn(int map, NpcInstance n, double now)
+    {
+        n.TargetUser = 0; // un golpe que se haya colado igual no la re-engancha
+        int dist = Math.Abs(n.X - n.SpawnX) + Math.Abs(n.Y - n.SpawnY);
+        bool llego = dist == 0 || (dist == 1 && !PuedeNpc(map, n.SpawnX, n.SpawnY, n.AguaValida, n.TierraInvalida));
+        if (!llego && now < n.VueltaHasta) { StepToward(map, n, n.SpawnX, n.SpawnY, PET_PATHFIND_STEPS); return; }
+
+        n.VolviendoAlSpawn = false; n.VueltaHasta = 0;
+        RestaurarHeadingOriginal(map, n);
+        n.MinHP = n.MaxHP;
+        n.ExpCount = n.GiveEXP;
+        n.Hostil = n.OldHostil; n.Movement = n.OldMovement;
+        n.AttackedBy = ""; n.AttackedFirstBy = "";
+    }
+
     // ---- IA inteligente de guardias (custom, NO 1:1 VB6) ----
     // Distancia Manhattan máxima desde su puesto que un guardia recorrerá persiguiendo a un
     // enemigo antes de abandonar y volver (evita que abandone la ciudad detrás de un señuelo).
@@ -871,8 +1086,17 @@ public static class NpcManager
     /// (VB6 ChangeNPCChar, MODULO_NPCs.bas:691). Así el NPC gira hacia el usuario al atacar/castear.
     /// </summary>
     public static void FaceTarget(int map, NpcInstance n, int tx, int ty)
+        => MirarHacia(map, n, HeadingTo(n.X, n.Y, tx, ty));
+
+    /// <summary>Criatura en casa y sin nadie: vuelve a mirar hacia donde miraba al spawnear.</summary>
+    private static void RestaurarHeadingOriginal(int map, NpcInstance n)
     {
-        byte h = HeadingTo(n.X, n.Y, tx, ty);
+        if (n.OrigHeading > 0) MirarHacia(map, n, n.OrigHeading);
+    }
+
+    /// <summary>Cambia el heading del NPC y, si cambió, lo difunde (CharacterChange) a los del mapa.</summary>
+    private static void MirarHacia(int map, NpcInstance n, byte h)
+    {
         if (h == 0 || h == n.Heading) return;
         n.Heading = h;
         for (int i = 1; i <= UserListManager.LastUser; i++)
@@ -1249,8 +1473,7 @@ public static class NpcManager
     /// VB6 (100*SkillDefensa/(SkillDefensa+SkillTacticas)) da 50% fijo.</summary>
     private static bool NpcImpactaNpc(int map, NpcInstance atacante, NpcInstance victima)
     {
-        var cc = BalanceData.Combate;
-        long prob = Math.Max(cc.ImpactoMin, Math.Min(cc.ImpactoMax, cc.ImpactoBase + (PoderAtaqueEfectivo(atacante) - PoderEvasionEfectivo(victima))));
+        long prob = Combat.ProbImpacto(PoderAtaqueEfectivo(atacante), PoderEvasionEfectivo(victima));
         bool impacto = _aiRng.Next(1, 101) <= prob;
 
         if (!impacto && victima.EquipShieldObj > 0)
@@ -1354,7 +1577,7 @@ public static class NpcManager
     public const int BOT_POT_HP = 30;   // cuánto cura una poción roja del bot (estándar AO)
 
     /// <summary>
-    /// Autopot del bot (potas INFINITAS) al intervalo real (IntervaloGolpeUsar = 300ms). Si le bajaron la
+    /// Autopot del bot (potas INFINITAS) al intervalo real (Intervals.GolpeUsar, hoy 290ms). Si le bajaron la
     /// vida (le pegaste), toma roja (+30); si es caster y le falta maná, toma azul (fórmula VB6). Una sola
     /// poción por intervalo, y suena el SND_BEBER, igual que un jugador poteando.
     /// </summary>
@@ -1448,6 +1671,8 @@ public static class NpcManager
     private const byte NPCTYPE_SACERDOTE = 1; // eNPCType.Revividor (NPCs.dat: NPC5 "Sacerdote", NPC101 "Sacerdote Malvado")
 
     private const byte CIUDAD_IMPERIAL = 1, CIUDAD_REPUBLICANA = 2, CIUDAD_CAOTICA = 3, CIUDAD_RINKEL = 5;
+    // Umbramar (NUEVO): NpcData deriva Ciudad=6 de Status=5. Sus centinelas atacan a todo el que no sea del Exordio.
+    private const byte CIUDAD_EXORDIO = 6;
     // Mapa de la ciudad neutral de Rinkel: todo guardia dentro queda neutral (no se mueve ni ataca).
     private const int MAPA_RINKEL = 20;
 
@@ -1773,7 +1998,8 @@ public static class NpcManager
 
     // Facción del jugador (VB6 GameLogic.bas:17-43, UserList().Faccion.Status).
     private const byte FAC_RENEGADO = 1, FAC_CIUDADANO = 2, FAC_REPUBLICANO = 3,
-                       FAC_CAOS = 4, FAC_ARMADA = 5, FAC_MILICIA = 6;
+                       FAC_CAOS = 4, FAC_ARMADA = 5, FAC_MILICIA = 6,
+                       FAC_EXORDIANO = Facciones.EXORDIANO, FAC_HERALDO = Facciones.HERALDO;
 
     /// <summary>
     /// VB6 GuardiasAI (AI_NPC.bas:402-411): ¿el usuario es enemigo de la ciudad del guardia?
@@ -1812,6 +2038,10 @@ public static class NpcManager
             return Combat.PuedeAtacar(u.id, n.MaestroUser);
         }
 
+        // Criatura que rompió la correa y vuelve a casa: intocable hasta llegar (CriaturaAI).
+        if (n.VolviendoAlSpawn)
+        { motivo = "La criatura está volviendo a su guarida."; return false; }
+
         if (n.NpcType != NPCTYPE_GUARDIASCITY)
         {
             if (!n.Attackable)
@@ -1830,17 +2060,22 @@ public static class NpcManager
     /// targetean, no los persiguen y no los atacan. NO se usa en UsuarioPuedeAtacarNpc: el GM sí
     /// puede atacar NPCs.
     /// </summary>
-    internal static bool EsGmIntocable(User u) => u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO;
+    // También quien graba una escena (/escena con <nick>): va invisible al lado del GM y lo atacaban.
+    internal static bool EsGmIntocable(User u) => u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO || Escenas.EsAcompanante(u);
 
     private static bool EsEnemigoUsuario(byte ciudad, User u)
     {
         byte f = u.Faccion.Status;
         if (f == 0) return false; // sin facción: nunca enemigo
+        // El Exordio es enemigo de las tres ciudades con bando; Rinkel es neutral y Umbramar es la suya.
+        if (f == FAC_EXORDIANO || f == FAC_HERALDO)
+            return ciudad is CIUDAD_IMPERIAL or CIUDAD_REPUBLICANA or CIUDAD_CAOTICA;
         return ciudad switch
         {
             CIUDAD_IMPERIAL    => f == FAC_CAOS || f == FAC_MILICIA || f == FAC_RENEGADO || f == FAC_REPUBLICANO,
             CIUDAD_REPUBLICANA => f == FAC_CAOS || f == FAC_CIUDADANO || f == FAC_ARMADA || f == FAC_RENEGADO,
             CIUDAD_CAOTICA     => f == FAC_CIUDADANO || f == FAC_REPUBLICANO || f == FAC_ARMADA || f == FAC_MILICIA,
+            CIUDAD_EXORDIO     => true, // Umbramar: todo el que tenga facción y no sea del Exordio
             _ => false, // CIUDAD_RINKEL (5) y neutrales: no agreden
         };
     }
@@ -1860,6 +2095,7 @@ public static class NpcManager
     {
         1 or 34 or 59 => CIUDAD_IMPERIAL,       // Ullathorpe, Nix, Banderbill
         194 or 63 or 184 => CIUDAD_REPUBLICANA, // Illiandor, Lindos, Suramei
+        CityData.MAPA_UMBRAMAR => CIUDAD_EXORDIO, // Umbramar (NUEVO): el sacerdote sólo atiende al Exordio
         _ => 0,
     };
 
@@ -1929,6 +2165,71 @@ public static class NpcManager
     }
 
     /// <summary>Difunde un ChatOverHead a todos los usuarios del mapa (SendData ToNPCArea).</summary>
+    // ---- Escenas de cine (Escenas.cs): el guion mueve y hace girar a sus bots ----
+    /// <summary>Un paso del bot de escena hacia (tx,ty), con el mismo pathfinding que los NPCs.</summary>
+    public static void EscenaPaso(int map, NpcInstance n, int tx, int ty)
+    {
+        if (n.X == tx && n.Y == ty) return;
+        // evitarUsuarios: la cámara (GM invisible) y quien graba están parados en medio de la escena;
+        // sin esto el BFS marcaba el camino a través de ellos y el bot quedaba trabado para siempre.
+        byte h = SeekPathHeading(map, n, tx, ty, 60, evitarUsuarios: true);
+        if (h == 0) h = HeadingTo(n.X, n.Y, tx, ty);
+        MoveNpcChar(map, n, h);
+    }
+
+    public static void EscenaMirar(int map, NpcInstance n, byte heading) => MirarHacia(map, n, heading);
+
+    public static byte RumboPorNombre(string s) => (s ?? "").ToLowerInvariant() switch
+    {
+        "norte" or "n" => H_N,
+        "este" or "e" => H_E,
+        "oeste" or "o" => H_O,
+        _ => H_S,
+    };
+
+    /// <summary>Bot de escena que navega: pisa agua, y al entrar pasa a barca y al salir vuelve a pie.</summary>
+    public static void EscenaBarca(int map, NpcInstance n) => ReconcileBoatVisual(map, n, true);
+
+    /// <summary>Efecto visual (FX de hechizo) sobre un personaje de escena, para todos los que lo ven.</summary>
+    public static void EscenaFx(int map, NpcInstance n, short fx, short vueltas)
+    {
+        short ci = (short)n.CharIndex;
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var u = UserListManager.UserList[i];
+            if (u.flags.UserLogged && u.Conn != null && (u.Pos.Map == map || u.VisibleNpcs.Contains(ci)))
+                ServerPackets.CreateFX(u.Conn, ci, fx, vueltas);
+        }
+    }
+
+    /// <summary>Clima de escena para todos los conectados: 0 despejado, 1 lluvia, 3 tormenta (igual que /lluvia).</summary>
+    public static void EscenaClima(byte tipo)
+    {
+        for (int i = 1; i <= UserListManager.LastUser; i++)
+        {
+            var u = UserListManager.UserList[i];
+            if (u?.flags.UserLogged == true && u.Conn != null) ServerPackets.RainToggle(u.Conn, tipo);
+        }
+    }
+
+    /// <summary>Golpe de escena: se ve igual que un bot pegándole a otro (gira, número de daño,
+    /// sonido de impacto y la animación de impacto sobre la víctima) pero no le resta vida.</summary>
+    public static void EscenaGolpe(int map, NpcInstance atacante, NpcInstance victima, int dano)
+    {
+        FaceTarget(map, atacante, victima.X, victima.Y);
+        BroadcastChatOverHead(map, dano.ToString(), (short)atacante.CharIndex, 5);
+        BotPlayWave(map, victima.X, victima.Y, Sounds.IMPACTO);
+        Combat.BroadcastFX(map, (short)victima.CharIndex, FX_GOLPE_ACIERTO_PET, 0);
+    }
+
+    /// <summary>Hechizo de escena: el que lanza gira, dice las palabras y el FX cae sobre el objetivo.</summary>
+    public static void EscenaHechizo(int map, NpcInstance lanzador, NpcInstance objetivo, short fx, string palabras)
+    {
+        FaceTarget(map, lanzador, objetivo.X, objetivo.Y);
+        if (!string.IsNullOrEmpty(palabras)) BroadcastChatOverHead(map, palabras, (short)lanzador.CharIndex, 3);
+        Combat.BroadcastFX(map, (short)objetivo.CharIndex, fx, 0);
+    }
+
     internal static void BroadcastChatOverHead(int map, string chat, short charIndex, byte mode)
     {
         for (int i = 1; i <= UserListManager.LastUser; i++)
@@ -1995,7 +2296,7 @@ public static class NpcManager
         bot.OwnerUserIndex = owner;
         bot.Name = nick;
         bot.LandBody = bot.Body; bot.LandWeapon = bot.WeaponAnim;
-        bot.LandShield = bot.ShieldAnim; bot.LandCasco = bot.CascoAnim;
+        bot.LandShield = bot.ShieldAnim; bot.LandCasco = bot.CascoAnim; bot.LandHead = bot.Head;
         bot.NoRespawn = true;   // si muere, NO respawnea
         if (heading >= 1 && heading <= 4 && heading != bot.Heading)
         { bot.Heading = heading; BroadcastNpcAppearance(bot.Map, bot); }  // mira en la dirección del invocador
@@ -2036,14 +2337,14 @@ public static class NpcManager
         {
             // Pisó agua → embarca (cuerpo de barca, sin equipo visible).
             n.EnBarca = true;
-            n.Body = BOAT_BODY; n.WeaponAnim = 0; n.ShieldAnim = 0; n.CascoAnim = 0;
+            n.Body = n.BarcaBody > 0 ? n.BarcaBody : BOAT_BODY; n.Head = 0; n.WeaponAnim = 0; n.ShieldAnim = 0; n.CascoAnim = 0;
             BroadcastNpcAppearance(map, n);
         }
         else if (!sobreAgua && n.EnBarca)
         {
             // Pisó tierra → desembarca (recupera el sacro).
             n.EnBarca = false;
-            n.Body = n.LandBody; n.WeaponAnim = n.LandWeapon; n.ShieldAnim = n.LandShield; n.CascoAnim = n.LandCasco;
+            n.Body = n.LandBody; n.Head = n.LandHead > 0 ? n.LandHead : n.Head; n.WeaponAnim = n.LandWeapon; n.ShieldAnim = n.LandShield; n.CascoAnim = n.LandCasco;
             BroadcastNpcAppearance(map, n);
         }
     }
@@ -2197,6 +2498,7 @@ public static class NpcManager
         Facciones.CIUDADANO or Facciones.ARMADA => 1,
         Facciones.REPUBLICANO or Facciones.MILICIA => 2,
         Facciones.CAOS => 3,
+        Facciones.EXORDIANO or Facciones.HERALDO => 4, // sin bots propios: todos los ejércitos lo ven enemigo
         _ => 0,
     };
 
@@ -2523,14 +2825,14 @@ public static class NpcManager
         if (destinoAgua && !n.EnBarca)
         {
             n.EnBarca = true;
-            n.Body = BOAT_BODY; n.WeaponAnim = 0; n.ShieldAnim = 0; n.CascoAnim = 0;
+            n.Body = n.BarcaBody > 0 ? n.BarcaBody : BOAT_BODY; n.Head = 0; n.WeaponAnim = 0; n.ShieldAnim = 0; n.CascoAnim = 0;
             BroadcastNpcAppearance(map, n);
         }
         else if (!destinoAgua && n.EnBarca)
         {
             // Simétrico: bajarse ANTES de pisar tierra, para no ver una barca arriba del pasto.
             n.EnBarca = false;
-            n.Body = n.LandBody; n.WeaponAnim = n.LandWeapon; n.ShieldAnim = n.LandShield; n.CascoAnim = n.LandCasco;
+            n.Body = n.LandBody; n.Head = n.LandHead > 0 ? n.LandHead : n.Head; n.WeaponAnim = n.LandWeapon; n.ShieldAnim = n.LandShield; n.CascoAnim = n.LandCasco;
             BroadcastNpcAppearance(map, n);
         }
     }
@@ -2689,6 +2991,8 @@ public static class NpcManager
 
         // Bot inteligente (prototipo, Utility AI): un único bot puede tener este flag. Va ANTES que
         // los demás modos para que quede completamente aislado (nunca cae en TickBotFaccion/Guerra/etc).
+        if (n.BotEscena) return;   // lo maneja el guion (Escenas.Tick)
+
         if (n.BotSmart) { TickBotSmart(map, n); return; }
 
         // Bots de la GUERRA MUNDIAL: recorren el mundo entero buscando a la facción enemiga.
@@ -3303,6 +3607,7 @@ public static class NpcManager
         {
             _mapasCiudad = new HashSet<int>();
             for (int i = 1; i <= 14; i++) { var c = CityData.Get(i); if (c.Map > 0) _mapasCiudad.Add(c.Map); }
+            _mapasCiudad.Add(CityData.MAPA_UMBRAMAR); // eCiudad 16, va después de Intermundia (15)
         }
         return _mapasCiudad.Contains(map);
     }
@@ -3942,10 +4247,12 @@ public static class NpcManager
                 // respawneado → aparecía el conteo de parálisis bajo el NPC nuevo.
                 n.ParalizadoHasta = 0; n.InmovilizadoHasta = 0; n.DormidoHasta = 0;
                 n.X = n.SpawnX; n.Y = n.SpawnY;
+                if (n.OrigHeading > 0) n.Heading = n.OrigHeading; // sin difundir: OnNpcSpawn lo crea ya así
                 n.CharIndex = CharIndexPool.Next();
                 // Restaurar estado original (un NPC provocado no debe revivir hostil) + limpiar aggro.
                 n.Hostil = n.OldHostil; n.Movement = n.OldMovement;
                 n.AttackedBy = ""; n.AttackedFirstBy = ""; n.TargetUser = 0;
+                n.VolviendoAlSpawn = false; n.VueltaHasta = 0; n.InvestigateTicks = 0;
                 // Reiniciar el cooldown de IA: tras el tiempo muerto, NextAiAt quedó congelado en el
                 // valor previo a morir; ponerlo a 0 garantiza que el NPC evalúe enemigos en el
                 // próximo TickAI sin pasar por el re-sync (evita un salto de ~1 intervalo).
@@ -4136,6 +4443,13 @@ public static class NpcManager
             npc.AttackedFirstBy = atacante.Name;
         if (!npc.Hostil) { npc.Hostil = true; npc.Movement = 0; } // pasivo → hostil y persigue
         npc.TargetUser = atacante.id;
+        // Recuerda desde dónde le pegaron: aunque el atacante quede fuera de persecución, la criatura
+        // va a buscarlo ahí (CriaturaAI) en vez de quedarse quieta recibiendo hechizos.
+        if (!npc.IsBot)
+        {
+            npc.LastSeenX = atacante.Pos.X; npc.LastSeenY = atacante.Pos.Y;
+            npc.InvestigateTicks = CRIATURA_MEMORIA_TICKS;
+        }
         atacante.flags.NPCAtacado = npc.CharIndex;
 
         // Alarma de ciudad (139): si un usuario de facción enemiga agrede a un guardia de una ciudad,
@@ -4199,6 +4513,7 @@ public static class NpcManager
             CIUDAD_IMPERIAL    => f == FAC_CIUDADANO || f == FAC_ARMADA,
             CIUDAD_REPUBLICANA => f == FAC_REPUBLICANO || f == FAC_MILICIA,
             CIUDAD_CAOTICA     => f == FAC_CAOS,
+            CIUDAD_EXORDIO     => f == FAC_EXORDIANO || f == FAC_HERALDO,
             _ => false,
         };
         for (int i = 1; i <= UserListManager.LastUser; i++)

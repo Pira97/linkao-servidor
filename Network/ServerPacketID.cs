@@ -188,11 +188,17 @@ public enum ServerPacketID : short
     // --- Rayo de casteo de hechizos (NUEVO, no VB6): arco eléctrico procedural caster→objetivo ---
     SpellBeam = 188, // Integer charOrigen, Integer charDestino (0=terreno), Integer xO, yO, xD, yD (tiles),
                      // Byte tipo (0 arcano, 1 daño, 2 parálisis, 3 soporte/cura, 4 veneno)
-    QuestInfo = 189, // Misiones: Byte origen (0=log del jugador, 1=oferta de NPC), ASCIIString npcName,
+    QuestInfo = 189, // Misiones: Byte origen (0=log del jugador, 1=oferta de NPC, 2=log silencioso),
+                     // Long coins (saldo de ExordiumCoins), ASCIIString npcName,
                      // Byte count, count×[Integer id, ASCIIString nombre, ASCIIString historia,
                      // ASCIIString reward, Byte estado, Byte nivelMin, Byte repetible, ASCIIString extra,
+                     // Integer giverMap, Byte giverX, giverY, Integer destMap, Byte destX, destY,
+                     // Integer entMap, Byte entX, entY,
                      // Byte numObj, numObj×[Byte tipo (0=matar,1=juntar), ASCIIString targetName,
-                     // Integer actual, Integer requerido, Integer body, Long grh]]
+                     // Integer actual, Integer requerido, Integer body, Long grh,
+                     // Integer destMap, Byte destX, destY, Integer entMap, Byte entX, entY]],
+                     // Byte numGivers, numGivers×[Integer npcIndex, ASCIIString nombre, Integer map,
+                     // Byte x, y, Byte disponible, Integer entMap, Byte entX, entY]
 
     // --- Modo espía (NUEVO, no VB6). OJO: estos TRES solo se le mandan a clientes que
     //     declararon soporte con ClientPacketID.ClientCaps (ver Connection.SoportaExtras).
@@ -290,4 +296,35 @@ public enum ServerPacketID : short
     // Cosméticos (cascos/escudos/monturas) comprados con créditos de MercadoPago, ver CreditItems.cs.
     CreditItemsCatalog = 215,
     CreditItemGranted = 216,
+
+    // --- Ranking de personajes (NUEVO, no VB6). Ver Game/Ranking.cs y mini/ranking_ui.js ---
+    RankingList = 217, // Byte categoria, Byte periodo, ASCIIString inicio, Long restanteSegs,
+                       //   ASCIIString actualizado, ASCIIString nota, Byte count,
+                       //   count×[ASCIIString nombre, Byte nivel, Long valor, Byte faccion,
+                       //          Byte clase, Integer cabeza, Integer casco]
+
+    // --- Portales (NUEVO, no VB6). La decoración del teleport que hay en un tile: el nombre
+    //     que le puso el GM con /ct y qué shader lo dibuja. Va SIEMPRE pegado al ObjectCreate
+    //     del teleport, nunca solo: el objeto es el que teletransporta, esto es el adorno.
+    //     Un cliente que no lo conozca ve el teleport de siempre con su partícula.
+    //     Ver Game/Portales.cs y mini/portal_fx.js. ---
+    PortalInfo = 218, // Integer x, Integer y, Byte shader, Byte r, Byte g, Byte b,
+                      //   Byte velocidad (×100), Byte escala (×100), ASCIIString nombre
+
+    // --- Voz de evento (NUEVO, no VB6): el anuncio hablado que un GM manda desde el panel.
+    //     Sale SOLO a clientes con SoportaVozEvento (bit5 de ClientCaps) — el motivo de
+    //     siempre: es un BROADCAST, y un cliente con el JS viejo cacheado no sabría saltear
+    //     el id 219 y leería basura desde ahí.
+    //     `audioUrl` vacía = el server no tiene TTS configurado (o falló) y el cliente lo dice
+    //     con la voz del propio navegador. Si viene con ruta ("/tts/<hash>.mp3"), el clip ya
+    //     está generado y cacheado: TODOS bajan el MISMO archivo, no se genera uno por jugador.
+    //     Ver Game/EventVoice.cs y mini/event_voice_ui.js. ---
+    EventVoice = 219, // ASCIIString texto, Byte voz, Byte volumen (0-100),
+                      //   Byte flags (bit0 = mostrar el texto en pantalla), ASCIIString audioUrl
+
+    // --- Contador de un estado con vencimiento (NUEVO, no VB6), SOLO al propio jugador:
+    //     cuánto le queda de oculto (skill Ocultarse, 10 s) o de invisibilidad mágica (30 s).
+    //     El cliente lo dibuja como barra sobre la cabeza, apilada con la de parálisis.
+    //     Requiere ClientCaps bit6 (Connection.SoportaEstadoTimer). ---
+    EstadoTimer = 220, // Integer charIndex, Byte tipo (1=oculto, 2=invisible), Byte segundos (0 = terminó), Byte total
 }

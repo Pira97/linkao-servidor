@@ -65,3 +65,22 @@ Dat/*.antes-de-*
 # SUBIR_A_VM.bat hace `git add -A`, asi que sin esto se publicaban enteros.
 *.bak_pack
 *.bak_*
+
+# Progreso de misiones por personaje. MISMO problema que Logros/ y BattlePass/, que se
+# arreglaron el 31-jul-2026 — pero Quests/ quedo afuera de aquel arreglo y siguio
+# versionado hasta el 8-sep-2026: eran 18 archivos con nombre de personaje
+# (FRIJOLITO.json, KALO.json, JEREA.json...) que el 'git reset --hard' de deploy.sh
+# le pisaba a cada jugador con la copia de esta PC en CADA despliegue.
+# Las definiciones de las misiones NO estan aca: viven en Dat/Quests.dat, que si se
+# versiona. Esta carpeta es solo el estado de cada personaje.
+Quests/
+
+# Generados en tiempo de ejecucion por el servidor. No son fuente y no aportan nada
+# al repo: el ranking se regenera solo y los clips de voz se rehacen al pedirlos.
+Ranking/
+TtsCache/
+server_log.txt
+
+# Copias de referencia que quedan al regenerar los .dat y los mapas con los scripts.
+*.base
+*.ORIGINAL

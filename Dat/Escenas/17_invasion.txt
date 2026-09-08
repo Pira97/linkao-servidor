@@ -1,0 +1,96 @@
+# Trailer "Los Desterrados del Mar" — 17. El Exordio invade Rinkel y choca con el Caos (mapa 20, plaza).
+# Sin voz: va sobre la música del final (4:14.4 en adelante) o como cierre extendido del trailer.
+#
+# Los Exordianos bajan por la calle del norte (x60-65) y atacan a todo lo que hay en la plaza; en el
+# segundo 14 aparecen los caóticos por el este y pelean entre ellos. "ataca" persigue y pega cada
+# ~1 s sin restar vida: quién muere y cuándo lo decide "muere".
+# Caóticos: pinta de los guardias del Caos (Guerrero 13, Cazador 110, Clérigo 111), nick rojo (bando=4).
+# Cámara en la plaza (72,52): los bots de escena esquivan usuarios (EscenaPaso), así que puede
+# quedar en medio de la pelea. Más al sur (70,57) medio cuadro era agua.
+
+0     lugar 20 72 52
+
+# --- La plaza de Rinkel, tranquila ---
+0     aparece aldeana guerrero 66 52 este npc=11 bando=2 Aldeana
+0     aparece aldeano guerrero 72 51 oeste npc=1 bando=2 Aldeano
+0     aparece pescador guerrero 75 54 oeste npc=41 bando=2 Pescador
+0     aparece guardia1 guerrero 68 55 norte npc=151 bando=2 Guardia <Rinkel>
+0     aparece guardia2 guerrero 74 49 oeste npc=151 bando=2 Guardia <Rinkel>
+
+# --- Llegan los Exordianos por el norte, con el Heraldo al frente ---
+# El Heraldo aparece DELANTE de la tropa (fila 46, ellos en la 44) y va siempre un paso adelante:
+# primero a la entrada de la plaza, al grito a la plaza misma y, cuando llega el Caos, entre los dos bandos.
+0.5   aparece heraldo paladin 62 46 sur npc=724 bando=16 Heraldo <Exordiano>
+0.5   aparece e1 guerrero 61 44 sur npc=718 Guerrero <Exordiano>
+0.5   aparece e2 paladin 62 44 sur npc=719 Paladin <Exordiano>
+0.5   aparece e3 nigromante 63 44 sur npc=723 Nigromante <Exordiano>
+0.5   aparece e4 guerrero 64 44 sur npc=718 Guerrero <Exordiano>
+0.5   aparece e5 paladin 65 44 sur npc=719 Paladin <Exordiano>
+1     camina e1 62 48
+1     camina e2 64 48
+1.2   camina e3 66 47
+1.2   camina e4 68 49
+1.4   camina e5 60 49
+0.8   camina heraldo 65 50
+3     dice guardia1 ¡Alto! ¡En nombre de Rinkel!
+4     dice aldeana ¿Qué son esos?
+
+# --- Atacan todo a su paso ---
+5     dice heraldo ¡Por los Exordianos! ¡Que nada quede en pie!
+5.2   camina heraldo 67 53
+5.5   ataca e1 guardia1
+5.5   ataca e2 aldeana
+5.7   ataca e3 aldeano
+5.9   ataca e4 pescador
+6.1   ataca e5 guardia2
+6.3   hechizo heraldo guardia2 20 ¡Hoja del Abismo!
+6.5   camina aldeano 80 56
+6.5   camina pescador 78 53
+7     dice aldeano ¡Corran! ¡Nos invaden!
+9     muere aldeana
+10    muere pescador
+10.5  hechizo heraldo guardia1 44 ¡Marea Negra!
+11    muere guardia1
+12.5  muere aldeano
+13    muere guardia2
+
+# --- Aparece el Caos ---
+14    aparece k1 guerrero 80 54 oeste npc=13 bando=4 Caótico <Caos>
+14    aparece k2 guerrero 81 55 oeste npc=13 bando=4 Caótico <Caos>
+14    aparece k3 guerrero 80 56 oeste npc=110 bando=4 Cazador <Caos>
+14    aparece k4 guerrero 82 53 oeste npc=13 bando=4 Caótico <Caos>
+14    aparece k5 nigromante 81 57 oeste npc=111 bando=4 Clérigo <Caos>
+14.1  fx k1 1
+14.2  fx k2 1
+14.3  fx k3 1
+14.4  fx k4 1
+14.5  fx k5 1
+15    dice k1 ¡Estas tierras son del Caos!
+15.5  camina heraldo 73 54
+16    dice heraldo Entonces van a caer con ellas.
+
+# --- Se atacan entre ellos ---
+16.5  ataca k1 e1
+16.5  ataca e1 k1
+16.7  ataca k2 e2
+16.7  ataca e2 k2
+16.9  ataca k3 e3
+16.9  ataca e3 k3
+17.1  ataca k4 e4
+17.1  ataca e4 k4
+17.3  ataca e5 k5
+18    hechizo heraldo k4 20 ¡Hoja del Abismo!
+19.5  hechizo k5 e5 50 ¡Descarga Infernal!
+21    muere k2
+22    hechizo heraldo k3 44 ¡Marea Negra!
+22.5  muere e4
+24    muere k3
+25.5  muere k1
+26.5  ataca e2 k4
+27    hechizo k5 e2 50 ¡Descarga Infernal!
+28    muere k4
+28.5  hechizo heraldo k5 20 ¡Hoja del Abismo!
+29.3  muere k5
+31    dice heraldo Exordium va a volver a temernos.
+
+34    fin

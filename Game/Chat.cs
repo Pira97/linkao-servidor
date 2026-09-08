@@ -16,14 +16,31 @@ public static class Chat
         // chat no lo cubre. Ráfaga (no cadencia): un GM tipeando/clickeando rápido no debería
         // verse afectado, sólo un script mandando el packet 94 a velocidad de red.
         var u0 = UserListManager.UserList[userIndex];
+        // El STAFF tiene su propio presupuesto y NUNCA se le corta la sesión por este límite.
+        // Con el tope único de 10/3s el teleport de GM quedaba adentro del gate equivocado: se
+        // maneja A CLICS (shift+clic en el mapa → game.html, clic derecho en el minimapa →
+        // minimap_widget.js) y cada clic manda un packet 94, así que saltar seguido por el mapa
+        // pasaba los 3,3/s permitidos, y a las 18 en la misma ventana el escalado a "abuso
+        // sostenido" llamaba a FlushAndClose() — ESE era el "teleporto mucho y se cierra la
+        // conexión". Descartar el paquete ya le saca todo el costo al servidor; matarle la sesión
+        // a una cuenta autorizada no agrega ninguna defensa, y encima el cliente reconecta solo,
+        // así que ni siquiera frena nada. El corte se conserva para quien NO es staff: ahí el
+        // packet 94 sólo puede venir de un cliente modificado.
+        bool esStaff = u0 != null && u0.FaccionStatus >= AdminLoader.STATUS_CONSEJERO;
         var rl = PacketRateLimiter.Permitir(userIndex, "gmcmd",
-            SecurityConfig.GmComandoMaxPorVentana, SecurityConfig.GmComandoVentanaMs,
+            esStaff ? SecurityConfig.GmComandoStaffMaxPorVentana : SecurityConfig.GmComandoMaxPorVentana,
+            SecurityConfig.GmComandoVentanaMs,
             u0?.Conn?.RemoteIp, u0?.Account);
         if (!rl.Permitido)
         {
             // PacketRateLimiter.Permitir ya deja el registro en SecurityLog (agregado, misma
             // política que "walk"/"chat"): acá sólo se decide si además hay que cortar la conexión.
-            if (rl.Excesivo && u0?.Conn != null) u0.Conn.FlushAndClose();
+            if (!esStaff && rl.Excesivo && u0?.Conn != null) { u0.Conn.FlushAndClose(); return; }
+            // Y avisar. Antes el comando descartado desaparecía en silencio: para el GM el
+            // teleport simplemente "no funcionaba", sin ninguna pista de por qué. Un aviso por
+            // ventana (PrimeraViolacion), no uno por paquete caído.
+            if (esStaff && rl.PrimeraViolacion)
+                Send(u0, "Estás mandando comandos de GM demasiado rápido: se descartaron algunos. Esperá un segundo.");
             return;
         }
 
@@ -119,12 +136,14 @@ public static class Chat
     }
 
     // Bando del chat faccionario: 1=Imperial (Ciudadano+Armada), 2=República (Republicano+Milicia),
-    // 3=Caos, 0=sin facción (Renegado). Los enemigos no comparten bando, así que no se ven.
+    // 3=Caos, 4=Exordio (Exordiano+Heraldo), 0=sin facción (Renegado). Los enemigos no comparten
+    // bando, así que no se ven.
     private static int FaccionGrupo(byte status) => status switch
     {
         Facciones.CIUDADANO or Facciones.ARMADA   => 1,
         Facciones.REPUBLICANO or Facciones.MILICIA => 2,
         Facciones.CAOS                             => 3,
+        Facciones.EXORDIANO or Facciones.HERALDO   => 4,
         _                                          => 0,
     };
 
@@ -235,6 +254,7 @@ public static class Chat
             // === UTILIDADES ===
             case "/spawn": return Cmd_Spawn(u, parts);
             case "/bot": return Cmd_Bot(u, parts);
+            case "/escena": return Cmd_Escena(u, parts);
             case "/guerra": return Cmd_Guerra(u, parts);
             case "/guerraoff": case "/guerrafin": return Cmd_GuerraOff(u);
             case "/guerraestado": case "/verguerra": return Cmd_GuerraEstado(u);
@@ -348,6 +368,7 @@ public static class Chat
             case "/guardamapa": case "/save-map": return Cmd_GuardaMapa(u);
             case "/modmapinfo": case "/map-info": return Cmd_ModMapInfo(u, parts);
             case "/ct": case "/create-teleport": return Cmd_CT(u, parts);
+            case "/ctx": return Cmd_CTX(u, parts);   // /ct con nombre y shader (formulario de portales)
             case "/dt": case "/destroy-teleport": return Cmd_DT(u, parts);
             case "/lluvia": case "/rain": return Cmd_Lluvia(parts);
 
@@ -455,6 +476,15 @@ public static class Chat
     };
 
     /// <summary>/bot &lt;clase&gt; [raza] [faccion]  — invoca un bot que pelea. /bot all = uno de cada clase.</summary>
+    /// <summary>/escena nombre — arranca el guion Dat/Escenas/nombre.txt en el mapa del GM;
+    /// /escena stop — lo corta y borra sus bots; /escena lista — guiones disponibles.</summary>
+    private static bool Cmd_Escena(User u, string[] parts)
+    {
+        if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tenés privilegios para dirigir escenas.");
+        if (parts.Length < 2) return Send(u, "Uso: /escena todo [desde] | <número o nombre> | sig | otra | con <nick> | stop | lista");
+        return Send(u, Escenas.Comando(u, string.Join(' ', parts.Skip(1))));
+    }
+
     private static bool Cmd_Bot(User u, string[] parts)
     {
         if (parts.Length < 2)
@@ -1961,7 +1991,44 @@ public static class Chat
         if (parts.Length < 4 || !short.TryParse(parts[1], out short destMap) ||
             !byte.TryParse(parts[2], out byte destX) || !byte.TryParse(parts[3], out byte destY))
             return false; // VB6 Exit Sub silencioso si payload inválido
+        return CrearPortal(u, destMap, destX, destY, PortalDef.PorDefecto());
+    }
 
+    /// <summary>
+    /// /ctx mapa x y shader r g b vel escala "nombre" — el /ct del formulario de portales
+    /// (mini/ct_form_ui.js). Es un comando APARTE y no un /ct con más argumentos: el /ct de
+    /// tres argumentos lo usan el Panel GM y el cliente viejo, y alargarle la firma los rompe.
+    /// </summary>
+    private static bool Cmd_CTX(User u, string[] parts)
+    {
+        if (parts.Length < 10 || !short.TryParse(parts[1], out short destMap) ||
+            !byte.TryParse(parts[2], out byte destX) || !byte.TryParse(parts[3], out byte destY))
+            return false;
+        byte Arg(int i) => byte.TryParse(parts[i], out var v) ? v : (byte)0;
+        var d = new PortalDef
+        {
+            Shader = Arg(4), R = Arg(5), G = Arg(6), B = Arg(7),
+            // 0 no es una velocidad ni una escala válida (un portal quieto y de tamaño cero):
+            // si el cliente manda 0 se toma como "el valor normal".
+            Vel = Arg(8) == 0 ? (byte)100 : Arg(8),
+            Escala = Arg(9) == 0 ? (byte)100 : Arg(9),
+            // El nombre es el resto: el parser de comandos ya junta lo que vino entre comillas
+            // en un solo token, así que acá llega entero aunque tenga espacios.
+            Nombre = parts.Length > 10 ? Recortar(parts[10], 40) : "",
+        };
+        return CrearPortal(u, destMap, destX, destY, d);
+    }
+
+    private static string Recortar(string s, int max) =>
+        string.IsNullOrEmpty(s) ? "" : (s.Length <= max ? s : s.Substring(0, max));
+
+    /// <summary>
+    /// El cuerpo compartido por /ct y /ctx. Deja el teleport en el tile de adelante del GM y
+    /// avisa a todo el mapa. El PortalInfo va SIEMPRE después del ObjectCreate: el cliente
+    /// tolera los dos órdenes, pero así el que no conoce el packet 218 ya dibujó su teleport.
+    /// </summary>
+    private static bool CrearPortal(User u, short destMap, byte destX, byte destY, PortalDef d)
+    {
         var srcMap = MapLoader.Get(u.Pos.Map);
         if (srcMap == null) return false;
 
@@ -1976,17 +2043,27 @@ public static class Chat
         // VB6: MakeObj → pone objeto + broadcast ObjectCreate al área
         srcMap.FloorObj[tx, ty] = 378;
         srcMap.FloorAmount[tx, ty] = 1;
-        srcMap.Exits[tx, ty] = new TileExit { DestMap = destMap, DestX = destX, DestY = destY };
+        var salida = new TileExit { DestMap = destMap, DestX = destX, DestY = destY };
+        srcMap.Exits[tx, ty] = salida;
         srcMap.DynamicTeleports.Add(tx * 101 + ty);
+        Portales.Set(u.Pos.Map, tx, ty, d);
+        // El efecto puede ocupar 3, 4 o hasta 10 tiles de lado: que se entre por donde se lo ve.
+        Portales.PlantarArea(u.Pos.Map, tx, ty, d, salida);
+        Portales.Guardar();
 
         // VB6: SendToAreaByPos → broadcast a todos en el mapa
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
             var o = UserListManager.UserList[i];
             if (o?.flags.UserLogged == true && o.Conn != null && o.Pos.Map == u.Pos.Map)
+            {
                 ServerPackets.ObjectCreate(o.Conn, (byte)tx, (byte)ty, 378, 1);
+                if (o.Conn.SoportaPortales)
+                    ServerPackets.PortalInfo(o.Conn, tx, ty, d, destMap, destX, destY);
+            }
         }
-        Console.WriteLine($"[CT] Teleport creado en ({tx},{ty}) → Mapa {destMap} ({destX},{destY})");
+        var etiqueta = string.IsNullOrEmpty(d.Nombre) ? "" : $" \"{d.Nombre}\"";
+        Console.WriteLine($"[CT] Portal{etiqueta} creado en ({tx},{ty}) → Mapa {destMap} ({destX},{destY}), shader {d.Shader}");
         return true;
     }
 
@@ -2002,10 +2079,14 @@ public static class Chat
         if (od.Type != ObjType.Teleport || !map.Exits[x, y].HasValue)
             return Send(u, "No hay teleport en esta posición.");
 
-        // Borrar objeto y exit
+        // Borrar objeto y exit. El área satélite va ANTES de Portales.Remove: la lista de tiles
+        // que se plantaron vive ahí adentro.
+        Portales.QuitarArea(u.Pos.Map, x, y);
         map.FloorObj[x, y] = 0; map.FloorAmount[x, y] = 0;
         map.Exits[x, y] = null;
         map.DynamicTeleports.Remove(x * 101 + y);
+        Portales.Remove(u.Pos.Map, x, y);
+        Portales.Guardar();
 
         for (int i = 1; i <= UserListManager.LastUser; i++)
         {
@@ -2208,7 +2289,10 @@ public static class Chat
     private static bool Cmd_ReloadObj()  { ObjData.Reload();   Console.WriteLine("[GM] Objetos recargados.");  return true; }
     private static bool Cmd_ReloadSpells() { SpellData.Reload(); Console.WriteLine("[GM] Hechizos recargados."); return true; }
     private static bool Cmd_ReloadBalance() { BalanceData.Reload(); Console.WriteLine("[GM] Balance.dat recargado (mods clase/raza + [COMBATE] + [RESPAWN])."); return true; }
-    private static bool Cmd_ReloadIni()  { Console.WriteLine("[GM] /reloadsini: recarga de Server.ini no implementada aún."); return true; }
+    // La recarga general de Server.ini sigue sin portarse, pero las claves Tts* de la Voz de
+    // Evento sí se releen acá: son las únicas que se tocan en caliente (probar una voz o un
+    // motor de TTS distinto sin reiniciar el servidor con gente adentro).
+    private static bool Cmd_ReloadIni()  { EventVoice.Recargar(); Console.WriteLine("[GM] /reloadsini: recargadas las claves Tts* (el resto de Server.ini todavía no)."); return true; }
     private static bool Cmd_SetIniVar(string[] parts) { Console.WriteLine("[GM] /setinivar (no implementado)"); return true; }
 
     private static bool Cmd_ShowName(User u)
@@ -2414,8 +2498,9 @@ public static class Chat
     private static bool Cmd_DarFaccion(User u, string[] parts)
     {
         if (u.FaccionStatus < AdminLoader.STATUS_SEMIDIOS) return Send(u, "No tienes privilegios para usar este comando.");
-        if (parts.Length < 3 || !byte.TryParse(parts[^1], out byte faccion) || faccion < 1 || faccion > 6)
-            return Send(u, "Uso: /darfaccion <nombre> <facción>  (1=Renegado 2=Ciudadano 3=Republicano 4=Caos 5=Armada 6=Milicia)");
+        if (parts.Length < 3 || !byte.TryParse(parts[^1], out byte faccion)
+            || !(faccion is >= 1 and <= 6 or Facciones.EXORDIANO or Facciones.HERALDO))
+            return Send(u, "Uso: /darfaccion <nombre> <facción>  (1=Renegado 2=Ciudadano 3=Republicano 4=Caos 5=Armada 6=Milicia 15=Exordiano 16=Heraldo)");
         string nombre = ArgNombre(parts, 1, 1);
 
         // Si está online: actualizar en memoria + refrescar nick a todos en el mapa (sin reloguear).
@@ -2448,7 +2533,8 @@ public static class Chat
     private static string NombreFaccion(byte f) => f switch
     {
         Facciones.RENEGADO => "Renegado", Facciones.CIUDADANO => "Ciudadano", Facciones.REPUBLICANO => "Republicano",
-        Facciones.CAOS => "Caos", Facciones.ARMADA => "Armada", Facciones.MILICIA => "Milicia", _ => $"#{f}",
+        Facciones.CAOS => "Caos", Facciones.ARMADA => "Armada", Facciones.MILICIA => "Milicia",
+        Facciones.EXORDIANO => "Exordiano", Facciones.HERALDO => "Heraldo del Exordio", _ => $"#{f}",
     };
 
     private static bool Cmd_DarPun(string[] parts)

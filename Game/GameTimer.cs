@@ -20,7 +20,9 @@ public static class GameTimer
     // (Antes se tomaba como ms y bajaba de a 1 → ~4x más rápido de lo correcto.)
     private const long GameTimerInterval = 40;          // GAME_TIMER_INTERVAL de mMainLoop.bas
     private const int HambreSedStep = 10;               // VB6 baja de a 10
-    private const long IntervaloHambre = 4500 * GameTimerInterval, IntervaloSed = 4000 * GameTimerInterval;
+    // AJUSTE (14-sep-2026, no VB6): el doble de lento que Server.ini (4500/4000). Con los valores
+    // originales la barra llena duraba ~30 min de comida y ~27 de agua; ahora ~60 y ~53.
+    private const long IntervaloHambre = 9000 * GameTimerInterval, IntervaloSed = 8000 * GameTimerInterval;
     // Server.ini IntervaloVeneno=500. VB6 EfectoIncinerado usa el MISMO IntervaloVeneno (no
     // IntervaloIncinerado). Nota: el loop de estados corre a 1Hz, así que el efectivo es ~1s.
     private const long IntervaloVeneno = 500, IntervaloIncinera = 500;
@@ -89,6 +91,14 @@ public static class GameTimer
 
             // Logros: tiempo conectado (cuenta también estando muerto).
             Achievements.TickOnline(i, now);
+
+            // Cadencia real de golpe (intervalo base + ExtraTimer del arma): compare-and-send,
+            // no manda nada mientras el número no cambie. Está acá como red de seguridad para
+            // los caminos que cambian el arma sin pasar por HandleEquipItem (romper el arma en
+            // combate, desequipar desde otro sistema, /reloadbalance): si alguno se olvida de
+            // llamar a SyncConfig, el cliente se corrige solo dentro del segundo en vez de
+            // quedarse pegando con el intervalo viejo y perdiendo teclas.
+            Intervals.SyncConfig(u);
 
             if (u.flags.Muerto == 1) continue;
 
@@ -165,7 +175,8 @@ public static class GameTimer
 
             // --- Regen Stamina (RecStamina, General.bas:1361) ---
             // No regenera trabajando, ni desnudo (sin armadura) salvo que esté montado.
-            // Con hambre o sed no recupera: PIERDE 5% del máximo (mín. 5) por tick.
+            // Con hambre o sed no recupera: PIERDE 2,5% del máximo (mín. 3) por tick.
+            // AJUSTE (14-sep-2026): era 5% (mín. 5) → la barra entera se iba en ~30 s.
             long intSta = descansa ? StaminaDescansar : StaminaSinDescansar;
             if (!u.flags.Trabajando && (u.flags.Desnudo == 0 || u.flags.Montando != 0)
                 && now - u._timerSta >= intSta)
@@ -175,7 +186,7 @@ public static class GameTimer
                     if (u.Stats.MinSta > 0)
                     {
                         u._timerSta = now;
-                        int perdida = Math.Max(5, u.Stats.MaxSta * 5 / 100);
+                        int perdida = Math.Max(3, u.Stats.MaxSta * 25 / 1000);
                         u.Stats.MinSta = (short)Math.Max(0, u.Stats.MinSta - perdida);
                         ServerPackets.UpdateSta(u.Conn, u.Stats.MinSta);
                     }

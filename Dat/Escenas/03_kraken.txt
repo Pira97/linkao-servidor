@@ -1,0 +1,18 @@
+# Trailer "Los Desterrados del Mar" — 03. Nyrath, el kraken, se traga una barca (mapa 622, mar del oeste).
+# Voz: 0:47.3 "Algunos decían que el mar los había devorado" hasta 0:51.0.
+# El segundo 0 de este guion = 0:47.3 del audio. La frase dura 3.8 s: el guion estira para tener de dónde cortar.
+#
+# La cámara está en la costa oeste de la isla, lejos de las criaturas (525 en 36,47 y 60,36).
+
+0     lugar 622 38 36
+0     aparece renegado1 guerrero 32 24 sur npc=530 bando=1 barca Renegado
+0.3   camina renegado1 32 36
+2.5   dice renegado1 ¿Qué es esa sombra bajo el agua?
+
+# El kraken sube justo debajo de la barca (a 6 de la cámara: más lejos queda en el borde de la vista).
+4.8   criatura nyrath 704 32 38 norte
+5.5   fx renegado1 14
+5.8   quita renegado1
+11    quita nyrath
+
+12    fin

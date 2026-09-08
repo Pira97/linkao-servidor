@@ -150,7 +150,12 @@ public static class Commerce
     {
         if (t.FaccionStatus >= 7)
             return t.FaccionStatus switch { 7 => 10, 8 => 12, 9 => 13, 10 => 14, _ => 10 };
-        return t.Faccion.Status switch { 1 => 1, 2 => 2, 3 => 3, 4 => 5, 5 => 6, 6 => 7, _ => 1 };
+        // 8/9 (Exordiano/Heraldo) no existen en el VB6: son los dos huecos libres de la tabla del cliente.
+        return t.Faccion.Status switch
+        {
+            1 => 1, 2 => 2, 3 => 3, 4 => 5, 5 => 6, 6 => 7,
+            Facciones.EXORDIANO => 8, Facciones.HERALDO => 9, _ => 1,
+        };
     }
 
     /// <summary>HandleCommerceStart: si el NPC seleccionado comercia y está cerca, abre la ventana.</summary>

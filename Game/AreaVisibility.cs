@@ -397,6 +397,40 @@ public static class AreaVisibility
     /// <summary>Clave de objeto del piso qualificada por mapa (evita colisión entre mapas en mundo continuo).</summary>
     private static int ObjKey(int map, int x, int y) => map * 10201 + x * 101 + y;
 
+    /// <summary>
+    /// Reenvía el PortalInfo de todos los portales que el usuario YA tiene en VisibleObjs.
+    ///
+    /// Hace falta por una carrera de arranque: el cliente manda su ClientCaps recién cuando
+    /// recibe el "logged", y para entonces el server ya le disparó la ráfaga de ObjectCreate
+    /// del login. En ese momento SoportaPortales todavía era false, así que los teleports se
+    /// dibujaron con la partícula 34 de siempre. Y no se arregla solo: FullUpdateObjects sólo
+    /// manda el PortalInfo cuando el tile ENTRA a VisibleObjs, y ya está adentro.
+    ///
+    /// Es el mismo agujero que MarcarEspectador tapa asumiéndole el bit0 al espectador; acá no
+    /// se puede asumir nada (el cliente Godot no entiende el 218), así que se reenvía.
+    /// El cliente aplica un PortalInfo tardío sobre el teleport ya creado — ver c.on.portalInfo.
+    /// </summary>
+    public static void ReenviarPortalesVisibles(User obs)
+    {
+        if (obs?.Conn == null || !obs.Conn.SoportaPortales) return;
+        int map = obs.Pos.Map;
+        bool continuo = Continuous.Enabled && RegionLayout.InRegion(map);
+        foreach (int code in obs.VisibleObjs)
+        {
+            int m, x, y;
+            if (continuo) { m = code / 10201; int r = code % 10201; x = r / 101; y = r % 101; }
+            else          { m = map; x = code / 101; y = code % 101; }
+            if (x < 1 || x > 100 || y < 1 || y > 100) continue;
+            if (!Portales.TryGet((short)m, x, y, out var pd)) continue;
+            var smd = MapLoader.Get(m);
+            if (smd == null) continue;
+            var ex = smd.Exits[x, y];
+            var (px, py) = continuo ? Continuous.Rel(map, m, x, y) : (x, y);
+            ServerPackets.PortalInfo(obs.Conn, px, py, pd,
+                ex?.DestMap ?? 0, (byte)(ex?.DestX ?? 0), (byte)(ex?.DestY ?? 0));
+        }
+    }
+
     /// <summary>Objetos del piso — camino clásico (mismo mapa, clave x*101+y). 1:1 con el original.</summary>
     private static void FullUpdateObjectsSameMap(User obs, int map)
     {
@@ -414,6 +448,15 @@ public static class AreaVisibility
                 if (obs.VisibleObjs.Add(x * 101 + y))
                 {
                     ServerPackets.ObjectCreate(obs.Conn, (byte)x, (byte)y, oi, (short)md.FloorAmount[x, y]);
+                    // Portales: el nombre y el efecto van pegados al objeto. Sólo los creados
+                    // con /ct tienen def; un teleport fijo del .csm no, y el cliente lo dibuja
+                    // con la partícula de siempre.
+                    if (obs.Conn.SoportaPortales && Portales.TryGet((short)map, x, y, out var pd))
+                    {
+                        var ex = md.Exits[x, y];
+                        ServerPackets.PortalInfo(obs.Conn, x, y, pd,
+                            ex?.DestMap ?? 0, (byte)(ex?.DestX ?? 0), (byte)(ex?.DestY ?? 0));
+                    }
                     if (ObjData.Get(oi).Type == ObjType.Puertas)
                     {
                         ServerPackets.BlockPosition(obs.Conn, (byte)x, (byte)y, md.Blocked[x, y]);
@@ -464,6 +507,15 @@ public static class AreaVisibility
                     {
                         var (gx, gy) = Continuous.Rel(obs.Pos.Map, sm, x, y);
                         ServerPackets.ObjectCreate(obs.Conn, gx, gy, oi, (short)smd.FloorAmount[x, y]);
+                        // Igual que en el camino de un solo mapa, pero con las coords ya
+                        // pasadas a globales: el cliente las reconvierte con el mismo `off`
+                        // que usa para el ObjectCreate, así que los dos caen en el mismo tile.
+                        if (obs.Conn.SoportaPortales && Portales.TryGet((short)sm, x, y, out var pd))
+                        {
+                            var ex = smd.Exits[x, y];
+                            ServerPackets.PortalInfo(obs.Conn, gx, gy, pd,
+                                ex?.DestMap ?? 0, (byte)(ex?.DestX ?? 0), (byte)(ex?.DestY ?? 0));
+                        }
                         if (ObjData.Get(oi).Type == ObjType.Puertas)
                         {
                             ServerPackets.BlockPosition(obs.Conn, gx, gy, smd.Blocked[x, y]);

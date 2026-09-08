@@ -37,6 +37,12 @@ public static class BalanceData
         public int DanoMagicoMaxPvP;       // techo de daño mágico PvP (0 = sin techo). Default 0
         public int DanoMagicoMinPvE;       // piso de daño mágico contra NPCs (0 = sin piso). Default 0
         public int DanoMagicoMaxPvE;       // techo de daño mágico contra NPCs (0 = sin techo). Default 0
+        // Apuñalamiento (Asesino/Ladrón con daga). El daño del apuñalazo REEMPLAZA al golpe:
+        //   daño = base * (ApunalarBase + ApunalarPorSkill * skill/100) / 100
+        // Defaults = los valores históricos del VB6 (25 y 125 → x0.25 a skill 0, x1.50 a skill 100).
+        public int ApunalarProb;           // % de que salga el apuñalazo. Default 20
+        public int ApunalarBase;           // % del golpe con skill 0. Default 25
+        public int ApunalarPorSkill;       // % extra que suma la skill al llegar a 100. Default 125
     }
 
     private static CombateCfg _combate;
@@ -224,6 +230,9 @@ public static class BalanceData
             DanoMagicoMaxPvP    = (int)Dp(ini, "DanoMagicoMaxPvP", 0),
             DanoMagicoMinPvE    = (int)Dp(ini, "DanoMagicoMinPvE", 0),
             DanoMagicoMaxPvE    = (int)Dp(ini, "DanoMagicoMaxPvE", 0),
+            ApunalarProb        = (int)Dp(ini, "ApunalarProb", 20),
+            ApunalarBase        = (int)Dp(ini, "ApunalarBase", 25),
+            ApunalarPorSkill    = (int)Dp(ini, "ApunalarPorSkill", 125),
         };
 
         // Respawn de NPCs ([RESPAWN]). Como en [COMBATE], los decimales se escriben como entero

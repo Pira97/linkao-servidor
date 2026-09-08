@@ -312,6 +312,8 @@ public static class PacketHandler
 
             case ClientPacketID.NpcCatalogRequest:      HandleNpcCatalogRequest(conn);      return true;
             case ClientPacketID.BotClasesRequest:       HandleBotClasesRequest(conn);       return true;
+            case ClientPacketID.RankingRequest:         HandleRankingRequest(conn);         return true;
+            case ClientPacketID.EventVoice:             HandleEventVoice(conn);             return true;
             case ClientPacketID.PetElegir:              HandlePetElegir(conn);              return true;
             case ClientPacketID.PetInvGuardar:          HandlePetInvGuardar(conn);          return true;
             case ClientPacketID.PetInvSacar:            HandlePetInvSacar(conn);            return true;
@@ -469,6 +471,7 @@ public static class PacketHandler
                 37 => $"/ip2nick {b.ReadASCIIString()}",             // IP_TO_NICK: S
                 38 => $"/onclan {Q(b.ReadASCIIString())}",           // GUILD_ONLINE_MEMBERS: S
                 39 => GM_TeleportCreate(b),                          // TELEPORT_CREATE: IBB
+                95 => GM_TeleportCreateEx(b),                        // TELEPORT_CREATE_EX: IIIBBBBBBS
                 40 => GM_NoPayload(b, "/dt"),                        // TELEPORT_DESTROY: -
                 41 => $"/lluvia {b.ReadByte()}",                     // RAIN_TOGGLE: B
                 42 => $"/talkas {b.ReadASCIIString()}",               // TALK_AS_NPC: S
@@ -550,6 +553,19 @@ public static class PacketHandler
     private static string GM_EditChar(ByteQueue b) { var n=b.ReadASCIIString(); var op=b.ReadByte(); var a1=b.ReadASCIIString(); var a2=b.ReadASCIIString(); return $"/mod {Q(n)} {op} {a1} {a2}".TrimEnd(); } // SBSS
     private static string GM_BanChar(ByteQueue b) { var n=b.ReadASCIIString(); b.ReadByte(); return $"/ban {Q(n)}"; } // SB
     private static string GM_TeleportCreate(ByteQueue b) { var m=b.ReadInteger(); var x=b.ReadInteger(); var y=b.ReadInteger(); return $"/ct {m} {x} {y}"; } // III (coords ensanchadas a short por mundo continuo)
+    // Portal con nombre y efecto (formulario /ct del cliente web, mini/ct_form_ui.js).
+    // El nombre va ÚLTIMO y entre comillas: el parser de comandos junta lo que está entre
+    // comillas en un solo token, así que un portal llamado "Plaza de Ulla" llega entero.
+    private static string GM_TeleportCreateEx(ByteQueue b)
+    {
+        var m = b.ReadInteger(); var x = b.ReadInteger(); var y = b.ReadInteger();
+        var sh = b.ReadByte();
+        var r = b.ReadByte(); var g = b.ReadByte(); var bl = b.ReadByte();
+        var vel = b.ReadByte(); var esc = b.ReadByte();
+        var nombre = b.ReadASCIIString();
+        return $"/ctx {m} {x} {y} {sh} {r} {g} {bl} {vel} {esc} {Q(nombre)}";
+    } // IIIBBBBBBS
+
     private static string GM_BanIP(ByteQueue b) { var ip=b.ReadASCIIString(); var r=b.ReadASCIIString(); return $"/banip {ip} {r}"; } // SS
     private static string GM_AlterPassword(ByteQueue b) { var n=b.ReadASCIIString(); var c=b.ReadASCIIString(); return $"/altpass {Q(n)} {Q(c)}"; } // SS
     private static string GM_SetIniVar(ByteQueue b) { var k=b.ReadASCIIString(); var s=b.ReadASCIIString(); var v=b.ReadASCIIString(); return $"/setinivar {k} {s} {v}"; } // SSS
@@ -705,7 +721,8 @@ public static class PacketHandler
         const byte FONT_GUILD = 5;
         // Validación de facción (1:1 VB6: debe tener una facción base válida).
         if (!(Game.Facciones.EsCiuda(u) || Game.Facciones.EsArmada(u) || Game.Facciones.EsRepu(u)
-              || Game.Facciones.EsMili(u) || Game.Facciones.EsCaos(u) || Game.Facciones.EsRene(u)))
+              || Game.Facciones.EsMili(u) || Game.Facciones.EsCaos(u) || Game.Facciones.EsRene(u)
+              || Game.Facciones.EsDelExordio(u)))
         {
             ServerPackets.ConsoleMsg(conn, "Hay un error en su facción, comuníquese con algún GameMaster", FONT_GUILD);
             return;
@@ -1327,7 +1344,18 @@ public static class PacketHandler
         var b = conn.IncomingData;
         if (b.Length < 2) throw new NotEnoughDataException();
         b.ReadByte();                  // id
+        byte antes = conn.Caps;
         conn.Caps = b.ReadByte();
+
+        // Este paquete llega DESPUÉS de la ráfaga de login, así que todo lo que dependa de un
+        // bit recién declarado y sólo se mande "cuando algo entra en vista" hay que reenviarlo
+        // acá: si no, se pierde para siempre esa sesión. Le pasa a los portales (el teleport ya
+        // está en VisibleObjs y quedó con la partícula vieja). Ver ReenviarPortalesVisibles.
+        if ((conn.Caps & 16) != 0 && (antes & 16) == 0 && conn.UserIndex > 0)
+        {
+            var u = Game.UserListManager.UserList[conn.UserIndex];
+            if (u?.flags.UserLogged == true) Game.AreaVisibility.ReenviarPortalesVisibles(u);
+        }
     }
 
     /// <summary>
@@ -1711,6 +1739,33 @@ public static class PacketHandler
     }
 
     /// <summary>
+    /// RankingRequest: Byte(id) Byte(categoria) Byte(periodo). Responde RankingList con el top 10.
+    /// No pide privilegios: el ranking es público, y lo que muestra ya lo ve cualquiera en el
+    /// juego (nombre, nivel, facción, clase). El escaneo de los .chr está cacheado en
+    /// Game.Ranking, así que pedirlo seguido no cuesta disco.
+    /// </summary>
+    private static void HandleRankingRequest(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 3) throw new NotEnoughDataException(); // id(1)+cat(1)+periodo(1)
+        b.ReadByte(); // id
+        byte categoria = b.ReadByte();
+        byte periodo = b.ReadByte();
+
+        var u = Game.UserListManager.UserList[conn.UserIndex];
+        if (u == null || !u.flags.UserLogged) return;
+
+        // Categoría o período fuera de rango: se recorta en vez de cortar la conexión — es un
+        // pedido de sólo lectura, no vale la pena tratarlo como paquete malicioso.
+        if (categoria > Game.Ranking.CAT_NIVEL) categoria = Game.Ranking.CAT_ORO;
+        if (periodo > Game.Ranking.PER_HISTORICO) periodo = Game.Ranking.PER_HISTORICO;
+
+        var r = Game.Ranking.Obtener(categoria, periodo);
+        ServerPackets.RankingList(conn, categoria, periodo, r.Inicio, r.RestanteSegs,
+            r.Actualizado, r.Nota, r.Filas);
+    }
+
+    /// <summary>
     /// QueryMapNpcs: Byte(id)+Integer(map). Responde MapNpcsList con las criaturas que
     /// habitan ese mapa (definición de spawn del .csm, no NPCs vivos: así funciona para
     /// cualquier mapa aunque nadie lo haya visitado). El cliente lo usa en el mapa-mundi
@@ -1823,6 +1878,27 @@ public static class PacketHandler
         Game.BalanceEditor.Save(conn.UserIndex, cambios);
     }
 
+    /// <summary>
+    /// EventVoice: ASCIIString texto, Integer mapa (0 = todo el server), Byte voz, Byte volumen,
+    /// Byte flags. Voz de evento del panel GM (ver Game/EventVoice.cs).
+    ///
+    /// Devuelve al instante: EventVoice.Anunciar sólo valida y encola — generar el audio (que
+    /// puede tardar segundos) lo hace un worker aparte, nunca el hilo del juego.
+    /// Los privilegios los revalida EventVoice.Anunciar: mandar este paquete a mano no sirve.
+    /// </summary>
+    private static void HandleEventVoice(Connection conn)
+    {
+        var b = conn.IncomingData;
+        if (b.Length < 8) throw new NotEnoughDataException(); // id(1)+str(2+)+int(2)+byte×3(3)
+        b.ReadByte(); // id
+        string texto = b.ReadASCIIString();
+        int mapa = b.ReadInteger();
+        byte voz = b.ReadByte();
+        byte volumen = b.ReadByte();
+        byte flags = b.ReadByte();
+        Game.EventVoice.Anunciar(conn.UserIndex, texto, mapa, voz, volumen, flags);
+    }
+
     /// <summary>DamageEditorPreviewRequest: Integer spellIndex, Integer staffObjIndex, Integer casterLevel,
     /// Integer casterINT, Byte isPvP, Integer targetResistencia. Responde DamageEditorPreviewResult.</summary>
     private static void HandleDamageEditorPreviewRequest(Connection conn)
@@ -1916,18 +1992,30 @@ public static class PacketHandler
         if (u.flags.UserLogged) ServerPackets.Attributes(conn, u);
     }
 
-    /// <summary>HandleRequestSkills. Cable: solo Byte(id). Responde SendSkills con los puntos de cada skill.</summary>
+    /// <summary>
+    /// HandleRequestSkills. Cable: solo Byte(id). Responde SendSkills con los puntos de cada skill,
+    /// y LevelUp(63) con los puntos LIBRES. SendSkills no los lleva, y el cliente abre la ventana
+    /// con este pedido: sin el LevelUp mostraría el contador viejo (o 0 si nunca subió de nivel
+    /// en esta sesión) y no te dejaría repartir lo que en realidad tenés.
+    /// </summary>
     private static void HandleRequestSkills(Connection conn)
     {
         conn.IncomingData.ReadByte();  // id
         var u = Game.UserListManager.UserList[conn.UserIndex];
-        if (u.flags.UserLogged) ServerPackets.SendSkills(conn, u);
+        if (u.flags.UserLogged)
+        {
+            ServerPackets.SendSkills(conn, u);
+            ServerPackets.LevelUp(conn, u.Stats.SkillPts);
+        }
     }
 
     /// <summary>
     /// HandleModifySkills (Protocol.bas:4859). Cable: Byte(id) + NUMSKILLS bytes (puntos a sumar a cada
     /// skill). Anti-hack: si la suma supera SkillPts libres → cierre. Resta de SkillPts, suma a UserSkills
-    /// (cap 100, devolviendo el excedente). Responde SendSkills + UpdateUserStats. 1:1 con VB6.
+    /// (cap 100, devolviendo el excedente). Responde SendSkills + UpdateUserStats + LevelUp.
+    /// El LevelUp final lleva los libres que QUEDAN: sin él el cliente se queda con el contador de
+    /// antes de repartir, te deja gastar los mismos puntos dos veces y el anti-hack de arriba lo
+    /// echa por algo que no hizo. Va último porque es el que deja bien el número en pantalla.
     /// </summary>
     private static void HandleModifySkills(Connection conn)
     {
@@ -1958,6 +2046,7 @@ public static class PacketHandler
         }
         ServerPackets.SendSkills(conn, u);
         ServerPackets.UpdateUserStats(conn, u);
+        ServerPackets.LevelUp(conn, u.Stats.SkillPts);
     }
 
     /// <summary>
@@ -2489,6 +2578,11 @@ public static class PacketHandler
         if (!u.flags.UserLogged) return;
         if (!RateLimitOk(conn, u, "inventario", Network.SecurityConfig.InventarioMaxPorVentana, Network.SecurityConfig.InventarioVentanaMs)) return;
         Game.Inventory.EquipItem(conn.UserIndex, slot);
+        // Equipar/desequipar un arma cambia la cadencia real de golpe (ExtraTimer): hay que
+        // avisarle al cliente en el acto, si no su gate local queda con el intervalo del arma
+        // anterior y pierde la tecla de ataque (ver Intervals.IntervaloAtaque). No cuesta un
+        // paquete salvo que el número cambie de verdad.
+        Game.Intervals.SyncConfig(u);
     }
 
     /// <summary>HandleUseItem. Cable: Byte(id) + Byte(Slot) + Byte(autopot) + Byte(token).</summary>
@@ -2503,8 +2597,9 @@ public static class PacketHandler
         var u = Game.UserListManager.UserList[conn.UserIndex];
         if (!u.flags.UserLogged) return;
 
-        // AutoPot legítimo (token correcto): bypass de la detección de patrón y del intervalo
-        // GolpeUsar de pociones; solo lo frena el rate-limit propio del autopot (10/seg).
+        // AutoPot legítimo (token correcto): bypass de la detección de patrón de autoclicker,
+        // más el rate-limit propio del autopot (10/seg). El intervalo GolpeUsar de pociones NO
+        // se saltea: lo aplica Inventory.UseItem igual que en el uso manual.
         if (esAutoPot == 1 && token == 97)
         {
             if (!Game.AntiCheat.VerificarLimitePaquetes(conn.UserIndex, true)) return;

@@ -124,29 +124,31 @@ public static class ServerPackets
         Send(conn, p);
     }
 
-    /// <summary>WriteChangeMap: Byte(ID) + Integer(Map) + Integer(MapVersion).</summary>
-    public static void ChangeMap(Connection conn, short map, short mapVersion)
+    /// <summary>WriteChangeMap: Byte(ID) + Integer(Map) + Integer(MapVersion) + Byte(Pk).</summary>
+    public static void ChangeMap(Connection conn, short map, short mapVersion, bool pk)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.ChangeMap);
         p.WriteInteger(map);
         p.WriteInteger(mapVersion);
+        p.WriteByte((byte)(pk ? 1 : 0));
         Send(conn, p);
     }
 
     /// <summary>
-    /// SeamlessCross (mundo continuo): Byte(ID) + Integer(nuevoMapa) + Integer(globalX) + Integer(globalY).
+    /// SeamlessCross (mundo continuo): Byte(ID) + Integer(nuevoMapa) + Integer(globalX) + Integer(globalY) + Byte(Pk).
     /// Cruce de borde SIN teardown: el cliente actualiza current_map y su posición pero NO limpia el
     /// char_list ni recarga desde cero (a diferencia de ChangeMap). La continuidad la sostiene el
     /// re-anclado de coords globales (4a). Solo se envía con el mundo continuo activo.
     /// </summary>
-    public static void SeamlessCross(Connection conn, short map, int gx, int gy)
+    public static void SeamlessCross(Connection conn, short map, int gx, int gy, bool pk)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.SeamlessCross);
         p.WriteInteger(map);
         p.WriteInteger((short)gx);
         p.WriteInteger((short)gy);
+        p.WriteByte((byte)(pk ? 1 : 0));
         Send(conn, p);
     }
 
@@ -366,6 +368,56 @@ public static class ServerPackets
         p.WriteInteger((short)y);
         p.WriteInteger(objIndex);
         p.WriteInteger(amount);
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// PortalInfo: la decoración del teleport que hay en (x,y) — nombre para el cartel del
+    /// cliente y qué shader lo dibuja. Se manda SIEMPRE junto al ObjectCreate del teleport.
+    /// vel/esc viajan ×100 en un byte (0.01..2.55): un float acá sería 4 bytes por portal
+    /// para una precisión que ningún ojo distingue.
+    /// </summary>
+    public static void PortalInfo(Connection conn, int x, int y, ServidorCS.Game.PortalDef d,
+                                  short destMap, byte destX, byte destY)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.PortalInfo);
+        p.WriteInteger((short)x);
+        p.WriteInteger((short)y);
+        p.WriteByte(d.Shader);
+        p.WriteByte(d.R); p.WriteByte(d.G); p.WriteByte(d.B);
+        p.WriteByte(d.Vel); p.WriteByte(d.Escala);
+        // El DESTINO viaja al cliente porque el portal lo MUESTRA: adentro del círculo se ve
+        // el terreno real de ese lugar, recortado de las imágenes del mundo que el cliente ya
+        // trae para el Mapamundi. Sin estas tres cifras el portal es sólo un efecto bonito.
+        p.WriteInteger(destMap);
+        p.WriteByte(destX); p.WriteByte(destY);
+        p.WriteASCIIString(d.Nombre ?? "");
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// EventVoice: el anuncio hablado que un GM difunde desde el panel (ver Game/EventVoice.cs).
+    /// Byte(id) + ASCIIString(texto) + Byte(voz) + Byte(volumen 0-100) + Byte(flags) +
+    /// ASCIIString(audioUrl).
+    ///
+    /// El AUDIO no viaja acá: `audioUrl` es la ruta del clip ya generado y cacheado
+    /// ("/tts/&lt;hash&gt;.mp3", lo sirve StatusEndpoint) o "" para que el cliente lo diga con la
+    /// voz de su navegador. Un clip de 5 segundos son ~40 KB: meterlos en el paquete y
+    /// multiplicarlos por 150 jugadores serían 6 MB saliendo del mismo buffer que el combate.
+    ///
+    /// ⚠️ El llamador tiene que filtrar por Connection.SoportaVozEvento (bit5 de ClientCaps).
+    /// </summary>
+    public static void EventVoice(Connection conn, string texto, byte voz, byte volumen,
+                                  byte flags, string audioUrl)
+    {
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EventVoice);
+        p.WriteASCIIString(texto ?? "");
+        p.WriteByte(voz);
+        p.WriteByte(volumen);
+        p.WriteByte(flags);
+        p.WriteASCIIString(audioUrl ?? "");
         Send(conn, p);
     }
 
@@ -1642,6 +1694,21 @@ public static class ServerPackets
         Send(conn, p);
     }
 
+    /// <summary>EstadoTimer (220): Integer(charIndex) + Byte(tipo) + Byte(segundos) + Byte(total).
+    /// Cuenta regresiva de un estado con vencimiento del propio jugador: tipo 1 = oculto,
+    /// 2 = invisibilidad mágica. segundos=0 borra la barra. Sólo a clientes con ClientCaps bit6.</summary>
+    public static void EstadoTimer(Connection conn, short charIndex, byte tipo, byte seconds, byte total)
+    {
+        if (conn == null || !conn.SoportaEstadoTimer) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.EstadoTimer);
+        p.WriteInteger(charIndex);
+        p.WriteByte(tipo);
+        p.WriteByte(seconds);
+        p.WriteByte(total);
+        Send(conn, p);
+    }
+
     // ID 40 — RAIN_TOGGLE: Byte(ID) + Byte(tipo)
     public static void RainToggle(Connection conn, byte tipo)
     {
@@ -2091,12 +2158,16 @@ public static class ServerPackets
     /// <summary>
     /// QuestInfo (189): misiones de un NPC dador (origen=1), log del jugador (origen=0 abre la
     /// ventana, origen=2 silencioso: solo actualiza marcadores). Ver layout en ServerPacketID.
+    /// coins = saldo de ExordiumCoins del jugador (QuestSystem.Progress.Coins) para el
+    /// contador de la ventana; va en los tres orígenes, así el número no queda viejo
+    /// cuando el log silencioso del login es lo único que llega.
     /// </summary>
-    public static void QuestInfo(Connection conn, byte origen, string npcName, List<QuestEntry> quests, List<QuestGiver> givers)
+    public static void QuestInfo(Connection conn, byte origen, string npcName, int coins, List<QuestEntry> quests, List<QuestGiver> givers)
     {
         var p = new ByteQueue();
         p.WriteByte((byte)ServerPacketID.QuestInfo);
         p.WriteByte(origen);
+        p.WriteLong(coins);
         p.WriteASCIIString(npcName ?? "");
         byte n = (byte)System.Math.Min(quests.Count, 255);
         p.WriteByte(n);
@@ -2448,6 +2519,44 @@ public static class ServerPackets
         p.WriteByte((byte)(ok ? 1 : 0));
         p.WriteInteger((short)spellIndex);
         p.WriteASCIIString(message ?? "");
+        Send(conn, p);
+    }
+
+    /// <summary>
+    /// RankingList (217, NUEVO no VB6): Byte(categoria) Byte(periodo) ASCII(inicio)
+    /// Long(restanteSegs) ASCII(actualizado) ASCII(nota) Byte(count) +
+    /// count×[ASCII(nombre) Byte(nivel) Long(valor) Byte(faccion) Byte(clase)
+    ///        Integer(cabeza) Integer(casco)].
+    ///
+    /// Se mandan la facción y la clase como NÚMERO, no como texto: el cliente ya tiene las dos
+    /// tablas de nombres (stats_ui.js::CLASE_NOMBRES y los colores por facción de ranking_ui.js)
+    /// y así el paquete no carga con strings repetidos en cada fila.
+    /// `restanteSegs` = -1 cuando el período es histórico (no vence).
+    /// </summary>
+    public static void RankingList(Connection conn, byte categoria, byte periodo,
+        string inicio, int restanteSegs, string actualizado, string nota,
+        System.Collections.Generic.List<Game.Ranking.Fila> filas)
+    {
+        if (conn == null) return;
+        var p = new ByteQueue();
+        p.WriteByte((byte)ServerPacketID.RankingList);
+        p.WriteByte(categoria);
+        p.WriteByte(periodo);
+        p.WriteASCIIString(inicio ?? "");
+        p.WriteLong(restanteSegs);
+        p.WriteASCIIString(actualizado ?? "");
+        p.WriteASCIIString(nota ?? "");
+        p.WriteByte((byte)filas.Count);
+        foreach (var f in filas)
+        {
+            p.WriteASCIIString(f.Nombre ?? "");
+            p.WriteByte(f.Nivel);
+            p.WriteLong(f.Valor);
+            p.WriteByte(f.Faccion);
+            p.WriteByte(f.Clase);
+            p.WriteInteger(f.Cabeza);
+            p.WriteInteger(f.Casco);
+        }
         Send(conn, p);
     }
 }

@@ -141,10 +141,16 @@ public sealed class GameServer
                         // NextAiAt (~376ms); el muestreo fino (10ms) evita que el redondeo del ciclo
                         // empuje el intervalo muy por encima de los 376ms de animación del cliente.
                         Game.NpcManager.TickAI();
+                        Game.Escenas.Tick();   // guiones de cine: pasos y diálogos por tiempo
 
                         // Evento "El Barrido": criatura de movimiento rápido (su propio ritmo lo limita
                         // MOVE_INTERVAL_MS internamente; el muestreo fino de ~10ms le da fluidez).
                         Game.BarridoEvento.Tick();
+
+                        // Casteos diferidos: el hechizo que llegó unos ms antes de que venciera su
+                        // intervalo sale acá, apenas vence (ver Combat.LanzarHechizoEn). Tiene que
+                        // ser en el ciclo fino de 10ms, no en el tick de 1/seg.
+                        Game.Combat.TickCastDiferido();
 
                         // Veneno/incineración a ~500ms (50×10ms): el VB6 los aplica cada IntervaloVeneno=500ms (2Hz).
                         if (tick % 50 == 0) Game.GameTimer.TickEfectosDanio();

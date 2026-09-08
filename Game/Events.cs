@@ -131,11 +131,27 @@ public static class Events
             DesactivarEventoExp();
         if (OroMultiplicador > 1 && _oroEventoExpira > 0 && ahora >= _oroEventoExpira)
             DesactivarEventoOro();
-        TickAutoDobleEvento(ahora);
+        if (AUTO_DOBLE_HABILITADO) TickAutoDobleEvento(ahora);
     }
 
-    // --- Ciclo automático EXP x2 / ORO x2 (reemplaza la vieja ruleta): 1 hora activo, 30 minutos
-    // apagado, y así en loop mientras el server esté arriba. Arranca apenas prende el server. ---
+    // ------------------------------------------------------------------------------------
+    //  Ciclo automático EXP x2 / ORO x2: 1 hora activo, 30 minutos apagado, en loop desde que
+    //  arranca el server.
+    //
+    //  APAGADO el 4-sep-2026, a pedido. Con el ciclo prendido el juego corría 2 de cada 3
+    //  horas al doble, o sea un x1,67 promedio permanente que no figuraba en ninguna tabla:
+    //  el rebalance de progresión (scripts/balance/rebalance_progresion.py) calcula el ritmo
+    //  suponiendo x1, así que dejarlo prendido hacía que el juego fuera un 67% más rápido de
+    //  lo que dice el diseño.
+    //
+    //  Los eventos SIGUEN existiendo: lo único que se saca es que se prendan solos. Un GM los
+    //  activa cuando quiera con /expx2, /orox2, /eventoexp y /eventooro, que llaman directo a
+    //  ActivarEventoExp/ActivarEventoOro y no pasan por acá. Para volver al ciclo automático
+    //  alcanza con poner este flag en true.
+    // ------------------------------------------------------------------------------------
+    // static readonly y no const: con const el compilador pliega el if y avisa por código
+    // inalcanzable (CS0162), y este proyecto compila sin warnings.
+    private static readonly bool AUTO_DOBLE_HABILITADO = false;
     private const int AUTO_DURACION_SEG = 3600;
     private const int AUTO_DESCANSO_SEG = 1800;
     private static bool _autoInicializado;

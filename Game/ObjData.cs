@@ -48,6 +48,10 @@ public static class ObjData
         public int MinDef, MaxDef;
         public int Ropaje;     // body al equipar armadura/montura/barco (NumRopaje)
         public int Vuela;      // 1 = la montura vuela: ignora bloqueo de paredes/estructuras y agua/tierra
+        // 1 = la montura no deja ver NADA del jugador (cabeza, casco, escudo, arma). Para las
+        // que ya traen su propio jinete dibujado en el sprite, como los dragones: encima de
+        // ellas no va nada. Lo aplica Inventory.DoEquita, igual que la barca en DoNavega.
+        public int OcultaEquipo;
         public int ShieldAnim, CascoAnim;
         public int Aura;       // aura del item (obj.dat "Aura"); se muestra al equiparlo (AuraToChar)
         public int SndEspecial; // sonido de aura al equipar (obj.dat "SndEspecial"); solo si Aura>0
@@ -89,6 +93,7 @@ public static class ObjData
         public int Real;             // 1 = item faccionario de Armada Real (obj.dat "Real")
         public int Caos;             // 1 = item faccionario del Caos (obj.dat "Caos")
         public int Milicia;          // 1 = item faccionario de Milicia (obj.dat "Milicia")
+        public int Exordio;          // NUEVO (no VB6): 1 = item de los Heraldos del Exordio (obj.dat "Exordio" o Faccion=4)
         public int Destruir;         // 1 = al tirarlo pide confirmación para destruir (ShowMessageBox accion 1)
         public int Newbie;           // 1 = item newbie (los jugadores comunes no pueden tirarlo/venderlo)
         // Pasaje de transportador (otPasajes): viaje de DesdeMap → (HastaMap,HastaX,HastaY).
@@ -241,6 +246,51 @@ public static class ObjData
         Console.WriteLine($"\n[ConsumiblesSelfTest] {total} consumibles, {sinEfecto} sin efecto.");
     }
 
+    /// <summary>
+    /// Barre los cofres/regalos (otRegalos=53) y valida su campo "Items=": que tengan contenido,
+    /// que cada ObjIndex exista de verdad en obj.dat, y que no pidan más slots de los que entran
+    /// en el inventario (MAX_INVENTORY_SLOTS=25). Así se detecta el cofre que se abre y no da
+    /// nada, o el que no se puede abrir nunca porque no entra. Uso:
+    /// dotnet run -- --cofretest
+    /// </summary>
+    public static void CofresSelfTest()
+    {
+        EnsureLoaded();
+        const int MAX_SLOTS = 25;
+        int total = 0, malos = 0;
+        for (int i = 1; i <= Count; i++)
+        {
+            var o = _objs[i];
+            if (o.Name == null || o.Type != ObjType.Regalos) continue;
+            total++;
+
+            var problemas = new List<string>();
+            if (o.RegaloItems == null || o.RegaloItems.Length == 0)
+                problemas.Add("SIN Items= (se abre y no entrega nada)");
+            else
+            {
+                var distintos = new List<short>();
+                foreach (var (oi, amt) in o.RegaloItems)
+                {
+                    if (oi < 1 || oi > Count || _objs[oi].Name == null)
+                    { problemas.Add($"ObjIndex {oi} no existe"); continue; }
+                    // El Amount viaja al cliente como Integer de 2 bytes (WriteChangeInventorySlot).
+                    if (amt > short.MaxValue) problemas.Add($"cantidad {amt} de OBJ{oi} no entra en 2 bytes");
+                    if (!distintos.Contains(oi)) distintos.Add(oi);
+                }
+                if (distintos.Count > MAX_SLOTS)
+                    problemas.Add($"pide {distintos.Count} slots y el inventario tiene {MAX_SLOTS}");
+            }
+
+            bool malo = problemas.Count > 0;
+            if (malo) malos++;
+            int nItems = o.RegaloItems?.Length ?? 0;
+            Console.WriteLine($"{(malo ? "!!" : "  ")} OBJ{i,-5} {o.Name,-45} {nItems,2} items"
+                + (malo ? "  -> " + string.Join("; ", problemas) : ""));
+        }
+        Console.WriteLine($"\n[CofresSelfTest] {total} cofres/regalos (otRegalos=53), {malos} con problemas.");
+    }
+
     private static Obj[] _objs;
     public static int Count => (_objs?.Length ?? 1) - 1;
     public static void Reload() { _objs = null; EnsureLoaded(); Console.WriteLine($"[ObjData] Recargado: {Count} objetos."); }
@@ -318,6 +368,7 @@ public static class ObjData
                 MaxDef = ini.GetInt("OBJ" + i, "MaxDef"),
                 Ropaje = ini.GetInt("OBJ" + i, "NumRopaje"),
                 Vuela = ini.GetInt("OBJ" + i, "Vuela"),
+                OcultaEquipo = ini.GetInt("OBJ" + i, "OcultaEquipo"),
                 // CascoAnim/ShieldAnim NO existen como campos en obj.dat: el VB6 (FileIO.bas:955-958)
                 // los lee del MISMO campo "Anim" según SubTipo (1=casco, 2=escudo). Se setean abajo.
                 Aura = ini.GetInt("OBJ" + i, "Aura"),
@@ -370,6 +421,7 @@ public static class ObjData
                 Real = ini.GetInt("OBJ" + i, "Faccion") == 1 ? 1 : ini.GetInt("OBJ" + i, "Real"),
                 Milicia = ini.GetInt("OBJ" + i, "Faccion") == 2 ? 1 : ini.GetInt("OBJ" + i, "Milicia"),
                 Caos = ini.GetInt("OBJ" + i, "Faccion") == 3 ? 1 : ini.GetInt("OBJ" + i, "Caos"),
+                Exordio = ini.GetInt("OBJ" + i, "Faccion") == 4 ? 1 : ini.GetInt("OBJ" + i, "Exordio"),
                 Destruir = ini.GetInt("OBJ" + i, "Destruir"),
                 Newbie = ini.GetInt("OBJ" + i, "Newbie"),
                 DesdeMap = ini.GetInt("OBJ" + i, "Desde"),

@@ -15,7 +15,7 @@ public static class CaceriaEvento
     private const short ITEM_GRAN_SACO_CREDITOS = 1605;
 
     public static bool EventoActivo { get; private set; }
-    private static long _killsImperial, _killsCaos, _killsRepublicano, _killsMiliciano, _killsRenegado;
+    private static long _killsImperial, _killsCaos, _killsRepublicano, _killsMiliciano, _killsRenegado, _killsExordio;
 
     private const byte FONT_INFOBOLD = 4, FONT_GUILD = 5, FONT_WARNING = 2, FONT_INFO = 3;
 
@@ -36,6 +36,7 @@ public static class CaceriaEvento
             case 3: _killsRepublicano++; break;
             case 6: _killsMiliciano++; break;
             case 1: _killsRenegado++; break;
+            case Facciones.EXORDIANO: case Facciones.HERALDO: _killsExordio++; break;
             // sin facción: no cuenta
         }
     }
@@ -54,13 +55,14 @@ public static class CaceriaEvento
         Check(_killsRepublicano, 3);
         Check(_killsMiliciano, 6);
         Check(_killsRenegado, 1);
+        Check(_killsExordio, Facciones.EXORDIANO);
         return (empate || max == 0) ? (byte)0 : ganadora;
     }
 
     /// <summary>IniciarEventoCaceria: resetea contadores, activa y anuncia.</summary>
     public static void Iniciar(string activadoPor)
     {
-        _killsImperial = _killsCaos = _killsRepublicano = _killsMiliciano = _killsRenegado = 0;
+        _killsImperial = _killsCaos = _killsRepublicano = _killsMiliciano = _killsRenegado = _killsExordio = 0;
         EventoActivo = true;
         string m = "¡EVENTO DE CACERÍA POR FACCIÓN INICIADO!\nLas facciones competirán por obtener la mayor cantidad de kills.\nLa facción ganadora recibirá el Gran Saco de Créditos.";
         if (!string.IsNullOrWhiteSpace(activadoPor)) m += "\nActivado por: " + activadoPor;
@@ -83,7 +85,7 @@ public static class CaceriaEvento
         if (!EventoActivo) return "Evento de Cacería por Facción: INACTIVO";
         return "Evento de Cacería por Facción: ACTIVO\n\nKills por facción:\n" +
                $"- Imperiales: {_killsImperial}\n- Caóticos: {_killsCaos}\n- Republicanos: {_killsRepublicano}\n" +
-               $"- Milicianos: {_killsMiliciano}\n- Renegados: {_killsRenegado}";
+               $"- Milicianos: {_killsMiliciano}\n- Renegados: {_killsRenegado}\n- Exordianos: {_killsExordio}";
     }
 
     // --- privado ---
@@ -102,6 +104,7 @@ public static class CaceriaEvento
                 4 => s == 4,
                 6 => s == 6,
                 1 => s == 1,
+                Facciones.EXORDIANO => s is Facciones.EXORDIANO or Facciones.HERALDO,
                 _ => false,
             };
             if (!pertenece) continue;
@@ -115,7 +118,7 @@ public static class CaceriaEvento
 
     private static void AnunciarFin(byte ganadora, string finalizadoPor)
     {
-        string resultados = $"Resultados:\n- Imperiales: {_killsImperial} kills\n- Caóticos: {_killsCaos} kills\n- Republicanos: {_killsRepublicano} kills\n- Milicianos: {_killsMiliciano} kills\n- Renegados: {_killsRenegado} kills";
+        string resultados = $"Resultados:\n- Imperiales: {_killsImperial} kills\n- Caóticos: {_killsCaos} kills\n- Republicanos: {_killsRepublicano} kills\n- Milicianos: {_killsMiliciano} kills\n- Renegados: {_killsRenegado} kills\n- Exordianos: {_killsExordio} kills";
         string m;
         if (ganadora > 0)
             m = $"¡EVENTO DE CACERÍA POR FACCIÓN FINALIZADO!\n\n¡¡ FACCIÓN GANADORA: {NombreCompleto(ganadora)}\n\n{resultados}\n\nLos jugadores online de {NombreCompleto(ganadora)} han recibido el Gran Saco de Créditos.";
@@ -127,7 +130,8 @@ public static class CaceriaEvento
 
     private static string NombreCompleto(byte status) => status switch
     {
-        1 => "Renegados", 2 => "Imperiales", 3 => "Republicanos", 4 => "Caóticos", 5 => "Imperiales", 6 => "Milicianos", _ => "Sin Facción",
+        1 => "Renegados", 2 => "Imperiales", 3 => "Republicanos", 4 => "Caóticos", 5 => "Imperiales", 6 => "Milicianos",
+        Facciones.EXORDIANO => "Exordianos", _ => "Sin Facción",
     };
 
     private static void Broadcast(string msg, byte font)

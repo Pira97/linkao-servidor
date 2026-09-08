@@ -180,6 +180,36 @@ public static class Movement
         }
     }
 
+    // Pateá al casper a un tile libre cercano cuando un vivo le pisa el suyo: a diferencia del
+    // GM invisible (que sólo necesita resincronizar posición porque es un caso raro), acá el
+    // pedido explícito es que el muerto SÍ se desplace de verdad, como si lo empujaran al chocarlo.
+    private static void KickCasper(int casperIdx, User casper)
+    {
+        if (casper?.Conn == null) return;
+        var map = MapLoader.Get(casper.Pos.Map);
+        if (map == null) return;
+
+        for (int r = 1; r <= 3; r++)
+        {
+            for (int dx = -r; dx <= r; dx++)
+            for (int dy = -r; dy <= r; dy++)
+            {
+                if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r) continue; // sólo el anillo del radio actual
+                int tx = casper.Pos.X + dx, ty = casper.Pos.Y + dy;
+                if (tx < 1 || tx > 100 || ty < 1 || ty > 100) continue;
+                if (map.IsBlocked(tx, ty)) continue;
+                if (UsuarioEnTile(casper.Pos.Map, tx, ty, 0, out _) != 0) continue;
+
+                casper.Pos.X = (short)tx;
+                casper.Pos.Y = (short)ty;
+                AreaVisibility.OnUserTeleportSameMap(casperIdx); // avisa a los DEMÁS (remove/create)
+                var (px, py) = Continuous.Pos(casper.Pos.Map, casper.Pos.X, casper.Pos.Y);
+                ServerPackets.PosUpdate(casper.Conn, px, py); // avisa al PROPIO casper su nueva posición
+                return;
+            }
+        }
+    }
+
     /// <summary>InvertHeading: devuelve el heading opuesto. 1:1 con Modulo_UsUaRiOs.bas.</summary>
     public static byte InvertHeading(byte h) => h switch
     {
@@ -323,6 +353,35 @@ public static class Movement
         // y rebota como un tile bloqueado, así nunca quedan parados sobre el teleport).
         var exit = puedeMover ? map?.GetExit(nPos.X, nPos.Y) : null;
 
+        // MUNDO CONTINUO — cruce de borde VOLANDO. Cada mapa termina en una banda de solape que
+        // en realidad pertenece al vecino (en el mapa 1, las filas y=94..100 son las y=8..14 del
+        // mapa 2): está toda BLOQUEADA y no tiene ningún TileExit. Caminando eso no molesta —
+        // los TileExits del .csm están en la última fila propia y te cruzan antes de llegar.
+        // Pero volando se atraviesan los bloqueos, y por las columnas donde esa fila TAMBIÉN
+        // está bloqueada (las esquinas: x=1..8 y 93..100 en el mapa 1) se entra a la banda sin
+        // pisar ninguna salida. Adentro no hay TileExits y el límite 1..100 rebota, así que el
+        // jugador queda volando sobre el terreno del mapa de al lado —que el cliente ya le
+        // dibuja— sin poder cambiar de mapa nunca. Ese es el "volando no te deja pasar de mapa".
+        //
+        // Si el tile destino lo posee OTRO mapa de la región, eso ES el cruce del borde: se
+        // sintetiza la salida y sigue por el camino normal (WarpUser lo resuelve como seamCross,
+        // sin pantalla de carga). Solo se rellena cuando el .csm no traía TileExit propio: donde
+        // el mapa ya define uno, manda el del mapa.
+        //
+        // Acotado a `volando` A PROPÓSITO. Medido sobre los 871 mapas: 1.730.131 tiles de banda
+        // solo se alcanzan volando (están bloqueados), pero otros 8.797 en 635 mapas NO están
+        // bloqueados, o sea que un jugador A PIE también puede meterse ahí y quedar igual de
+        // varado. Arreglar eso cambia el cruce de borde caminando en 635 mapas, que es mucho
+        // más de lo que este bug pide: queda anotado aparte, no se toca acá.
+        if (puedeMover && volando && !exit.HasValue && Continuous.Enabled
+            && RegionLayout.TryGetOffset(nPos.Map, out var offBorde)
+            && RegionLayout.TryGlobalToLocal(nPos.Map, offBorde.X + nPos.X, offBorde.Y + nPos.Y,
+                                             out int duenoMap, out int duenoX, out int duenoY)
+            && duenoMap != nPos.Map)
+        {
+            exit = new TileExit { DestMap = (short)duenoMap, DestX = (short)duenoX, DestY = (short)duenoY };
+        }
+
         // Primer paso tras un teleport: ignorar el TileExit del tile destino. Así, al entrar a un
         // dungeon caminando, el paso que cae sobre el teleport de retorno NO te rebota afuera. El
         // flag se consume en este movimiento (siguiente paso ya dispara los exits normalmente).
@@ -365,13 +424,12 @@ public static class Movement
 
         if (puedeMover)
         {
-            // VB6 (Modulo_UsUaRiOs.bas:1175): al pisar el tile de un casper, se le envía PosUpdate
-            // para resincronizar su cliente ("empuje de casper").
+            // Empuje real de casper: a diferencia del VB6 original (que sólo resincronizaba con
+            // PosUpdate sin mover al muerto), acá se lo desplaza de verdad a un tile libre
+            // cercano, como si el vivo lo pateara al chocarlo (pedido explícito, no es un bug).
             if (occMuertoF)
             {
-                var casper = UserListManager.UserList[occupant];
-                if (casper?.Conn != null)
-                    { var (px, py) = Continuous.Pos(casper.Pos.Map, casper.Pos.X, casper.Pos.Y); ServerPackets.PosUpdate(casper.Conn, px, py); }
+                KickCasper(occupant, UserListManager.UserList[occupant]);
             }
             else if (occInvisibleGM)
             {
@@ -594,9 +652,12 @@ public static class Movement
             u.Pos.Map = destMap; u.Pos.X = destX; u.Pos.Y = destY;
             NpcManager.MoverMascotaConDueño(u, oldMap, destMap, (byte)destX, (byte)destY);
             var (sgx, sgy) = Continuous.Pos(destMap, destX, destY);
-            ServerPackets.SeamlessCross(u.Conn, destMap, sgx, sgy);
+            ServerPackets.SeamlessCross(u.Conn, destMap, sgx, sgy, MapLoader.Get(destMap)?.Info.Pk ?? true);
             if (u.flags.Oculto == 1 || u.flags.Invisible == 1)
+            {
                 ServerPackets.SetInvisible(u.Conn, u.Char.CharIndex, true);
+                Combat.ReenviarTimersEstado(u);
+            }
             // NO OnUserLeave+OnUserEnter: eso hacía remove+create del char para los observadores
             // cross-map → lo veían saltar/parpadear al cruzar el borde. OnUserSeamCross diffea.
             AreaVisibility.OnUserSeamCross(userIndex, gxOld, gyOld);
@@ -619,12 +680,15 @@ public static class Movement
         NpcManager.MoverMascotaConDueño(u, oldMap, destMap, (byte)destX, (byte)destY);
 
         // Recrear el mundo del nuevo mapa para el cliente (ChangeMap limpia todos los chars en el cliente).
-        ServerPackets.ChangeMap(u.Conn, destMap, 0);
+        ServerPackets.ChangeMap(u.Conn, destMap, 0, MapLoader.Get(destMap)?.Info.Pk ?? true);
         LoginFlow.SendCharCreate(u.Conn, u);                 // su propio PJ en la nueva pos
         // ChangeMap recreó el char propio SIN el estado de invisibilidad → el cliente perdía el alpha.
         // Re-enviar SetInvisible a uno mismo si está oculto (skill) o invisible (hechizo).
         if (u.flags.Oculto == 1 || u.flags.Invisible == 1)
+        {
             ServerPackets.SetInvisible(u.Conn, u.Char.CharIndex, true);
+            Combat.ReenviarTimersEstado(u);   // el char se recreó: sin esto la barra se pierde
+        }
         // Las partículas ambientales del nuevo mapa las carga el cliente desde su .csm (no el server).
 
         // Visibilidad por área en el nuevo mapa: crea los jugadores/NPCs/objetos de su área y lo hace visible a ellos.

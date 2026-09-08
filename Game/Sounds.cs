@@ -58,4 +58,8 @@ public static class Sounds
     public const short FLAUTA           = 393;   // tocar la flauta (instrumento)
     public const short DESCONEXION      = 434;   // el usuario se desconecta del juego
     public const short COLLAR_PENDIENTE = 458;   // equipar collar/pendiente
+    // Artes marciales del Bardo (12-sep-2026, pedido del usuario): reemplazan al IMPACTO(86) y
+    // al PARALIZAR(203) genéricos, SOLO para la clase Bardo(6) peleando con nudillos.
+    public const short BARDO_GOLPE      = 600;   // golpe cuerpo a cuerpo del Bardo con nudillos
+    public const short BARDO_PARALIZA   = 601;   // el golpe del Bardo con nudillos paraliza
 }

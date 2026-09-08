@@ -345,7 +345,7 @@ public static class Espia
         // fantasma para el resto del mapa.
         AreaVisibility.OnUserLeave(idxEspia);
 
-        ServerPackets.ChangeMap(conn, (short)u.Pos.Map, 0);       // el cliente borra char_list
+        ServerPackets.ChangeMap(conn, (short)u.Pos.Map, 0, MapLoader.Get(u.Pos.Map)?.Info.Pk ?? true);       // el cliente borra char_list
         ServerPackets.UserCharIndexInServer(conn, u.Char.CharIndex);  // volvés a ser vos
         LoginFlow.SendCharCreate(conn, u);
         if (u.flags.Oculto == 1 || u.flags.Invisible == 1)
@@ -361,6 +361,7 @@ public static class Espia
             ServerPackets.ChangeSpellSlot(conn, slot, h, h > 0 ? SpellData.GetName(h) : "");
         }
         ServerPackets.SendSkills(conn, u);
+        ServerPackets.LevelUp(conn, u.Stats.SkillPts); // y sus puntos libres: SendSkills no los lleva
 
         AreaVisibility.OnUserEnter(idxEspia);   // su área de vuelta (y él visible para los demás)
         Clima.EnviarClimaAUsuario(idxEspia);
@@ -498,7 +499,7 @@ public static class Espia
             espectador.IncomingXorKey = redundance;   // el cliente cambia su clave XOR acá
             ServerPackets.UserIndexInServer(espectador, (short)espectador.UserIndex);
         }
-        ServerPackets.ChangeMap(espectador, (short)objetivo.Pos.Map, 0);
+        ServerPackets.ChangeMap(espectador, (short)objetivo.Pos.Map, 0, MapLoader.Get(objetivo.Pos.Map)?.Info.Pk ?? true);
         ServerPackets.UserCharIndexInServer(espectador, objetivo.Char.CharIndex);
         LoginFlow.SendCharCreate(espectador, objetivo);        // el propio objetivo
         AreaVisibility.CrearVistaDe(espectador, objetivo);     // todo lo que él ve
@@ -837,16 +838,18 @@ public static class Espia
                 // mapa nuevo — el cliente lo usa para el minimapa y el nombre de la zona. Sin esto
                 // el bot cruzaba de mapa y el minimapa se quedaba mostrando el anterior.
                 var (sgx, sgy) = Continuous.Pos(bot.Map, bot.X, bot.Y);
-                Directo(conn, c => ServerPackets.SeamlessCross(c, (short)bot.Map, sgx, sgy));
+                bool botMapPk = MapLoader.Get(bot.Map)?.Info.Pk ?? true;
+                Directo(conn, c => ServerPackets.SeamlessCross(c, (short)bot.Map, sgx, sgy, botMapPk));
             }
             else
             {
                 obs.VistosChars.Clear();
                 obs.Pos.Clear();
                 obs.Apar.Clear();
+                bool botMapPk = MapLoader.Get(bot.Map)?.Info.Pk ?? true;
                 Directo(conn, c =>
                 {
-                    ServerPackets.ChangeMap(c, (short)bot.Map, 0);
+                    ServerPackets.ChangeMap(c, (short)bot.Map, 0, botMapPk);
                     ServerPackets.UserCharIndexInServer(c, (short)bot.CharIndex);
                 });
             }

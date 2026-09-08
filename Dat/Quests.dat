@@ -3,7 +3,10 @@
 'Formato por seccion [QUESTn] (n consecutivo desde 1, corta al primer hueco):
 '  Nombre=texto                  Nombre de la mision (se muestra en la ventana)
 '  Historia=texto                Relato del NPC (rol) que se muestra al abrir la ventana
-'  NpcDador=idx                  NpcIndex del NPC que la da (NPCs.dat)
+'  NpcDador=idx                  NpcIndex del NPC que la da (NPCs.dat).
+'                                0 = SIN DADOR: la mision sale del tablon de la ventana
+'                                de misiones y no la reparte ningun NPC. Es el modo nuevo;
+'                                los dadores se van del juego.
 '  NivelMin=n                    Nivel minimo para aceptarla
 '  Requiere=id                   Id de quest previa obligatoria (0 = ninguna)
 '  Repetible=0/1                 1 = se puede repetir tras el cooldown
@@ -12,7 +15,13 @@
 '                                por coma (variantes del mismo bicho): Matar1=506,594-8
 '  NumJuntar=n JuntarN=obj-cant  Objetivos de recoleccion (ObjIndex de obj.dat;
 '                                se validan y descuentan del inventario al entregar)
-'  Reward=token;token            EXP:n  ORO:n  OBJ:idx:cant
+'  Reward=token;token            EXP:n  ORO:n  OBJ:idx:cant  COINS:n
+'                                COINS = ExordiumCoins, la moneda propia del sistema de
+'                                misiones. No va al inventario ni al charfile: vive en
+'                                Quests/<NOMBRE>.json y se muestra arriba a la derecha de
+'                                la ventana. Escala usada hoy, por NivelMin:
+'                                  base = redondeo a multiplo de 5 de NivelMin*2.5 (min 5)
+'                                  repetible = la mitad (se puede farmear en loop)
 '  Destino=mapa-x-y              Zona objetivo (flecha del minimapa y marcador del
 '                                mapamundi). 0-0-0 = sin destino marcado.
 '  DestinoN=mapa-x-y             Zona del lote MatarN (opcional): la guia avanza al
@@ -25,7 +34,7 @@
 [ENTRADAS]
 'Entrada desde el mundo visible a cada dungeon (para mapamundi y flecha):
 '  En=dungeon-mapaEntrada-x-y  (calculadas del grafo de TileExits de los .csm)
-NumEntradas=21
+NumEntradas=23
 E1=37-185-55-72
 E2=48-139-60-58
 E3=115-76-46-47
@@ -47,6 +56,8 @@ E18=830-650-50-36
 E19=832-650-50-36
 E20=833-650-50-36
 E21=760-650-49-50
+E22=954-622-50-40
+E23=955-639-49-53
 
 '[NPCSPAWNS]: NPCs dadores dedicados que el server spawnea al arrancar.
 '  SpawnN=npcIndex-mapa-x-y  (los NPC 630-640 estan definidos en NPCs.dat)
@@ -95,7 +106,7 @@ Requiere=0
 NumMatar=2
 Matar1=500,566-10
 Matar2=506,594-8
-Reward=EXP:800;ORO:500
+Reward=EXP:100;ORO:20;COINS:2
 
 [QUEST2]
 Destino=37-58-62
@@ -109,7 +120,7 @@ Requiere=1
 NumMatar=2
 Matar1=504,565-10
 Matar2=529,564-8
-Reward=EXP:1500;ORO:800
+Reward=EXP:230;ORO:46;COINS:2
 
 [QUEST3]
 Destino=37-37-38
@@ -120,7 +131,7 @@ NivelMin=5
 Requiere=2
 NumMatar=1
 Matar1=501,545-10
-Reward=EXP:3000;ORO:1500
+Reward=EXP:1200;ORO:240;COINS:10
 
 '==================== DARIO CAZAMAYOR <Veterano> (NPC 631, Ullathorpe) ====================
 
@@ -133,11 +144,11 @@ Historia=Los granjeros del norte me traen pan y yo les debo más favores de los q
 NpcDador=631
 NivelMin=5
 Repetible=1
-CooldownHoras=4
+CooldownHoras=12
 NumMatar=2
 Matar1=536-10
 Matar2=535-10
-Reward=EXP:1200;ORO:800
+Reward=EXP:205;ORO:41;COINS:1
 
 [QUEST5]
 Destino=46-51-48
@@ -149,7 +160,7 @@ NumMatar=1
 Matar1=594,506-10
 NumJuntar=1
 Juntar1=26-5
-Reward=EXP:900;ORO:1500
+Reward=EXP:510;ORO:100;COINS:2
 
 [QUEST6]
 Destino=24-51-48
@@ -161,7 +172,7 @@ NumMatar=1
 Matar1=501,545-10
 NumJuntar=1
 Juntar1=414-6
-Reward=EXP:4000;ORO:2000
+Reward=EXP:1750;ORO:350;COINS:2
 
 [QUEST7]
 Destino=74-36-59
@@ -174,7 +185,7 @@ NumMatar=1
 Matar1=538-8
 NumJuntar=1
 Juntar1=415-4
-Reward=EXP:10000;ORO:4000
+Reward=EXP:15500;ORO:3100;COINS:20
 
 '==================== PADRE ANSELMO <Quest> (NPC 632, Nix) ====================
 
@@ -189,7 +200,7 @@ NivelMin=8
 NumMatar=2
 Matar1=503-15
 Matar2=502,546-10
-Reward=EXP:5000;ORO:2000
+Reward=EXP:1750;ORO:350;COINS:2
 
 [QUEST9]
 Destino=262-49-44
@@ -203,7 +214,7 @@ Requiere=8
 NumMatar=2
 Matar1=508-10
 Matar2=507-4
-Reward=EXP:9000;ORO:3500
+Reward=EXP:6600;ORO:1300;COINS:4
 
 [QUEST10]
 Destino=140-53-58
@@ -215,7 +226,7 @@ Requiere=9
 NumMatar=2
 Matar1=550-6
 Matar2=554-4
-Reward=EXP:40000;ORO:15000
+Reward=EXP:31500;ORO:6300;COINS:4
 
 '==================== CAPITANA ISELDA <Guardia de los Caminos> (NPC 633, Banderbill) ====================
 
@@ -228,11 +239,11 @@ Historia=Soy la capitana Iselda y tengo tres hombres para cubrir veinte leguas d
 NpcDador=633
 NivelMin=12
 Repetible=1
-CooldownHoras=4
+CooldownHoras=12
 NumMatar=2
 Matar1=530-12
 Matar2=531-6
-Reward=EXP:14000;ORO:5000
+Reward=EXP:2650;ORO:530;COINS:1
 
 '==================== GOLRIK VETAHIERRO <Capataz Minero> (NPC 634, Arghal) ====================
 
@@ -244,7 +255,7 @@ NpcDador=634
 NivelMin=20
 NumMatar=1
 Matar1=561-8
-Reward=EXP:70000;ORO:18000
+Reward=EXP:53500;ORO:10500;COINS:8
 
 [QUEST13]
 Destino=0-0-0
@@ -256,7 +267,7 @@ Repetible=1
 CooldownHoras=24
 NumJuntar=1
 Juntar1=192-200
-Reward=EXP:6000;ORO:8000
+Reward=EXP:1550;ORO:310;COINS:3
 
 '==================== ORDELIO EL SABIO <Archimago> (NPC 635, Illiandor) ====================
 
@@ -271,7 +282,7 @@ NivelMin=14
 NumMatar=2
 Matar1=523-12
 Matar2=555-5
-Reward=EXP:18000;ORO:7000
+Reward=EXP:13500;ORO:2700;COINS:4
 
 [QUEST15]
 Destino=115-52-78
@@ -285,7 +296,7 @@ Requiere=14
 NumMatar=2
 Matar1=549-6
 Matar2=541-4
-Reward=EXP:35000;ORO:8000
+Reward=EXP:31500;ORO:6300;COINS:4
 
 [QUEST16]
 Destino=144-22-66
@@ -299,7 +310,7 @@ Requiere=15
 NumMatar=2
 Matar1=552-2
 Matar2=553-4
-Reward=EXP:180000;ORO:45000
+Reward=EXP:185000;ORO:37000;COINS:8
 
 '==================== SILVANO RAIZVIEJA <Guardabosques> (NPC 636, Ullathorpe) ====================
 
@@ -313,7 +324,7 @@ NumMatar=1
 Matar1=599-8
 NumJuntar=1
 Juntar1=584-3
-Reward=EXP:12000;ORO:4000
+Reward=EXP:14500;ORO:2900;COINS:4
 
 [QUEST18]
 Destino=279-45-56
@@ -325,7 +336,7 @@ NumMatar=1
 Matar1=592-6
 NumJuntar=1
 Juntar1=583-4
-Reward=EXP:11000;ORO:3500
+Reward=EXP:14500;ORO:2900;COINS:4
 
 '==================== DOCTORA MIRALEM <Investigadora> (NPC 637, Nix) ====================
 
@@ -337,7 +348,7 @@ NpcDador=637
 NivelMin=22
 NumMatar=1
 Matar1=550-5
-Reward=EXP:60000;ORO:15000
+Reward=EXP:90500;ORO:18000;COINS:8
 
 '==================== TEO SALMUERA <Pescador> (NPC 638, Nix) ====================
 
@@ -349,7 +360,7 @@ NpcDador=638
 NivelMin=25
 NumMatar=1
 Matar1=595-5
-Reward=EXP:140000;ORO:18000
+Reward=EXP:185000;ORO:37000;COINS:8
 
 [QUEST21]
 Destino=113-47-48
@@ -360,7 +371,7 @@ NivelMin=28
 Requiere=20
 NumMatar=1
 Matar1=548-3
-Reward=EXP:280000;ORO:35000
+Reward=EXP:740000;ORO:150000;COINS:40
 
 '==================== BRENDA ESCAMAS <Cazadora de Dragones> (NPC 639, Banderbill) ====================
 
@@ -372,7 +383,7 @@ NpcDador=639
 NivelMin=30
 NumMatar=1
 Matar1=570-1
-Reward=EXP:250000;ORO:40000
+Reward=EXP:455000;ORO:91000;COINS:14
 
 [QUEST23]
 Destino=201-48-48
@@ -386,7 +397,7 @@ Requiere=22
 NumMatar=2
 Matar1=542-1
 Matar2=582-1
-Reward=EXP:900000;ORO:120000
+Reward=EXP:1150000;ORO:230000;COINS:14
 
 [QUEST24]
 Destino=250-54-61
@@ -397,7 +408,7 @@ NivelMin=40
 Requiere=23
 NumMatar=1
 Matar1=590-1
-Reward=EXP:2500000;ORO:300000
+Reward=EXP:6600000;ORO:1300000;COINS:100
 
 '==================== EIRIK MANOFRIA <Superviviente> (NPC 640, Tiama) ====================
 
@@ -414,7 +425,7 @@ Matar1=580-10
 Matar2=605-6
 NumJuntar=1
 Juntar1=1145-4
-Reward=EXP:48000;ORO:10000
+Reward=EXP:53500;ORO:10500;COINS:8
 
 [QUEST26]
 Destino=230-53-59
@@ -425,7 +436,7 @@ NivelMin=24
 Requiere=25
 NumMatar=1
 Matar1=603-8
-Reward=EXP:110000;ORO:20000
+Reward=EXP:155000;ORO:31000;COINS:8
 
 [QUEST27]
 Destino=232-49-64
@@ -436,7 +447,7 @@ NivelMin=32
 Requiere=26
 NumMatar=1
 Matar1=585-3
-Reward=EXP:500000;ORO:80000
+Reward=EXP:660000;ORO:130000;COINS:14
 
 [QUEST28]
 Destino=233-65-73
@@ -450,7 +461,7 @@ Requiere=27
 NumMatar=2
 Matar1=587-3
 Matar2=585-2
-Reward=EXP:1200000;ORO:250000
+Reward=EXP:3200000;ORO:640000;COINS:70
 
 
 '==================== EXPANSION Nv15-50 (brackets de 5 niveles) ====================
@@ -466,7 +477,7 @@ NivelMin=16
 Requiere=0
 NumMatar=1
 Matar1=510-10
-Reward=EXP:17000;ORO:3000
+Reward=EXP:19000;ORO:3800;COINS:4
 
 '--- Bracket 20-25 ---
 
@@ -482,7 +493,7 @@ Requiere=0
 NumMatar=2
 Matar1=567-8
 Matar2=568-4
-Reward=EXP:62000;ORO:9000
+Reward=EXP:69500;ORO:14000;COINS:8
 
 [QUEST31]
 Destino=209-28-69
@@ -496,7 +507,7 @@ Requiere=12
 NumMatar=2
 Matar1=576-3
 Matar2=578-3
-Reward=EXP:105000;ORO:15000
+Reward=EXP:275000;ORO:55000;COINS:40
 
 '--- Bracket 25-30 ---
 
@@ -512,7 +523,7 @@ Requiere=10
 NumMatar=2
 Matar1=586-6
 Matar2=550-4
-Reward=EXP:200000;ORO:25000
+Reward=EXP:515000;ORO:105000;COINS:40
 
 [QUEST33]
 Destino=209-27-86
@@ -526,7 +537,7 @@ Requiere=19
 NumMatar=2
 Matar1=577-2
 Matar2=578-2
-Reward=EXP:340000;ORO:42000
+Reward=EXP:380000;ORO:76000;COINS:8
 
 '--- Bracket 30-35 ---
 
@@ -542,7 +553,7 @@ Requiere=16
 NumMatar=2
 Matar1=543-2
 Matar2=572-1
-Reward=EXP:490000;ORO:60000
+Reward=EXP:550000;ORO:110000;COINS:14
 
 [QUEST35]
 Destino=210-45-55
@@ -556,7 +567,7 @@ Requiere=34
 NumMatar=2
 Matar1=581-1
 Matar2=579-3
-Reward=EXP:700000;ORO:85000
+Reward=EXP:790000;ORO:160000;COINS:14
 
 '--- Bracket 35-40 ---
 
@@ -572,7 +583,7 @@ Requiere=33
 NumMatar=2
 Matar1=575-1
 Matar2=586-3
-Reward=EXP:1750000;ORO:200000
+Reward=EXP:4600000;ORO:920000;COINS:70
 
 '--- Bracket 40-45 ---
 
@@ -588,7 +599,7 @@ Matar1=552-1
 Matar2=577-2
 Matar3=579-2
 Matar4=575-1
-Reward=EXP:3600000;ORO:420000
+Reward=EXP:4100000;ORO:820000;COINS:20
 
 [QUEST38]
 Destino=211-40-46
@@ -602,7 +613,7 @@ Requiere=37
 NumMatar=2
 Matar1=575-3
 Matar2=579-4
-Reward=EXP:5200000;ORO:620000
+Reward=EXP:5850000;ORO:1150000;COINS:20
 
 '--- Bracket 45-50 ---
 
@@ -618,7 +629,7 @@ Matar1=575-2
 Matar2=587-4
 Destino1=205-70-60
 Destino2=233-57-51
-Reward=EXP:7500000;ORO:900000
+Reward=EXP:19750000;ORO:3950000;COINS:100
 
 [QUEST40]
 Destino=233-57-51
@@ -634,7 +645,7 @@ CooldownHoras=24
 NumMatar=2
 Matar1=587-5
 Matar2=585-2
-Reward=EXP:11000000;ORO:1300000
+Reward=EXP:4850000;ORO:970000;COINS:6
 
 
 '==================== CUSTODIO DEL ABISMO <Mercader Prohibido> (NPC 641, Ullathorpe) ====================
@@ -648,7 +659,311 @@ NpcDador=641
 NivelMin=40
 Requiere=0
 Repetible=1
-CooldownHoras=3
+CooldownHoras=12
 NumMatar=1
 Matar1=552-3
-Reward=EXP:400000;OBJ:1012:5
+Reward=EXP:1150000;ORO:230000;OBJ:1012:5;COINS:3
+
+
+'==================== CUEVA ORCA (mapa 753) ====================
+'Dungeon de franja 19-25 (MapasPorNivel.cs): abajo de 19 no se entra, y al llegar a 26 el
+'server te devuelve a tu ciudad. Por eso toda esta linea vive dentro de esa ventana: la
+'ultima (QUEST46) pide nivel 25 y se hace en el ultimo nivel de la zona.
+'
+'Sin NpcDador: se toman y se entregan desde el tablon de /misiones. La cueva no tiene
+'ningun NPC amigo adentro y los dadores se van del juego.
+'
+'Poblacion real del mapa (leida de mapa753.csm): 13 Orco (523), 6 Orco brujo (549) y
+'6 Lord Orco (555), todos con respawn de 1 minuto. Los objetivos van medidos contra eso:
+'no se pide mas de lo que hay vivo a la vez salvo en las dos ultimas, donde se espera
+'que el jugador de mas de una vuelta.
+'
+'COINS a proposito BAJOS (8-20 la linea entera, 3 la repetible) frente a las 50-60 por
+'mision que dan las quests de este mismo nivel en el resto del .dat: la cueva es un
+'dungeon farmeable, no una mision de historia.
+
+[QUEST42]
+Nombre=Lo que sale del hueco
+Historia=El hueco de la ladera lleva años escupiendo orcos de a dos y de a tres, y ya nadie baja a los campos de abajo. No hace falta que entiendas de dónde salen: hace falta que dejen de salir. Meteles miedo, y si el miedo no alcanza, meteles acero.
+NpcDador=0
+NivelMin=19
+Requiere=0
+Destino=753-19-20
+NumMatar=1
+Matar1=523-15
+Reward=EXP:41500;ORO:8300;COINS:4
+
+[QUEST43]
+Nombre=Los que llevan la voz
+Historia=No son una manada: son un ejército chico. Alguien los ordena, y ese alguien lleva casco y camina adelante. Bajales la cabeza a tres de esos y la cueva entera va a tardar semanas en volver a formar fila.
+NpcDador=0
+NivelMin=20
+Requiere=42
+Destino=753-51-56
+NumMatar=1
+Matar1=555-3
+Reward=EXP:53500;ORO:10500;COINS:8
+
+[QUEST44]
+Nombre=Humo verde en las galerías
+Historia=En los túneles del fondo hay orcos que no pelean con hacha. Tiran algo verde que atraviesa la armadura como si fuera lino, y los nuestros vuelven quemados por dentro. Callalos antes de que le enseñen el truco al resto.
+NpcDador=0
+NivelMin=21
+Requiere=43
+Destino=753-48-18
+NumMatar=1
+Matar1=549-6
+Reward=EXP:69500;ORO:14000;COINS:8
+
+[QUEST45]
+Nombre=Romper la formación
+Historia=Ya sabés cómo pelean: los brujos atrás, los señores adelante, y vos en el medio. Esta vez no se trata de contar cabezas sueltas sino de partir la formación al medio, brujos y señores en la misma bajada. Si volvés, volvés distinto.
+NpcDador=0
+NivelMin=23
+Requiere=44
+Destino=753-51-56
+NumMatar=2
+Matar1=555-4
+Matar2=549-4
+Destino1=753-51-56
+Destino2=753-81-52
+Reward=EXP:120000;ORO:24000;COINS:8
+
+[QUEST46]
+Nombre=El último descenso
+Historia=Esta es la vez que la cueva no te va a dejar salir caminando despacio. Todo lo que quedó vivo ahí abajo sabe quién sos y te está esperando junto. Terminalo, agarrá lo que encuentres, y no vuelvas: cuando pases este nivel la cueva ya no tiene nada para vos.
+NpcDador=0
+NivelMin=25
+Requiere=45
+Destino=753-67-85
+NumMatar=2
+Matar1=555-6
+Matar2=549-6
+Destino1=753-67-85
+Destino2=753-81-73
+Reward=EXP:430000;ORO:86000;OBJ:858:1;COINS:40
+
+[QUEST47]
+Nombre=Limpieza de galerías
+Historia=Mientras la cueva siga abierta va a seguir habiendo orcos adentro, y mientras haya orcos adentro alguien tiene que estar bajando. No es gloria, es oficio: bajás, limpiás, cobrás, y en un rato hay que volver a bajar.
+NpcDador=0
+NivelMin=19
+Requiere=0
+Repetible=1
+CooldownHoras=12
+Destino=753-19-20
+NumMatar=1
+Matar1=523-10
+Reward=EXP:16500;ORO:3300;COINS:1
+
+
+'==================== LA CATEDRAL SUMERGIDA (mapa 954, isla 622) ====================
+'Contenido nuevo del 2-sep-2026. Cadena de nivel 40+ que arranca en la isla y termina en el
+'Abside, con Vhorlaq. Sin NpcDador: todo sale del tablon de /misiones.
+'
+'Poblacion real leida del mapa954.csm / mapa622.csm. El boss (703) y el Guardian (614) son
+'UNICOS en el mapa: las misiones que los piden nunca piden mas de uno por vuelta.
+'
+'COINS: la cadena paga poco en el medio y fuerte en la ultima. Es a proposito: la moneda se
+'gana TERMINANDO el dungeon, no repitiendo el primer escalon.
+
+[QUEST48]
+Nombre=Las aguas del Pórtico
+Historia=La isla no figura en ninguna carta de navegación, y los que la encontraron por accidente no volvieron a contarlo. Lo que da vueltas en esa fosa no es un animal: es algo que aprendió a esperar barcos. Despejame el agua antes de que pensemos siquiera en abrir la puerta de abajo.
+NpcDador=0
+NivelMin=40
+Requiere=0
+Destino=622-16-49
+NumMatar=1
+Matar1=704-3
+Reward=EXP:2850000;ORO:570000;COINS:20
+
+[QUEST49]
+Nombre=Los que guardan la nave
+Historia=La catedral se hundió con todo adentro, incluida la guardia que juró no dejarla nunca. Cumplieron: siguen ahí, y siguen de pie. No vas a poder cruzar el atrio mientras esa gente recuerde para qué le dieron una lanza.
+NpcDador=0
+NivelMin=41
+Requiere=48
+Destino=954-44-24
+NumMatar=2
+Matar1=611-4
+Matar2=612-4
+Destino1=954-44-24
+Destino2=954-33-71
+Reward=EXP:3400000;ORO:680000;COINS:20
+
+[QUEST50]
+Nombre=El coro de los que no se fueron
+Historia=En el crucero se escucha cantar. No es una figura de lenguaje: hay coro, y afina. Los que entraron a buscar de dónde salía la voz se quedaron a cantar también. Callalo, y no te pares a escuchar la parte donde te llaman por tu nombre.
+NpcDador=0
+NivelMin=43
+Requiere=49
+Destino=954-48-49
+NumMatar=3
+Matar1=586-4
+Matar2=528-4
+Matar3=521-2
+Destino1=954-48-49
+Destino2=954-48-61
+Destino3=954-52-36
+Reward=EXP:4900000;ORO:980000;COINS:20
+
+[QUEST51]
+Nombre=La cripta y el osario
+Historia=Debajo del coro hay dos pisos más que nadie dibujó en los planos. Uno guarda a los que la catedral enterró con honores y otro a los que enterró de apuro, y hace siglos que los dos grupos discuten. Bajales el telón a los tres que llevan la discusión.
+NpcDador=0
+NivelMin=45
+Requiere=50
+Destino=954-22-66
+NumMatar=3
+Matar1=513-3
+Matar2=576-3
+Matar3=547-2
+Destino1=954-22-66
+Destino2=954-80-17
+Destino3=954-44-49
+Reward=EXP:7050000;ORO:1400000;COINS:20
+
+[QUEST52]
+Nombre=Vhorlaq, el Custodio Ahogado
+Historia=Todo lo que mataste ahí abajo estaba haciendo un trabajo: que no llegues al ábside. Ahí hay uno solo, no se mueve del centro, y lleva tanto tiempo bajo el agua que ya no le hace falta respirar ni que le hables. Es el final de la catedral. Que sea el de él y no el tuyo.
+NpcDador=0
+NivelMin=47
+Requiere=51
+Destino=954-50-16
+NumMatar=2
+Matar1=614-1
+Matar2=703-1
+Destino1=954-88-67
+Destino2=954-50-16
+Reward=EXP:23700000;ORO:4750000;COINS:100
+
+[QUEST53]
+Nombre=Ronda por la nave
+Historia=Mientras la catedral siga abierta la guardia se va a seguir rearmando sola, turno tras turno, como si alguien alla abajo todavia pasara lista. No hay forma de terminarlo: hay forma de mantenerlo corto.
+NpcDador=0
+NivelMin=40
+Requiere=0
+Repetible=1
+CooldownHoras=12
+Destino=954-44-24
+NumMatar=2
+Matar1=611-4
+Matar2=612-6
+Destino1=954-44-24
+Destino2=954-33-71
+Reward=EXP:1150000;ORO:230000;COINS:3
+
+[QUEST54]
+Nombre=El Custodio no descansa
+Historia=Lo mataste y el agua lo volvió a armar. Va a pasar cada vez: mientras la catedral esté sumergida, el ábside tiene custodio. Bajar a rompersela de nuevo es, por ahora, lo único que la mantiene quieta.
+NpcDador=0
+NivelMin=47
+Requiere=52
+Repetible=1
+CooldownHoras=24
+Destino=954-50-16
+NumMatar=1
+Matar1=703-1
+Reward=EXP:4050000;ORO:810000;COINS:6
+
+
+'==================== EL ALCÁZAR CARMESÍ (mapa 955, isla 639) ====================
+'Contenido nuevo del 3-sep-2026. Misma forma que la catedral: cadena de 40+ desde la isla
+'del Panteón hasta el trono, mas dos repetibles. Sin NpcDador.
+'
+'Los seis bichos con nombre propio (705-710) son exclusivos de este mapa y estan de a dos,
+'salvo Malskar (705) que es unico y esta al pie del trono.
+
+[QUEST55]
+Nombre=El camino al Panteón
+Historia=El portón del Panteón se ve desde el agua y eso ya debería decirte algo: no lo esconden porque no les hace falta. La isla entera es la primera puerta. Abrila.
+NpcDador=0
+NivelMin=40
+Requiere=0
+Destino=639-28-46
+NumMatar=2
+Matar1=611-4
+Matar2=704-2
+Destino1=639-28-46
+Destino2=639-82-47
+Reward=EXP:2850000;ORO:570000;COINS:20
+
+[QUEST56]
+Nombre=La barbacana
+Historia=Arriba del vano hay cosas de piedra que no son adorno. Se quedan quietas hasta que cruzás, y para cuando te das cuenta de cuáles eran estatuas ya te están bajando del otro lado. Sacalas antes de meterte al patio.
+NpcDador=0
+NivelMin=41
+Requiere=55
+Destino=955-65-28
+NumMatar=1
+Matar1=710-4
+Reward=EXP:3400000;ORO:680000;COINS:20
+
+[QUEST57]
+Nombre=El patio de armas
+Historia=El patio está corrido a lo largo de todo el sur y no hay una sola columna donde meterse. Eso no es mala arquitectura: es el diseño. Te ven entrar desde los dos extremos y te dejan llegar hasta el medio a propósito.
+NpcDador=0
+NivelMin=43
+Requiere=56
+Destino=955-12-70
+NumMatar=2
+Matar1=709-4
+Matar2=707-4
+Destino1=955-12-70
+Destino2=955-45-45
+Reward=EXP:4900000;ORO:980000;COINS:20
+
+[QUEST58]
+Nombre=Los arcontes de sillar
+Historia=Los que administran el alcázar no pelean como tropa: pelean como gente que tiene todo el tiempo del mundo y sabe exactamente cuánto te queda a vos. Uno marchita y el otro pesa ocho toneladas. Elegi bien con cual empezas.
+NpcDador=0
+NivelMin=45
+Requiere=57
+Destino=955-20-28
+NumMatar=2
+Matar1=708-4
+Matar2=706-4
+Destino1=955-20-28
+Destino2=955-46-65
+Reward=EXP:7050000;ORO:1400000;COINS:20
+
+[QUEST59]
+Nombre=Malskar, el Señor Carmesí
+Historia=La alfombra hace dos quiebres desde la barbacana hasta el trono y los dos son para que llegues mirando el piso. Levanta la vista al final. Está sentado, está esperando, y hace mucho que no le toca pararse por nadie.
+NpcDador=0
+NivelMin=47
+Requiere=58
+Destino=955-44-9
+NumMatar=1
+Matar1=705-1
+Reward=EXP:23700000;ORO:4750000;COINS:100
+
+[QUEST60]
+Nombre=Ronda del patio
+Historia=El alcázar no se vacía: se repone. Cada vez que baja la marea de sangre vuelve a haber gárgolas en la barbacana y verdugos en el patio, como si el turno anterior no hubiera existido nunca.
+NpcDador=0
+NivelMin=40
+Requiere=0
+Repetible=1
+CooldownHoras=12
+Destino=955-65-28
+NumMatar=2
+Matar1=710-4
+Matar2=709-4
+Destino1=955-65-28
+Destino2=955-12-70
+Reward=EXP:1150000;ORO:230000;COINS:3
+
+[QUEST61]
+Nombre=El trono vuelve a llenarse
+Historia=Lo bajaste del trono y a la semana el trono tenía otra vez a alguien encima, con la misma cara y la misma armadura. No sabemos si es él o si el alcázar fabrica uno nuevo cada vez. Lo que sabemos es que hay que volver.
+NpcDador=0
+NivelMin=47
+Requiere=59
+Repetible=1
+CooldownHoras=24
+Destino=955-44-9
+NumMatar=1
+Matar1=705-1
+Reward=EXP:4050000;ORO:810000;COINS:6

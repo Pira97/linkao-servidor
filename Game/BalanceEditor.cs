@@ -151,7 +151,9 @@ public static class BalanceEditor
         {
             var otro = UserListManager.UserList[i];
             if (otro?.flags.UserLogged != true || otro.Conn == null) continue;
-            ServerPackets.IntervalConfig(otro.Conn, cfg.Atacar, cfg.LanzarSpell);
+            // SyncConfig, no IntervalConfig pelado: cada uno tiene su propia cadencia real según
+            // el ExtraTimer del arma que tenga puesta (ver Intervals.IntervaloAtaque).
+            Intervals.SyncConfig(otro);
             if (otro != u && AdminLoader.GetFaccionStatus(otro.Name) >= MIN_PRIV)
                 ServerPackets.ConsoleMsg(otro.Conn,
                     $"[Intervalos] {u.Name} cambió el cooldown de golpe/hechizo (Golpe={cfg.Atacar}ms, Hechizo={cfg.LanzarSpell}ms).", 7);

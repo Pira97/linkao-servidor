@@ -1,0 +1,33 @@
+# Trailer "Los Desterrados del Mar" — 07. Los Renegados se transforman en el Exordio (mapa 644, plaza).
+# Voz: 1:25.6 "Y mientras el resto de Exordium avanzaba..." y 1:29.4 "...ellos cambiaban" hasta 1:31.9.
+# El segundo 0 de este guion = 1:25.6 del audio.
+#
+# Frente al castillo, arriba de la estatua (54,41). Cada Renegado se borra y en la misma baldosa
+# aparece su versión del Exordio, tapado por el destello de teletransporte (fx 1).
+
+0     lugar 644 54 34
+0     aparece renegado1 guerrero 51 36 norte npc=530 bando=1 Renegado
+0     aparece renegado2 nigromante 54 36 norte npc=530 bando=1 Renegado
+0     aparece renegado3 paladin 57 36 norte npc=530 bando=1 Renegado
+
+# --- Y mientras el resto de Exordium avanzaba... (1:25.6) ---
+1.5   dice renegado2 El mar nos está cambiando.
+
+# --- ...ellos cambiaban (1:29.4) ---
+3.5   fx renegado1 57
+3.8   fx renegado2 57
+4.1   fx renegado3 57
+4.6   quita renegado1
+4.6   aparece exordiano1 paladin 51 36 norte npc=719 Paladin <Exordiano>
+4.6   fx exordiano1 1
+5.2   quita renegado2
+5.2   aparece exordiano2 nigromante 54 36 norte npc=723 Nigromante <Exordiano>
+5.2   fx exordiano2 1
+5.8   quita renegado3
+5.8   aparece exordiano3 guerrero 57 36 norte npc=718 Guerrero <Exordiano>
+5.8   fx exordiano3 1
+7.5   mira exordiano2 sur
+8     dice exordiano2 Ya no somos Renegados.
+10.5  dice exordiano1 Somos Exordianos.
+
+13    fin

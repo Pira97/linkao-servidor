@@ -1,0 +1,78 @@
+# Trailer "Los Desterrados del Mar" — 16. Barcos en el horizonte y el desembarco del Exordio (mapa 99).
+# Voz: 3:57.7 "Hasta que comenzaron a aparecer barcos desconocidos en el horizonte" / 4:02.0 "Aquella fue la primera señal" /
+#      4:06.4 "Los Renegados habían regresado" / 4:11.4 "Pero ya no eran los mismos" / 4:14.4 música hasta 4:22.8.
+# El segundo 0 de este guion = 3:57.7 del audio.
+#
+# Dos planos en la misma toma: primero desde la punta del muelle (los barcos asoman abajo) y en el
+# segundo 8.7 la cámara salta a la costa oeste del puerto, donde desembarca el ejército (x69-70, y31-32).
+# Ahí conviene cortar al editar.
+
+0     lugar 99 82 40
+0     aparece pescador guerrero 83 38 sur npc=41 bando=2 Pescador
+0     aparece aldeano guerrero 84 37 sur npc=1 bando=2 Aldeano
+0     aparece barco1 guerrero 76 58 norte npc=718 barca Guerrero <Exordiano>
+0     aparece barco2 paladin 80 60 norte npc=719 barca Paladin <Exordiano>
+0     aparece barco3 nigromante 84 58 norte npc=723 barca Nigromante <Exordiano>
+0     aparece barco4 guerrero 88 60 norte npc=718 barca Guerrero <Exordiano>
+0     aparece barco5 paladin 72 59 norte npc=719 barca Paladin <Exordiano>
+0     aparece barco6 nigromante 86 62 norte npc=723 barca Nigromante <Exordiano>
+0.5   camina barco1 76 47
+0.7   camina barco2 80 46
+0.9   camina barco3 84 47
+1.1   camina barco4 88 47
+1.3   camina barco5 72 48
+1.5   camina barco6 86 49
+
+# --- Hasta que comenzaron a aparecer barcos desconocidos en el horizonte (3:57.7) ---
+2     dice pescador ¿Qué es eso en el horizonte?
+
+# --- Aquella fue la primera señal (4:02.0) ---
+4.3   dice aldeano Barcos... ¡muchos barcos!
+6.5   dice pescador ¡Den la alarma!
+
+# --- Los Renegados habían regresado (4:06.4): segundo plano, la costa oeste ---
+8.7   quita barco1
+8.7   quita barco2
+8.7   quita barco3
+8.7   quita barco4
+8.7   quita barco5
+8.7   quita barco6
+8.7   quita pescador
+8.7   quita aldeano
+# El desembarco ya empezó: tres pisaron la playa y tres barcas y el Heraldo están llegando. Con
+# todos en el agua la costa (2 baldosas) los hacía esperar en fila y no llegaban a formar.
+8.7   lugar 99 76 26
+8.8   aparece e4 guerrero 71 32 norte npc=718 Guerrero <Exordiano>
+8.8   aparece e5 paladin 72 31 norte npc=719 Paladin <Exordiano>
+8.8   aparece e6 nigromante 70 32 norte npc=723 Nigromante <Exordiano>
+8.8   aparece e1 guerrero 67 31 este npc=718 barca Guerrero <Exordiano>
+8.8   aparece e2 paladin 67 32 este npc=719 barca Paladin <Exordiano>
+8.8   aparece e3 nigromante 64 30 este npc=723 barca Nigromante <Exordiano>
+8.8   aparece heraldo paladin 66 33 este npc=724 bando=16 barca Heraldo <Exordiano>
+8.8   aparece aldeana guerrero 74 28 oeste npc=11 bando=2 Aldeana
+8.8   aparece aldeano2 guerrero 80 29 oeste npc=1 bando=2 Aldeano
+9     camina e5 82 28
+9.2   camina e4 80 28
+9.4   camina e6 78 29
+9.6   camina e1 72 28
+9.8   camina e2 74 28
+10    camina e3 76 28
+10.5  dice aldeana ¡Nos invaden!
+11    camina aldeana 86 23
+11    camina heraldo 76 30
+11.3  camina aldeano2 88 22
+
+# --- Pero ya no eran los mismos (4:11.4) ---
+13.7  dice heraldo Exordium... hemos vuelto.
+
+# --- Solo música hasta el final (4:14.4) ---
+18    fx e1 57
+18.3  fx e2 57
+18.6  fx e3 57
+18.9  fx e4 57
+19.2  fx e5 57
+19.5  fx e6 57
+20.5  dice heraldo Que el mundo vuelva a conocer nuestro nombre.
+22    fx heraldo 20
+
+28    fin

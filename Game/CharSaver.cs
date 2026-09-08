@@ -87,7 +87,7 @@ public sealed class CharSaveSnapshot
 
     // [FACCIONES]
     public byte FaccionStatus;
-    public int CiudMatados, ReneMatados, RepuMatados, MiliMatados, ArmiMatados, CaosMatados;
+    public int CiudMatados, ReneMatados, RepuMatados, MiliMatados, ArmiMatados, CaosMatados, ExorMatados, HeralMatados;
     public int FaccionRango;
 
     // [AMIGOS]
@@ -283,6 +283,8 @@ public static class CharSaver
         s.MiliMatados = u.Faccion.MilicianosMatados;
         s.ArmiMatados = u.Faccion.ArmadaMatados;
         s.CaosMatados = u.Faccion.CaosMatados;
+        s.ExorMatados = u.Faccion.ExordianosMatados;
+        s.HeralMatados = u.Faccion.HeraldosMatados;
         s.FaccionRango = u.Faccion.Rango;
 
         s.AmigosNombres = new string[Constants.MAXAMIGOS + 1];
@@ -433,6 +435,8 @@ public static class CharSaver
             doc.Set("FACCIONES", "MiliMatados", s.MiliMatados.ToString());
             doc.Set("FACCIONES", "ArmiMatados", s.ArmiMatados.ToString());
             doc.Set("FACCIONES", "CaosMatados", s.CaosMatados.ToString());
+            doc.Set("FACCIONES", "ExorMatados", s.ExorMatados.ToString());
+            doc.Set("FACCIONES", "HeralMatados", s.HeralMatados.ToString());
             doc.Set("FACCIONES", "RANGO", s.FaccionRango.ToString());
 
             for (int a = 1; a <= Constants.MAXAMIGOS; a++)

@@ -1,0 +1,24 @@
+# Trailer "Los Desterrados del Mar" — 09. La ciudad prospera (mapa 644, avenida).
+# Voz: 1:48.8 "La ciudad prosperó." / 1:51.0 "Pero permaneció oculta." hasta 1:54.7.
+# El segundo 0 de este guion = 1:48.8 del audio.
+
+0     lugar 644 47 50
+0     aparece paladin1 paladin 36 44 este npc=719 Paladin <Exordiano>
+0     aparece pescador guerrero 57 48 oeste npc=41 bando=5 Pescador <Exordiano>
+0     aparece mago1 nigromante 44 56 norte npc=716 Mago <Exordiano>
+0     aparece guerrero1 guerrero 56 41 sur npc=718 Guerrero <Exordiano>
+0     aparece carpintero guerrero 36 52 este npc=44 bando=5 Carpintero <Exordiano>
+0.3   camina paladin1 58 44
+0.5   camina pescador 39 48
+0.7   camina mago1 44 41
+0.9   camina guerrero1 56 56
+1.1   camina carpintero 58 52
+
+# --- La ciudad prosperó (1:48.8) ---
+1     dice pescador ¡Pescado fresco del arrecife!
+4     dice guerrero1 Buen día, hermano.
+
+# --- Pero permaneció oculta (1:51.0) ---
+6.5   dice paladin1 Que el mar nos siga ocultando.
+
+13    fin

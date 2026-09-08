@@ -8,7 +8,12 @@ namespace ServidorCS.Game;
 /// definiciones en &lt;Dat&gt;/Quests.dat, progreso por personaje en &lt;ServerRoot&gt;/Quests/&lt;NOMBRE&gt;.json.
 ///
 /// Objetivos soportados: Matar (NpcIndex de NPCs.dat) y Juntar (ObjIndex de obj.dat; se
-/// valida contra el inventario y se descuenta al entregar). Recompensas: EXP:n  ORO:n  OBJ:idx:cant.
+/// valida contra el inventario y se descuenta al entregar).
+/// Recompensas: EXP:n  ORO:n  OBJ:idx:cant  COINS:n.
+///
+/// COINS son los ExordiumCoins: moneda propia del sistema de misiones, separada del oro.
+/// No entra ni al inventario ni al charfile — vive en este mismo Progress, se gana sólo
+/// entregando misiones y el saldo viaja en cada QuestInfo para el contador de la ventana.
 ///
 /// Interacción: doble click sobre el NPC dador abre la ventana de misiones (QuestInfo origen=1).
 /// Si el NPC comercia, la ventana solo se abre cuando hay algo accionable (aceptar/entregar);
@@ -71,6 +76,9 @@ public static class QuestSystem
         public List<int> Completadas { get; set; } = new();
         // questId -> última entrega (ticks UTC) para el cooldown de repetibles
         public Dictionary<int, long> UltimaEntrega { get; set; } = new();
+        // Saldo de ExordiumCoins. Un JSON viejo (sin la clave) deserializa en 0, que es
+        // justo el saldo inicial: no hace falta migrar nada.
+        public int Coins { get; set; }
     }
 
     private static readonly List<Quest> _quests = new();
@@ -167,14 +175,20 @@ public static class QuestSystem
                 q.Reward.Add(t);
             q.RewardTexto = RewardLegible(q.Reward);
 
-            if (q.NpcDador <= 0 || q.Objetivos.Count == 0)
+            if (q.Objetivos.Count == 0)
             {
-                Console.WriteLine($"[Quests] QUEST{i} inválida (sin dador u objetivos), salteada.");
+                Console.WriteLine($"[Quests] QUEST{i} inválida (sin objetivos), salteada.");
                 continue;
             }
             _quests.Add(q);
-            if (!_porDador.TryGetValue(q.NpcDador, out var lista)) _porDador[q.NpcDador] = lista = new List<Quest>();
-            lista.Add(q);
+            // NpcDador=0 es válido y es el modo nuevo: la misión sale del tablón de la ventana
+            // y no la reparte nadie. Sólo las que SÍ tienen dador entran a _porDador, que es lo
+            // que usa el doble click sobre el NPC.
+            if (q.NpcDador > 0)
+            {
+                if (!_porDador.TryGetValue(q.NpcDador, out var lista)) _porDador[q.NpcDador] = lista = new List<Quest>();
+                lista.Add(q);
+            }
         }
         // [ENTRADAS]: En=dungeon-mapaEntrada-x-y. El cliente las usa cuando el mapa del
         // destino/dador no figura en el mapamundi: marca la entrada del dungeon.
@@ -253,6 +267,7 @@ public static class QuestSystem
             {
                 case "EXP": if (p.Length >= 2) partes.Add($"{FormatoMiles(p[1])} exp"); break;
                 case "ORO": if (p.Length >= 2) partes.Add($"{FormatoMiles(p[1])} oro"); break;
+                case "COINS": if (p.Length >= 2) partes.Add($"{FormatoMiles(p[1])} ExordiumCoins"); break;
                 case "OBJ":
                     if (p.Length >= 2 && short.TryParse(p[1], out short idx))
                     {
@@ -398,7 +413,9 @@ public static class QuestSystem
 
             // Recién completó toda la caza: avisar (los "juntar" se validan al entregar).
             if (cambio && !estabaLista && MatanzaCompleta(q, kills) && u.Conn != null)
-                ServerPackets.ConsoleMsg(u.Conn, $"📜 Misión \"{q.Nombre}\" lista: volvé con {NombreDador(q)} para entregarla.", 58);
+                ServerPackets.ConsoleMsg(u.Conn, q.NpcDador > 0
+                    ? $"📜 Misión \"{q.Nombre}\" lista: volvé con {NombreDador(q)} para entregarla."
+                    : $"📜 Misión \"{q.Nombre}\" lista: entregala desde /misiones.", 58);
         }
         if (cambio) SaveProgress(u);
         // Log silencioso en cada kill que cuenta: refresca el tracker del HUD con el progreso
@@ -476,12 +493,21 @@ public static class QuestSystem
         var u = Get(userIndex);
         if (u?.Conn == null || !_porDador.TryGetValue(npcIndex, out var lista)) return;
         string npcName = NpcData.Get(npcIndex).Name ?? "";
-        ServerPackets.QuestInfo(u.Conn, 1, npcName, Entradas(u, lista), new List<ServerPackets.QuestGiver>());
+        ServerPackets.QuestInfo(u.Conn, 1, npcName, u.Quests.Coins, Entradas(u, lista), new List<ServerPackets.QuestGiver>());
     }
 
     /// <summary>Log de misiones del jugador. abrirVentana=true → origen 0 (el cliente abre la
     /// ventana); false → origen 2 (silencioso: solo actualiza marcadores de minimapa/mapamundi).
-    /// Incluye el catálogo de dadores spawneados para los marcadores del mapamundi.</summary>
+    /// Incluye el catálogo de dadores spawneados para los marcadores del mapamundi.
+    ///
+    /// Con abrirVentana=true se agregan además las misiones que el jugador PUEDE ACEPTAR
+    /// ahora mismo (el "tablón" de la pestaña DISPONIBLE): sólo EST_DISPONIBLE, o sea con
+    /// el nivel cumplido, la quest previa hecha y sin cooldown pendiente. Las que le quedan
+    /// grandes NO se mandan — el tablón es lo que puede ir a hacer hoy, no el catálogo del
+    /// juego. No van en el log silencioso: ese sale en cada kill que cuenta y no tiene
+    /// sentido recalcular el tablón cuarenta veces por pelea. El cliente separa las dos
+    /// cosas por el byte estado (incoming.js), así el tracker y los marcadores del mapa
+    /// siguen viendo sólo las activas.</summary>
     public static void SendQuestLog(int userIndex, bool abrirVentana = true)
     {
         var u = Get(userIndex);
@@ -492,7 +518,18 @@ public static class QuestSystem
             var q = GetQuest(qid);
             if (q != null) lista.Add(q);
         }
-        ServerPackets.QuestInfo(u.Conn, (byte)(abrirVentana ? 0 : 2), "", Entradas(u, lista), BuildGivers(u));
+        if (abrirVentana)
+            foreach (var q in _quests)
+            {
+                if (u.Quests.Activas.ContainsKey(q.Id)) continue;
+                // Sólo lo aceptable AHORA. Estado() ya descarta por nivel (EST_SIN_NIVEL),
+                // por quest previa sin hacer (EST_BLOQUEADA), por cooldown de repetible
+                // (EST_COOLDOWN) y por ya entregada (EST_COMPLETADA).
+                if (Estado(u, q) != EST_DISPONIBLE) continue;
+                lista.Add(q);
+                if (lista.Count >= 255) break;   // el paquete cuenta las misiones en un byte
+            }
+        ServerPackets.QuestInfo(u.Conn, (byte)(abrirVentana ? 0 : 2), "", u.Quests.Coins, Entradas(u, lista), BuildGivers(u));
     }
 
     /// <summary>Dadores dedicados ([NPCSPAWNS]) con su posición y si tienen algo disponible
@@ -534,8 +571,10 @@ public static class QuestSystem
         foreach (var q in lista)
         {
             byte estado = Estado(u, q);
+            // Sin dador no hay "La da: X" que mandar: el extra queda vacío y la ventana no
+            // pinta esa línea (quests_ui.js ya descarta los que empiezan con "La da: ").
             string extra = estado == EST_DISPONIBLE || estado == EST_EN_CURSO || estado == EST_LISTA
-                ? $"La da: {NombreDador(q)}"
+                ? (q.NpcDador > 0 ? $"La da: {NombreDador(q)}" : "")
                 : EstadoExtra(u, q, estado);
 
             var objetivos = new List<ServerPackets.QuestObjetivo>();
@@ -593,15 +632,27 @@ public static class QuestSystem
             ServerPackets.ConsoleMsg(u.Conn, $"No podés tener más de {MAX_ACTIVAS} misiones activas.", 4);
             return;
         }
-        // Solo se acepta cara a cara con el dador (evita aceptar por paquete forjado a distancia).
-        if (!DadorCerca(u, q)) { ServerPackets.ConsoleMsg(u.Conn, "Estás demasiado lejos del NPC.", 4); return; }
-
+        // Ya NO hace falta estar cara a cara con el dador: las misiones se toman desde la
+        // ventana. Lo que frena un paquete forjado es el Estado() de arriba, que es la
+        // validación que importa — sigue exigiendo nivel, quest previa y cooldown.
         int nMatar = 0;
         foreach (var o in q.Objetivos) if (!o.EsJuntar) nMatar++;
         u.Quests.Activas[q.Id] = new List<int>(new int[nMatar]);
         SaveProgress(u);
         ServerPackets.ConsoleMsg(u.Conn, $"📜 Misión aceptada: {q.Nombre}.", 58);
-        SendNpcQuests(userIndex, q.NpcDador);     // refresca la ventana
+        RefrescarVentana(userIndex, q);
+    }
+
+    /// <summary>Repinta la ventana después de aceptar/entregar. Si el jugador está al lado
+    /// del dador vino de la ventana del NPC y hay que devolverle esa (origen 1); si no, vino
+    /// del log y mandarle un origen 1 le cambiaría el título a un NPC que ni ve. Cuando los
+    /// dadores se saquen del juego queda siempre la segunda rama.</summary>
+    private static void RefrescarVentana(int userIndex, Quest q)
+    {
+        var u = Get(userIndex);
+        if (u == null) return;
+        if (DadorCerca(u, q)) SendNpcQuests(userIndex, q.NpcDador);
+        else SendQuestLog(userIndex);                 // origen 0: log + tablón
         SendQuestLog(userIndex, abrirVentana: false); // actualiza flecha/marcadores
     }
 
@@ -611,7 +662,9 @@ public static class QuestSystem
         var q = GetQuest(questId);
         if (u?.Conn == null || q == null) return;
         if (!u.Quests.Activas.TryGetValue(q.Id, out var kills)) return;
-        if (!DadorCerca(u, q)) { ServerPackets.ConsoleMsg(u.Conn, "Estás demasiado lejos del NPC.", 4); return; }
+        // Tampoco hace falta volver con el dador para cobrar: si hubiera que caminar hasta
+        // él para entregar, aceptar a distancia no serviría de nada. Lo que valida la
+        // entrega son los objetivos de abajo, no la distancia.
         if (!MatanzaCompleta(q, kills) || !JuntadoCompleto(u, q))
         {
             ServerPackets.ConsoleMsg(u.Conn, "Todavía no completaste todos los objetivos.", 4);
@@ -625,12 +678,13 @@ public static class QuestSystem
         u.Quests.Activas.Remove(q.Id);
         if (q.Repetible) u.Quests.UltimaEntrega[q.Id] = DateTime.UtcNow.Ticks;
         else if (!u.Quests.Completadas.Contains(q.Id)) u.Quests.Completadas.Add(q.Id);
-        SaveProgress(u);
 
         ServerPackets.ConsoleMsg(u.Conn, $"🏅 ¡Misión completada: {q.Nombre}!", 58);
         foreach (var tok in q.Reward) GrantReward(u, tok);
-        SendNpcQuests(userIndex, q.NpcDador);     // refresca la ventana
-        SendQuestLog(userIndex, abrirVentana: false); // actualiza flecha/marcadores
+        // Después de las recompensas y no antes: COINS toca el propio Progress, así que
+        // guardar primero dejaría el saldo nuevo sin persistir hasta el próximo save.
+        SaveProgress(u);
+        RefrescarVentana(userIndex, q);
     }
 
     public static void Abandon(int userIndex, int questId)
@@ -647,6 +701,7 @@ public static class QuestSystem
     /// <summary>El dador tiene que estar a distancia de interacción (rango de visión del doble click).</summary>
     private static bool DadorCerca(User u, Quest q)
     {
+        if (q.NpcDador <= 0) return false;   // sin dador nunca hay nadie cerca
         foreach (var n in NpcManager.GetMapNpcs(u.Pos.Map))
             if (!n.Dead && n.NpcIndex == q.NpcDador
                 && Math.Abs(n.X - u.Pos.X) <= 8 && Math.Abs(n.Y - u.Pos.Y) <= 6)
@@ -684,6 +739,17 @@ public static class QuestSystem
                         ServerPackets.UpdateGold(u.Conn, u.Stats.GLD);
                         ServerPackets.ConsoleMsg(u.Conn, $"Recibiste {oro:N0} monedas de oro.", 3);
                     }
+                }
+                break;
+
+            // ExordiumCoins: no van al inventario ni al charfile, se suman al Progress y
+            // el saldo nuevo llega al cliente en el QuestInfo que TurnIn manda enseguida.
+            case "COINS":
+                if (parts.Length >= 2 && int.TryParse(parts[1], out int coins) && coins > 0)
+                {
+                    u.Quests.Coins += coins;
+                    if (u.Conn != null)
+                        ServerPackets.ConsoleMsg(u.Conn, $"Recibiste {coins:N0} ExordiumCoins.", 58);
                 }
                 break;
 

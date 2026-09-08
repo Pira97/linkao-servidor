@@ -1,0 +1,28 @@
+# Trailer "Los Desterrados del Mar" — 05. Los Renegados desembarcan en la isla de Umbramar (mapa 644, muelle sur).
+# Voz: 1:00.3 "Los Renegados habían sobrevivido" hasta 1:18.7 "...lejos de los ojos del mundo".
+# El segundo 0 de este guion = 1:00.3 del audio.
+#
+# Las barcas suben por el canal x56-63 y desembarcan en el muelle largo (x52-55). Después entran
+# por el portón de la muralla (x50-57, y77-79).
+
+0     lugar 644 49 85
+0     aparece barca1 guerrero 57 93 norte npc=530 bando=1 barca Renegado
+0.3   aparece barca2 nigromante 59 93 norte npc=530 bando=1 barca Renegado
+0.5   camina barca1 55 88
+0.6   aparece barca3 guerrero 61 93 norte npc=530 bando=1 barca Renegado
+0.8   camina barca2 55 90
+0.9   aparece barca4 paladin 63 93 norte npc=530 bando=1 barca Renegado
+1.1   camina barca3 55 86
+1.4   camina barca4 55 92
+
+6     dice barca1 ¡Tierra! Una isla que no está en ningún mapa.
+
+# --- Más allá de las rutas conocidas, encontraron una tierra (1:06.1) ---
+9     dice barca2 Acá nadie nos va a encontrar.
+10    camina barca1 53 75
+10.4  camina barca3 54 76
+10.8  camina barca2 52 76
+11.2  camina barca4 55 75
+14    dice barca3 Acá vamos a levantar nuestro hogar.
+
+19    fin

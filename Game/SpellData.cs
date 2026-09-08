@@ -66,6 +66,34 @@ public static class SpellData
         public bool SinEscalaINT;      // si true, este hechizo NO escala con Inteligencia (p.ej. curvas de leveo fijas)
         public int DanoMagicoMin;      // piso de daño propio del hechizo (0 = usar el piso global PvP/PvE)
         public int DanoMagicoMax;      // techo de daño propio del hechizo (0 = usar el techo global PvP/PvE)
+        // Rango de daño FIJO por clase del lanzador ("DanoFijoClase=4:96-100,7:80-90"): reemplaza todo el
+        // cálculo (nivel, INT, báculo, raza) para esa clase; después sólo restan las defensas del objetivo.
+        public Dictionary<int, (int Min, int Max)> DanoFijoClase;
+    }
+
+    // Parsea "4:96-100,7:80-90" → {4:(96,100), 7:(80,90)}. Vacío/null → null.
+    private static Dictionary<int, (int, int)> ParseDanoFijoClase(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var d = new Dictionary<int, (int, int)>();
+        foreach (var item in s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var cr = item.Split(':');
+            if (cr.Length != 2 || !int.TryParse(cr[0], out var clase)) continue;
+            var mm = cr[1].Split('-');
+            if (mm.Length != 2 || !int.TryParse(mm[0], out var min) || !int.TryParse(mm[1], out var max)) continue;
+            d[clase] = (Math.Min(min, max), Math.Max(min, max));
+        }
+        return d.Count > 0 ? d : null;
+    }
+
+    /// <summary>Si el hechizo tiene rango fijo para esa clase, devuelve true y un valor al azar en [min, max].</summary>
+    public static bool TryDanoFijoClase(in Spell sp, int clase, Random rng, out int dano)
+    {
+        dano = 0;
+        if (sp.DanoFijoClase == null || !sp.DanoFijoClase.TryGetValue(clase, out var r)) return false;
+        dano = rng.Next(r.Min, r.Max + 1);
+        return true;
     }
 
     // Parsea "1-2-3-..." → int[]{1,2,3,...}. Vacío/null → null.
@@ -179,6 +207,7 @@ public static class SpellData
                 SinEscalaINT = ini.GetInt("HECHIZO" + i, "SinEscalaINT") == 1,
                 DanoMagicoMin = ini.GetInt("HECHIZO" + i, "DanoMagicoMin"),
                 DanoMagicoMax = ini.GetInt("HECHIZO" + i, "DanoMagicoMax"),
+                DanoFijoClase = ParseDanoFijoClase(ini.Get("HECHIZO" + i, "DanoFijoClase")),
             };
         }
     }

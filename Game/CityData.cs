@@ -9,6 +9,11 @@ public static class CityData
 {
     public struct City { public short Map, X, Y, DeadMap, DeadX, DeadY; }
 
+    /// <summary>Umbramar (NUEVO, 13-sep-2026, no VB6): la ciudad oculta de los Desterrados del Mar,
+    /// hogar del Exordio. eCiudad 16; el mapa 957 lo genera scripts/mapgen/gen_umbramar957.py.</summary>
+    public const byte CUMBRAMAR = 16;
+    public const short MAPA_UMBRAMAR = 644;   // 14-sep-2026: mudada del 957 al 644 (Oceano Abierto, mundo continuo)
+
     // Índice eCiudad → sección en Ciudades.dat (FileIO.bas:2604-2618).
     private static readonly string[] _section =
     {
@@ -28,6 +33,7 @@ public static class CityData
         "PRISION",     // 13 cPrision
         "LIBERTAD",    // 14 cLibertad
         "INTERMUNDIA", // 15 cIntermundia
+        "UMBRAMAR",    // 16 CUMBRAMAR (NUEVO): ciudad del Exordio
     };
 
     private static City[] _cities;

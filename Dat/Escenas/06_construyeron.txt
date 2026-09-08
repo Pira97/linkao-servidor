@@ -1,0 +1,22 @@
+# Trailer "Los Desterrados del Mar" — 06. Levantan la ciudad (mapa 644, avenida).
+# Voz: 1:18.7 "Generación tras generación, construyeron sus murallas, sus templos y sus fortalezas" hasta 1:25.6.
+# El segundo 0 de este guion = 1:18.7 del audio.
+
+0     lugar 644 52 50
+0     aparece maestro guerrero 49 48 este npc=44 bando=1 Maestro de obras
+0     aparece cantero1 guerrero 44 43 sur npc=48 bando=1 Cantero
+0     aparece cantero2 guerrero 60 56 norte npc=48 bando=1 Cantero
+0     aparece carpintero guerrero 56 43 sur npc=44 bando=1 Carpintero
+0.5   camina cantero1 44 56
+0.5   camina cantero2 60 43
+0.8   camina carpintero 56 56
+
+2     dice maestro ¡Más piedra para la muralla norte!
+4     dice cantero1 ¡Ya va, maestro!
+6.5   camina cantero1 44 43
+6.5   camina cantero2 60 56
+6.9   dice maestro Cada piedra nos aleja de los reinos que nos echaron.
+7     camina carpintero 56 43
+9.5   dice carpintero El templo va a estar listo antes del invierno.
+
+13    fin

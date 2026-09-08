@@ -160,9 +160,10 @@ public static class MapLoader
 
             // tMapDat (182 bytes): map_name(64) + battle_mode(1) + ...
             // VB6 ES.CargarMapa (FileIO.bas:1562): battle_mode==0 → Pk=True (caen cosas);
-            // battle_mode!=0 → Pk=False (seguro). Excepción: mapa 457 siempre seguro.
+            // battle_mode!=0 → Pk=False (seguro). El 457 (Umbral Arcano) era seguro por excepción del
+            // VB6; desde el 23-sep-2026 se puede atacar ("el mapa ese 457 se tiene que poder atacar").
             byte battleMode = d[p + 64];
-            map.Info.Pk = (battleMode == 0) && mapNumber != 457;
+            map.Info.Pk = battleMode == 0;
             // tMapDat.zone: offset 86, String*16 (CP1252, padded). Usado por el clima (EsDungeon).
             map.Info.Zona = Network.Cp1252.GetString(d, p + 86, 16).Replace("\0", "").Trim();
             // tMapDat.terrain: offset 102, String*16. "NIEVE" → EfectoFrio quita vida en vez de stamina.
@@ -211,7 +212,8 @@ public static class MapLoader
                     // mundo nuevo y se rompían la pesca y la navegación.
                     bool agua = (g1 >= 1505 && g1 <= 1520) || (g1 >= 5665 && g1 <= 5680)
                               || (g1 >= 13547 && g1 <= 13562)
-                              || (g1 >= 490000 && g1 <= 490020);
+                              || (g1 >= 490000 && g1 <= 490020)
+                              || (g1 >= 440054 && g1 <= 440069);   // agua celeste de la 5040 (Mar de las Agujas, mapa 959)
                     map.Water[x, y] = agua && !graphic2[x, y];
                 }
 

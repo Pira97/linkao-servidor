@@ -46,7 +46,7 @@ public static class DamageEditor
         }
 
         var b = Combat.PreviewSpellDamage(sp, magnitud, casterLevel, casterINT, staffBonus, isPvP, u.raza,
-            targetResistencia);
+            targetResistencia, casterClase: u.Clase);
         ServerPackets.DamageEditorPreviewResult(conn, b);
     }
 }

@@ -13,9 +13,11 @@ namespace ServidorCS.Game;
 ///   · [PJS] de la cuenta (la pantalla de selección lista por nombre)
 ///   · listas de amigos de TODOS los demás personajes ([AMIGOS] del .chr) y las solicitudes
 ///     de amistad pendientes (amigo_requests.dat)
-/// Quedan FUERA a propósito los clanes: los archivos de guild guardan miembros, líder, elecciones
-/// y propuestas por nombre, así que el cambio se bloquea si el personaje está en uno (que se vaya,
-/// se renombre y vuelva a entrar). Idem subastas activas.
+///   · clanes: los archivos de guild guardan a la gente por nombre — miembros, aspirantes,
+///     fundador/líder y los votos de una elección en curso (GuildManager.RenombrarMiembro).
+///     Hasta el 16-sep-2026 esto no estaba y el cambio se BLOQUEABA si el personaje estaba en
+///     un clan; había que salir, renombrarse y volver a entrar.
+/// Quedan FUERA a propósito las subastas activas: el cambio se bloquea si hay una.
 ///
 /// Al terminar se desconecta al jugador: hay estado en memoria de otros sistemas (party, comercio,
 /// espectadores) que quedó apuntando al nombre viejo, y reconectar es la forma barata de limpiarlo.
@@ -38,8 +40,11 @@ public static class CharRename
         { motivo = "Ese ya es tu nombre."; return false; }
         if (!CharCreator.NombreValido(nuevo)) { motivo = "Ese nombre no es válido."; return false; }
         if (CharLoader.PersonajeExiste(nuevo)) { motivo = "Ya existe un personaje con ese nombre."; return false; }
-        if (u.GuildIndex > 0)
-        { motivo = "Debes salir de tu clan antes de cambiar de nombre (después puedes volver a entrar)."; return false; }
+        // Las subastas guardan al vendedor y al postor por nombre y se persisten: renombrar en
+        // medio de una dejaría al vendedor sin cobrar o al postor sin su ítem. El comentario de
+        // arriba decía que este chequeo existía, pero no estaba escrito (16-sep-2026).
+        if (Subastas.TieneSubastaActiva(viejo))
+        { motivo = "Tienes una subasta en curso. Espera a que termine para cambiar de nombre."; return false; }
 
         // Dejar el .chr al día ANTES de moverlo: si no, el guardado siguiente escribiría el
         // archivo del nombre nuevo y el viejo quedaría con datos rancios dando vueltas.
@@ -66,6 +71,9 @@ public static class CharRename
         Achievements.RenombrarProgreso(viejo, nuevo);
         BattlePass.RenombrarProgreso(viejo, nuevo);
         QuestSystem.RenombrarProgreso(viejo, nuevo);
+        // Clanes: miembro de uno, aspirante de varios, y fundador/líder si lo es. Antes esto
+        // no existía y el cambio se bloqueaba si estabas en un clan; ahora se arregla el dato.
+        GuildManager.RenombrarMiembro(viejo, nuevo);
 
         if (!AccountManager.RenombrarEnCuenta(u.Account, viejo, nuevo))
             Console.WriteLine($"[CharRename] ADVERTENCIA: '{viejo}' no estaba en [PJS] de la cuenta '{u.Account}'.");

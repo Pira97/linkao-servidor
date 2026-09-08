@@ -71,6 +71,10 @@ public static class Work
         if (res <= suerte)
         {
             u.flags.Oculto = 1;
+            // NUEVO (no VB6): el oculto dura OCULTO_DURACION_SEG y se ve la cuenta regresiva
+            // sobre la cabeza. Vence en Combat.TickEstados.
+            u.flags.OcultoExpira = Environment.TickCount64 / 1000.0 + Combat.OCULTO_DURACION_SEG;
+            Combat.EnviarTimerEstado(u, Combat.TIMER_OCULTO, u.flags.OcultoExpira);
             // Difundir SetInvisible(charIndex, true) al área
             for (int i = 1; i <= UserListManager.LastUser; i++)
             {

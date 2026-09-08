@@ -1,0 +1,36 @@
+# Trailer "Los Desterrados del Mar" — 02. Los barcos parten del Puerto de Rinkel (mapa 99).
+# Voz: 0:28.9 "Los barcos partieron hacia el horizonte" hasta 0:47.3 "...qué había sido de los Renegados".
+# El segundo 0 de este guion = 0:28.9 del audio.
+#
+# La cámara queda en la punta del muelle este (x82-84, y33-41); la única salida al agua es (83,42).
+# Desde el segundo ~12 queda solo el mar: es la toma de "Durante generaciones, nadie supo...".
+
+0     lugar 99 82 41
+0     aparece guardia1 guerrero 83 34 sur npc=151 bando=2 Guardia <Imperio>
+0     aparece guardia2 guerrero 84 34 sur npc=151 bando=2 Guardia <Imperio>
+0     aparece renegado1 guerrero 83 40 sur npc=530 bando=1 barca Renegado
+0     aparece renegado2 nigromante 84 39 sur npc=530 bando=1 barca Renegado
+0     aparece renegado3 guerrero 83 38 sur npc=530 bando=1 barca Renegado
+0     aparece renegado4 paladin 84 37 sur npc=530 bando=1 barca Renegado
+0     aparece renegado5 guerrero 83 36 sur npc=530 bando=1 barca Renegado
+
+# --- Los barcos partieron hacia el horizonte (0:28.9) ---
+0.8   camina renegado1 80 56
+1     dice renegado1 Adiós, Exordium.
+2     camina renegado2 84 58
+3.2   camina renegado3 88 57
+4.4   camina renegado4 77 59
+5.6   camina renegado5 86 60
+6     dice guardia1 Que el mar se los lleve.
+9     dice guardia2 Y que jamás vuelvan.
+11    quita guardia1
+11    quita guardia2
+12    quita renegado1
+13    quita renegado2
+
+# --- Durante generaciones, nadie supo qué había sido de los Renegados (0:37.6) ---
+14.5  quita renegado3
+16    quita renegado4
+17.5  quita renegado5
+
+19    fin

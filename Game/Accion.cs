@@ -288,6 +288,10 @@ public static class Accion
                     if (Facciones.EsCaos(u)) Facciones.RecompensaCaos(u, npc.CharIndex);
                     else Facciones.EnlistarCaos(u, npc.CharIndex);
                     break;
+                case 5: // Heraldos del Exordio (NUEVO)
+                    if (Facciones.EsHeraldo(u)) Facciones.RecompensaHeraldos(u, npc.CharIndex);
+                    else Facciones.EnlistarHeraldos(u, npc.CharIndex);
+                    break;
             }
             return;
         }
@@ -369,7 +373,8 @@ public static class Accion
             int equidadHogar = u.Hogar switch
             {
                 1 => 34, 2 => 194, 3 => 1, 4 => 59, 5 => 20, 6 => 37, 7 => 62,
-                8 => 151, 9 => 218, 10 => 180, 11 => 185, 12 => 111, _ => 0,
+                8 => 151, 9 => 218, 10 => 180, 11 => 185, 12 => 111,
+                CityData.CUMBRAMAR => CityData.MAPA_UMBRAMAR, _ => 0,
             };
             if (u.Pos.Map == equidadHogar)
             {
@@ -422,6 +427,7 @@ public static class Accion
             1 => Facciones.EsCiuda(u) || Facciones.EsArmada(u),
             2 => Facciones.EsRepu(u) || Facciones.EsMili(u),
             4 => Facciones.EsCaos(u),
+            5 => Facciones.EsDelExordio(u), // NUEVO: NPCs del Exordio (reclutador de Heraldos)
             _ => true,
         };
     }
@@ -429,7 +435,7 @@ public static class Accion
     /// <summary>
     /// ¿El sacerdote revive/cura al jugador? (Acciones.bas:393-440). Rinkel(20)/DungeonNewbie(37): a todos.
     /// Mapas imperiales (1/34/59): sólo ciudadanos/armada. Republicanos (194/63/184): sólo repu/milicia.
-    /// Otros mapas: según el status del NPC (igual que mercader/banco).
+    /// Umbramar (957, NUEVO): sólo el Exordio. Otros mapas: según el status del NPC (igual que mercader/banco).
     /// </summary>
     private static bool SacerdotePermite(User u, NpcManager.NpcInstance npc, short map)
     {
@@ -437,6 +443,7 @@ public static class Accion
         if (map == 20 || map == 37) return true; // sin restricción
         if (map == 1 || map == 34 || map == 59) return Facciones.EsCiuda(u) || Facciones.EsArmada(u);
         if (map == 194 || map == 63 || map == 184) return Facciones.EsRepu(u) || Facciones.EsMili(u);
+        if (map == CityData.MAPA_UMBRAMAR) return Facciones.EsDelExordio(u);
         return FaccionPermiteNpc(u, npc);
     }
 

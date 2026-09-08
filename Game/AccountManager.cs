@@ -444,8 +444,11 @@ public static class AccountManager
                 int montura = ObjIndexDeSlot(ini, "MonturaSlot");
                 if (montura > 0)
                 {
-                    c.Body = (short)ObjData.Get(montura).Ropaje;
+                    var om = ObjData.Get(montura);
+                    c.Body = (short)om.Ropaje;
                     c.Weapon = 0; // montado: sin arma a la vista (DoEquita)
+                    // OcultaEquipo: monturas con jinete propio (dragones), igual que la barca arriba.
+                    if (om.OcultaEquipo == 1) { c.Head = 0; c.Shield = 0; c.Casco = 0; }
                 }
             }
         }

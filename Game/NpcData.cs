@@ -164,6 +164,7 @@ public static class NpcData
                     1 => (byte)1,  // CIUDAD_IMPERIAL
                     2 => (byte)2,  // CIUDAD_REPUBLICANA
                     4 => (byte)3,  // CIUDAD_CAOTICA
+                    5 => (byte)6,  // CIUDAD_EXORDIO (NUEVO): centinelas de Umbramar
                     _ => (byte)0,
                 };
             }

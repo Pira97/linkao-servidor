@@ -272,6 +272,27 @@ public static class Subastas
         return n;
     }
 
+    /// <summary>
+    /// (NUEVO) ¿El personaje figura en alguna subasta viva, como vendedor o como último postor?
+    /// Lo pregunta CharRename: las subastas guardan a la gente por NOMBRE y se persisten, así que
+    /// renombrar en medio de una dejaría al vendedor sin cobrar o al postor sin su ítem.
+    /// </summary>
+    public static bool TieneSubastaActiva(string nombre)
+    {
+        lock (_gate)
+        {
+            EnsureLoaded();   // igual que Crear/Pujar/SendList: siempre dentro del lock
+            for (int i = 1; i <= MAX_SUBASTAS; i++)
+            {
+                var s = _subastas[i];
+                if (!s.Active) continue;
+                if (string.Equals(s.SellerName, nombre, StringComparison.OrdinalIgnoreCase)) return true;
+                if (s.HasBidder && string.Equals(s.LastBidderName, nombre, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+        }
+        return false;
+    }
+
     private static int PrimerSlotLibre()
     {
         for (int i = 1; i <= MAX_SUBASTAS; i++)

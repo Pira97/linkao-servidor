@@ -37,8 +37,15 @@ public static class CharCreator
         // Status de facción (color del nick) según la CIUDAD ELEGIDA (Nix=imperial / Illiandor=republicano).
         // VB6 ConnectNewUser (TCP.bas:496): Hogar = cIlliandor(2) → Status 3 (Republicano);
         // si no (Nix, etc.) → Status 2 (Ciudadano). El cliente colorea el nick con este Status.
-        const byte cIlliandor = 2;
-        byte faccionStatus = hogar == cIlliandor ? (byte)3 : (byte)2;
+        // Umbramar(16) → Exordiano es NUEVO (no VB6). Antes de que el Exordio tuviera ciudad la
+        // alineación se elegía con Rinkel(5); se sigue aceptando por los clientes viejos en caché.
+        const byte cIlliandor = 2, cRinkel = 5;
+        byte faccionStatus = hogar switch
+        {
+            cIlliandor                    => Facciones.REPUBLICANO,
+            cRinkel or CityData.CUMBRAMAR => Facciones.EXORDIANO,
+            _                             => Facciones.CIUDADANO,
+        };
 
         // VB6 ConnectNewUser (TCP.bas:502,564): TODO personaje nuevo nace en el Dungeon Newbie
         // (Hogar = cDungeonNewbie = 6, Pos = Ciudades.DungeonNewbie), sin importar el hogar elegido.
@@ -243,7 +250,7 @@ public static class CharCreator
         for (int c = 1; c <= Constants.MAX_CORREOS_SLOTS; c++)
         { Kv("Carta" + c, 0); Kv("Emisor" + c, 0); Kv("Leida" + c, 0); Kv("Objeto" + c, "0-0"); }
         Sec("GUILD"); Kv("GUILDINDEX", 0);
-        // Facción inicial (color del nick): Status 2=Ciudadano (Nix) / 3=Republicano (Illiandor).
+        // Facción inicial (color del nick): Status 2=Ciudadano (Nix) / 3=Republicano (Illiandor) / 15=Exordiano (Rinkel).
         Sec("FACCIONES");
         Kv("Status", faccionStatus);
         Kv("CiudMatados", 0); Kv("CriMatados", 0); Kv("crimatadosrango", 0);

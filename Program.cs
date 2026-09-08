@@ -53,6 +53,15 @@ if (args.Length > 0 && args[0] == "--pociontest")
     return;
 }
 
+// Valida el contenido de los cofres/regalos (otRegalos=53): que su "Items=" exista, apunte a
+// objetos reales y entre en los 25 slots del inventario. Uso:
+// dotnet run -- --cofretest
+if (args.Length > 0 && args[0] == "--cofretest")
+{
+    ServidorCS.Game.ObjData.CofresSelfTest();
+    return;
+}
+
 int port = ServerConfig.ReadPort(defaultPort: 7666);
 
 // Versión de cliente exigida: se trae de GitHub ACÁ, antes de escuchar. Si se dejaba para el
@@ -71,6 +80,7 @@ PortGuard.EnsurePortFree(port);
 ServidorCS.Game.AdminLoader.Load();
 ServidorCS.Game.Espia.CargarToken(); // secreto para espectar desde el panel de deploy sin login
 ServidorCS.Game.MercadoPago.Init(); // donaciones: catálogo siempre; cobro/polling gateado por token
+ServidorCS.Game.PoderDioses.Init(); // buff Poder de los Dioses: activo siempre en los dungeons de nivel alto (Dat/PoderDioses.ini)
 ServidorCS.Game.PremiumParticles.Init(); // catálogo de partículas premium de meditación (Server.ini [ParticulasPremium])
 ServidorCS.Game.CreditItems.Init(); // catálogo de cosméticos comprados con créditos (Server.ini [TiendaCreditosItems])
 ServidorCS.Game.ReportManager.Load(); // sistema de reportes / tickets de soporte
@@ -79,6 +89,7 @@ ServidorCS.Game.Achievements.Load(); // sistema de logros (Dat/Logros.ini)
 ServidorCS.Game.QuestSystem.Load(); // sistema de misiones (Dat/Quests.dat)
 ServidorCS.Game.QuestSystem.SpawnNpcs(); // NPCs dadores dedicados ([NPCSPAWNS] de Quests.dat)
 ServidorCS.Game.AmigoRequestStore.Load(); // solicitudes de amistad pendientes (entrega offline)
+ServidorCS.Game.Portales.Cargar(); // portales creados con /ct (Dat/Portales.json): los repone en sus mapas
 // DESHABILITADO temporalmente (a pedido): descomentar esta línea para volver a poblar los
 // dungeons con los guardianes de facción permanentes.
 // ServidorCS.Game.DungeonBots.Init();

@@ -52,6 +52,38 @@ public static class StatusEndpoint
                 {
                     string ruta = ctx.Request.Url?.AbsolutePath ?? "/";
                     string json;
+
+                    // GET /tts/<hash>.mp3 → el clip de una Voz de Evento ya generado (ver
+                    // Game/EventVoice.cs). Es lo ÚNICO que devuelve algo que no es JSON.
+                    //
+                    // Sin token a propósito: es el mismo anuncio que el server acaba de gritarle
+                    // a todo el mundo, no hay nada privado adentro, y el que lo pide es el
+                    // navegador de cada jugador (que no tiene el token del panel). El nombre del
+                    // archivo lo valida EventVoice.LeerClip (32 hex + extensión conocida), así que
+                    // un ".." en la URL no puede salirse de la carpeta del cache.
+                    //
+                    // El nombre ES el contenido (hash), así que se cachea para siempre en el
+                    // navegador: un anuncio repetido no vuelve a bajarse ni una vez.
+                    if (ruta.StartsWith("/tts/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        byte[] clip = Game.EventVoice.LeerClip(ruta[5..], out string tipo);
+                        if (clip == null)
+                        {
+                            ctx.Response.StatusCode = 404;
+                            ctx.Response.AddHeader("Access-Control-Allow-Origin", "*");
+                            ctx.Response.ContentLength64 = 0;
+                        }
+                        else
+                        {
+                            ctx.Response.ContentType = tipo;
+                            ctx.Response.AddHeader("Access-Control-Allow-Origin", "*");
+                            ctx.Response.AddHeader("Cache-Control", "public, max-age=31536000, immutable");
+                            ctx.Response.ContentLength64 = clip.Length;
+                            await ctx.Response.OutputStream.WriteAsync(clip, 0, clip.Length, ct);
+                        }
+                        continue; // el finally del loop cierra la respuesta igual
+                    }
+
                     if (ruta.Equals("/online", StringComparison.OrdinalIgnoreCase))
                     {
                         // Lista de conectados con su posición: son datos privados de los

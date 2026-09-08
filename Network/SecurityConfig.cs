@@ -40,7 +40,22 @@ public static class SecurityConfig
     public const long MovimientoVentanaMs = 1_000;
 
     // --- Comandos GM: ráfaga, no cadencia (un GM tipeando rápido no debería verse afectado). ---
+    /// <summary>
+    /// Tope para quien NO es staff. El packet 94 sólo lo emite la interfaz de GM, así que un
+    /// jugador común que lo mande ya está usando un cliente modificado: el chequeo fail-closed de
+    /// Chat.PuedeUsarComando lo rechaza igual, y este tope corta la sonda repetida.
+    /// </summary>
     public const int GmComandoMaxPorVentana = 10;
+    /// <summary>
+    /// Tope para el STAFF (Consejero o más). Muy por encima del anterior porque el teleport de GM
+    /// se maneja A CLICS —shift+clic en el mapa y clic derecho en el minimapa mandan un packet 94
+    /// por clic— y 10/3s son 3,3 por segundo: saltar unas cuantas veces seguidas por el mapa ya lo
+    /// pasaba, y a las 18 en la misma ventana el escalado a "abuso sostenido" le CERRABA la sesión
+    /// (ver Chat.HandleGMCommand). 40/3s son 13/s, por encima de lo que sostiene una mano, y
+    /// siguen siendo dos órdenes de magnitud menos que un script mandando el packet a velocidad
+    /// de red.
+    /// </summary>
+    public const int GmComandoStaffMaxPorVentana = 40;
     public const long GmComandoVentanaMs = 3_000;
 
     // --- Logging agregado ---

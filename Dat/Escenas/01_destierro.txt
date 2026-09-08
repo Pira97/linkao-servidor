@@ -1,0 +1,68 @@
+# Trailer "Los Desterrados del Mar" — 01. Los Renegados son echados de Banderbill (mapa 59).
+# Voz: 0:00.0 "Hubo un tiempo en que los Renegados caminaron..." hasta 0:28.9 "...y jamás regresar".
+# El segundo 0 de este guion = 0:00.0 del audio.
+#
+# Renegados: pinta del Bandido (npc=530), nick gris (bando=1). Guardias: pinta del Guardia
+# Imperial (npc=151), nick azul (bando=2).
+
+0     lugar 59 58 42
+
+# --- Hubo un tiempo en que los Renegados caminaron por las tierras de Exordium (0:00) ---
+0     aparece renegado1 guerrero 64 48 oeste npc=530 bando=1 Renegado
+0.2   aparece renegado2 guerrero 66 47 oeste npc=530 bando=1 Renegado
+0.4   aparece renegado3 nigromante 65 50 oeste npc=530 bando=1 Renegado
+0.6   aparece renegado4 guerrero 66 51 oeste npc=530 bando=1 Renegado
+0.8   aparece renegado5 paladin 64 49 oeste npc=530 bando=1 Renegado
+1     camina renegado1 52 48
+1.3   camina renegado2 54 48
+1.6   camina renegado3 51 50
+1.9   camina renegado4 53 50
+2.2   camina renegado5 50 48
+5     dice renegado1 Solo buscamos un lugar donde vivir.
+
+# --- Pero ningún reino los quiso (0:09.6) ---
+9     aparece guardia1 guerrero 46 36 sur npc=151 bando=2 Guardia <Imperio>
+9.2   aparece guardia2 guerrero 50 36 sur npc=151 bando=2 Guardia <Imperio>
+9.4   aparece guardia3 guerrero 54 36 sur npc=151 bando=2 Guardia <Imperio>
+9.6   aparece guardia4 guerrero 56 36 sur npc=151 bando=2 Guardia <Imperio>
+9.8   aparece capitan paladin 52 35 sur npc=151 bando=2 Capitán <Imperio>
+10    camina guardia1 46 45
+10    camina guardia2 50 45
+10    camina guardia3 54 45
+10    camina guardia4 56 45
+10.2  camina capitan 52 44
+12    mira renegado1 norte
+12.3  mira renegado2 norte
+12.6  mira renegado3 norte
+12.9  mira renegado4 norte
+13.2  mira renegado5 norte
+
+# --- Fueron rechazados, perseguidos y finalmente desterrados (0:14.9) ---
+14    dice capitan ¡Renegados! Ningún reino de Exordium los quiere.
+15.5  camina guardia1 46 47
+15.5  camina guardia2 50 47
+15.5  camina guardia3 54 47
+15.5  camina guardia4 56 47
+15.7  camina capitan 52 46
+16    dice renegado3 ¡Nacimos en esta tierra!
+16.5  camina renegado3 50 51
+16.5  camina renegado4 54 51
+16.7  camina renegado5 48 50
+16.9  camina renegado1 52 51
+16.9  camina renegado2 56 50
+18.5  dice guardia2 ¡Atrás!
+
+# --- Se les ordenó abandonar las tierras conocidas y jamás regresar (0:21.9) ---
+21.9  dice capitan Por orden de los reinos: abandonen Exordium y jamás regresen.
+25.5  dice renegado1 Vámonos. El mar no puede ser peor que esto.
+27.5  camina renegado1 30 50
+27.7  camina renegado2 30 51
+27.9  camina renegado3 31 48
+28.1  camina renegado4 33 51
+28.3  camina renegado5 32 50
+28.5  camina guardia1 46 49
+28.5  camina guardia2 50 49
+28.5  camina guardia3 53 48
+28.5  camina guardia4 56 49
+
+36    fin

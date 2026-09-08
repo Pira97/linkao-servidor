@@ -161,6 +161,9 @@ public static class UserListManager
         // Centinela: si era el usuario bajo revisión, limpiar (CentinelaUserLogout).
         Centinela.OnUserLogout(userIndex);
 
+        // Poder de los Dioses: si era el portador, el poder pasa a otro.
+        PoderDioses.OnUsuarioSale(userIndex);
+
         // Si estaba metamorfoseado, revertir antes de guardar para no persistir el body transformado.
         if (u.flags.Metamorfoseado == 1) Combat.RevertirMetamorfosis(userIndex);
 

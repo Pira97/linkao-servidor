@@ -1,0 +1,26 @@
+# Trailer "Los Desterrados del Mar" — 11. El explorador despierta frente a las murallas (mapa 644, playa sur).
+# Voz: 2:08.7 "Cuando despertó, vio algo imposible" / 2:12.4 "Torres elevándose sobre la niebla" /
+#      2:15.9 "Estandartes desconocidos..." / 2:23.2 "Había encontrado a los Renegados" hasta 2:28.0.
+# El segundo 0 de este guion = 2:08.7 del audio.
+#
+# Afuera de la muralla sur: se ven el muro (y77-79) y el portón (x50-57) arriba de la cámara.
+
+0     lugar 644 44 83
+0     aparece explorador guerrero 49 86 norte bando=2 Explorador
+
+# --- Cuando despertó, vio algo imposible (2:08.7) ---
+1     dice explorador ¿Dónde... dónde estoy?
+3.7   camina explorador 49 83
+
+# --- Torres elevándose sobre la niebla. Murallas negras (2:12.4) ---
+5.5   mira explorador norte
+7.2   dice explorador Murallas... una ciudad entera.
+
+# --- Estandartes desconocidos. Y una enorme ciudad que no aparecía en ningún mapa (2:15.9) ---
+10.5  camina explorador 53 80
+13    dice explorador Esta ciudad no aparece en ningún mapa...
+
+# --- Había encontrado a los Renegados (2:23.2) ---
+16    camina explorador 53 76
+
+20    fin

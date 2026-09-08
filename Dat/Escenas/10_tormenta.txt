@@ -1,0 +1,26 @@
+# Trailer "Los Desterrados del Mar" — 10. El explorador perdido y la tormenta (mapa 622, mar del este).
+# Voz: 1:54.7 "Hasta que un día, un explorador se perdió en el mar" /
+#      1:59.0 "Después de semanas de navegación, una tormenta destrozó su embarcación..." hasta 2:08.7.
+# El segundo 0 de este guion = 1:54.7 del audio.
+#
+# Arranca con lluvia y pasa a tormenta; al terminar (fin o /escena stop) el clima vuelve a despejado.
+# Se ve mejor de noche: sacá /diasiempre antes de grabar esta.
+
+0     lugar 622 70 31
+0     clima 1
+0     aparece explorador guerrero 78 22 sur bando=2 barca Explorador
+0.3   camina explorador 77 40
+
+# --- Hasta que un día, un explorador se perdió en el mar (1:54.7) ---
+2     dice explorador Semanas sin ver tierra...
+
+# --- Después de semanas de navegación, una tormenta destrozó su embarcación (1:59.0) ---
+4.3   clima 3
+5.5   dice explorador ¡La tormenta!
+8     dice explorador ¡No puedo controlar el barco!
+8.5   camina explorador 79 30
+10.5  camina explorador 75 34
+12    fx explorador 50
+12.3  quita explorador
+
+14    fin

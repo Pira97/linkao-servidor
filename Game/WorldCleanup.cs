@@ -13,8 +13,10 @@ public static class WorldCleanup
     private static readonly int Intervalo = ServerConfig.ReadInt("IntervaloLimpiarMundo", 30);
     private static int _minutos;
 
-    // FontIndex del cliente (constants.gd): VENENO=7 verde, PELIGRO=2 rojo, GRITAR=13, SERVER=8 naranja.
-    private const byte FONT_VENENO = 7, FONT_EJECUCION = 2, FONT_GRITAR = 13, FONT_INFOBOLD = 8;
+    // FontIndex del cliente (FONT_COLOR/fontIndexToTab en hud_ui.js): 45 = gris azulado apagado
+    // (#646478), sin uso en ningún otro mensaje del server y ausente de la lista de Combate,
+    // así que estos avisos caen siempre en la pestaña Chat con un único color discreto.
+    private const byte FONT_LIMPIEZA = 45;
 
     /// <summary>Llamar una vez por minuto (desde el scheduler). Anuncia y ejecuta la limpieza.</summary>
     public static void PasarMinuto()
@@ -24,17 +26,17 @@ public static class WorldCleanup
 
         if (Intervalo >= 3 && _minutos == Intervalo - 3)
         {
-            Anunciar("ATENCIÓN: La limpieza automática del mundo se ejecutará en 3 minutos.", FONT_VENENO);
-            Anunciar("Recoge tus items del suelo ahora.", FONT_VENENO);
+            Anunciar("ATENCIÓN: La limpieza automática del mundo se ejecutará en 3 minutos.", FONT_LIMPIEZA);
+            Anunciar("Recoge tus items del suelo ahora.", FONT_LIMPIEZA);
         }
         if (Intervalo >= 2 && _minutos == Intervalo - 1)
         {
-            Anunciar("ADVERTENCIA: La limpieza automática se ejecutará en 1 MINUTO.", FONT_EJECUCION);
-            Anunciar("¡RECOGE TUS ITEMS AHORA!", FONT_EJECUCION);
+            Anunciar("ADVERTENCIA: La limpieza automática se ejecutará en 1 MINUTO.", FONT_LIMPIEZA);
+            Anunciar("¡RECOGE TUS ITEMS AHORA!", FONT_LIMPIEZA);
         }
         if (_minutos >= Intervalo)
         {
-            Anunciar("INICIANDO LIMPIEZA DEL MUNDO", FONT_GRITAR);
+            Anunciar("INICIANDO LIMPIEZA DEL MUNDO", FONT_LIMPIEZA);
             LimpiezaAutomaticaMundo();
             _minutos = 0;
         }
@@ -63,7 +65,7 @@ public static class WorldCleanup
                     limpios++;
                 }
         }
-        Anunciar($"Limpieza del mundo completada. Items eliminados: {limpios}", FONT_INFOBOLD);
+        Anunciar($"Limpieza del mundo completada. Items eliminados: {limpios}", FONT_LIMPIEZA);
         return limpios;
     }
 

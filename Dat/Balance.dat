@@ -5,8 +5,8 @@ HumanoInteligencia=+1
 HumanoCarisma=0
 HumanoConstitucion=+2
 HumanoDañoPVP=95
-HumanoDañoMagicoPVP=100
-HumanoDañoMagicoPVE=100
+HumanoDañoMagicoPVP=109
+HumanoDañoMagicoPVE=109
 HumanoResistenciaMagica=0
 ElfoFuerza=0
 ElfoAgilidad=+2
@@ -31,7 +31,7 @@ EnanoAgilidad=-1
 EnanoInteligencia=-5
 EnanoCarisma=-1
 EnanoConstitucion=+4
-EnanoDañoPVP=115
+EnanoDañoPVP=105
 EnanoDañoMagicoPVP=80
 EnanoDañoMagicoPVE=80
 EnanoResistenciaMagica=15
@@ -41,8 +41,8 @@ GnomoInteligencia=+4
 GnomoCarisma=0
 GnomoConstitucion=-1
 GnomoDañoPVP=80
-GnomoDañoMagicoPVP=120
-GnomoDañoMagicoPVE=120
+GnomoDañoMagicoPVP=117
+GnomoDañoMagicoPVE=117
 GnomoResistenciaMagica=0
 OrcoFuerza=+5
 OrcoAgilidad=-2
@@ -309,10 +309,24 @@ DanoMinimoPvP=5
 ; Techo de dano PvP = dano base del arma * (este % / 100). Default 150 (=1.5x).
 TopeBurstPvP=150
 
-; Curva de probabilidad de acertar: prob = ImpactoBase + (ataque - evasion), recortada a [Min, Max].
+; Curva de probabilidad de acertar:
+; prob = ImpactoBase + (ataque - evasion) * ImpactoEscala
 ImpactoBase=80
 ImpactoMin=40
 ImpactoMax=98
+
+; Cuanto pesa la diferencia (ataque - evasion) en esa curva. 40 = x0.4, que es el valor
+; del VB6 (SistemaCombate.bas:1378). OJO: con 100 (x1.0) la probabilidad se vuelve binaria
+; -98% o 40% y nada en el medio-, porque los poderes valen cientos y la curva solo tiene 58
+; puntos de recorrido. Eso era el bug de golpe al aire entre guerreros con escudo.
+ImpactoEscala=40
+
+; Compensacion de lag del golpe cuerpo a cuerpo, en ms. El server resuelve el golpe por el
+; tile EXACTO de enfrente, pero el atacante ve a los demas atrasados: ~0.65 tiles de colchon
+; de animacion (FASE_OBJETIVO_NET) + la subida del paquete. Al cruzarse, los dos atrasos se
+; suman y el golpe pegaba al aire. Con esto, si el tile esta vacio vale el que estuvo ahi
+; hace menos de este tiempo: exactamente lo que el atacante vio. Default 150. 0 = apagada.
+MeleeLagMs=150
 
 ; Cuanto pesa el nivel en ataque y evasion. PesoNivel va x10: 25 = 2.5 por nivel. Default 25.
 ; NivelBase = a partir de que nivel empieza a sumar. Default 12.
@@ -320,7 +334,7 @@ PesoNivel=25
 NivelBase=12
 
 ; Escala del dano magico con el nivel del lanzador (x nivel). Default: 2 en PvP, 3 en PvE.
-EscalaMagiaPvP=2
+EscalaMagiaPvP=1
 EscalaMagiaPvE=3
 
 ; Bonus de dano (%) si Fuerza Y Agilidad estan al maximo. Default 7.
@@ -330,12 +344,37 @@ BonusStatsMax=7
 ; Se puede sobreescribir por hechizo con EscalaINT en Hechizos.dat (0 = usar este default).
 EscalaMagiaINT=100
 
+; Multiplicador (%) del dano magico que lanza un MAGO (solo clase Mago). 100 = sin cambio, 110 = +10%.
+; Se aplica al final, junto al multiplicador de raza, en PvP y PvE. Default 100.
+MagoDanoMagico=120
+
 ; Piso/techo de dano magico configurable (0 = sin piso/techo, compatibilidad historica).
 ; Se pueden sobreescribir por hechizo con DanoMagicoMin/DanoMagicoMax en Hechizos.dat.
 DanoMagicoMinPvP=0
 DanoMagicoMaxPvP=0
 DanoMagicoMinPvE=0
 DanoMagicoMaxPvE=0
+
+; ====== Apunalamiento (Asesino/Ladron con daga equipada) ======
+; El apunalazo REEMPLAZA al golpe normal:
+;   dano = golpe * (ApunalarBase + ApunalarPorSkill * skill/100) / 100
+;
+; Valores viejos (25/125): x0.25 con skill 0 y x1.50 con skill 100. O sea que con menos
+; de 60 de skill apunalar pegaba MENOS que un golpe comun, que no tenia sentido.
+; Valores actuales (57/149): x0.57 con skill 0 y x2.06 con skill 100; empata con el golpe
+; normal a partir de 29 de skill.
+; NOTA: la Daga+3 (OBJ366) tiene su propio multiplicador mas alto, hardcodeado en
+; Combat.cs (DanoApunalamiento) para que pegue ~220-225 a skill 100 sin afectar al resto.
+
+; Probabilidad de que salga el apunalazo, en %. Default 20. Subido a 35 (23-sep).
+ApunalarProb=35
+
+; % del golpe con skill 0 (el piso). Default 25.
+ApunalarBase=57
+
+; % extra que aporta la skill al llegar a 100. Default 125.
+; El total a skill 100 es ApunalarBase + ApunalarPorSkill.
+ApunalarPorSkill=149
 
 [RESPAWN]
 ; ====== Tiempo que tardan los NPCs en revivir (editable en caliente con /reloadbalance) ======
@@ -401,7 +440,7 @@ LanzarSpell=1150
 
 
 [EXP]
-TasaGlobalOro=10
+TasaGlobalOro=100
 
 
-TasaGlobal=10
+TasaGlobal=200

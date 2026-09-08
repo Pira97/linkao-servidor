@@ -150,7 +150,12 @@ public static class Commerce
     {
         if (t.FaccionStatus >= 7)
             return t.FaccionStatus switch { 7 => 10, 8 => 12, 9 => 13, 10 => 14, _ => 10 };
-        return t.Faccion.Status switch { 1 => 1, 2 => 2, 3 => 3, 4 => 5, 5 => 6, 6 => 7, _ => 1 };
+        // 8/9 (Exordiano/Heraldo) no existen en el VB6: son los dos huecos libres de la tabla del cliente.
+        return t.Faccion.Status switch
+        {
+            1 => 1, 2 => 2, 3 => 3, 4 => 5, 5 => 6, 6 => 7,
+            Facciones.EXORDIANO => 8, Facciones.HERALDO => 9, _ => 1,
+        };
     }
 
     /// <summary>HandleCommerceStart: si el NPC seleccionado comercia y está cerca, abre la ventana.</summary>
@@ -211,6 +216,10 @@ public static class Commerce
             {
                 var (objIndex, amount) = npc.Inventario[slot];
                 var od = ObjData.Get(objIndex);
+                // Los marineros neutrales ofrecen todas las ciudades: al jugador solo se le muestran las
+                // que puede usar (no viaja a un bando enemigo). El slot conserva su número, así que la
+                // compra sigue apuntando al pasaje correcto. Es solo presentación: ComprarPasaje revalida.
+                if (esViajes && od.Type == ObjType.Pasajes && !PuedeUsarTransporte(u, od.HastaMap)) continue;
                 // NPC con moneda propia: usa el precio de Precios[] (si está definido); si no, cae al Valor en oro.
                 float precio = npc.Moneda > 0 && npc.Precios != null && slot < npc.Precios.Length && npc.Precios[slot] > 0
                     ? npc.Precios[slot]
@@ -376,13 +385,14 @@ public static class Commerce
     }
 
     // Bando al que pertenece el puerto/ciudad de cada pirata transportador (por mapa).
-    private enum CityBando { Neutral, Imperial, Republica, Caos }
+    private enum CityBando { Neutral, Imperial, Republica, Caos, Exordio }
 
     private static CityBando PortBando(int map) => map switch
     {
         61 or 34 or 150  => CityBando.Imperial,  // Banderbill, Nix, Arghâl
         179 or 64 or 183 => CityBando.Republica, // Illiandor, Lindos, Suramei
         181              => CityBando.Caos,      // Orac
+        CityData.MAPA_UMBRAMAR => CityBando.Exordio, // Umbramar: su pirata (NPC843) solo lleva al Exordio
         _                => CityBando.Neutral,   // Rinkel(99), Nueva Esperanza(111), Tiama(217) y resto
     };
 
@@ -398,7 +408,8 @@ public static class Commerce
             CityBando.Imperial  => u.Faccion.Status is Facciones.CIUDADANO or Facciones.ARMADA,
             CityBando.Republica => u.Faccion.Status is Facciones.REPUBLICANO or Facciones.MILICIA,
             CityBando.Caos      => u.Faccion.Status is Facciones.CAOS or Facciones.RENEGADO,
-            _                   => true,
+            CityBando.Exordio   => Facciones.EsDelExordio(u),
+            _                  => true,
         };
     }
 

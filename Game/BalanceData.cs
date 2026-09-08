@@ -27,16 +27,25 @@ public static class BalanceData
         public int ImpactoBase;            // base de la curva de acierto. Default 80
         public int ImpactoMin;             // piso de prob. de impacto. Default 40
         public int ImpactoMax;             // techo de prob. de impacto. Default 98
+        public double ImpactoEscala;       // cuánto pesa (ataque - evasión) en la prob. Default 0.4 (VB6)
+        public int MeleeLagMs;             // ventana de compensación de lag del golpe melee (ms). Default 150. 0 = apagada
         public double PesoNivel;           // cuánto suma el nivel al poder atq/eva. Default 2.5
         public int NivelBase;              // nivel a partir del cual el nivel empieza a sumar. Default 12
         public int EscalaMagiaPvP;         // daño mágico a usuario escala con esto * nivel. Default 2
         public int EscalaMagiaPvE;         // daño mágico a NPC escala con esto * nivel. Default 3
         public double BonusStatsMax;       // % extra de daño si Fuerza y Agilidad están al máximo. Default 0.07
         public double EscalaMagiaINT;      // daño mágico escala con esto * Inteligencia (%). Default 1.0
+        public double MagoDanoMagico;      // multiplicador del daño mágico que lanza un Mago (clase 2). Default 1.0
         public int DanoMagicoMinPvP;       // piso de daño mágico PvP (0 = sin piso). Default 0
         public int DanoMagicoMaxPvP;       // techo de daño mágico PvP (0 = sin techo). Default 0
         public int DanoMagicoMinPvE;       // piso de daño mágico contra NPCs (0 = sin piso). Default 0
         public int DanoMagicoMaxPvE;       // techo de daño mágico contra NPCs (0 = sin techo). Default 0
+        // Apuñalamiento (Asesino/Ladrón con daga). El daño del apuñalazo REEMPLAZA al golpe:
+        //   daño = base * (ApunalarBase + ApunalarPorSkill * skill/100) / 100
+        // Defaults = los valores históricos del VB6 (25 y 125 → x0.25 a skill 0, x1.50 a skill 100).
+        public int ApunalarProb;           // % de que salga el apuñalazo. Default 20
+        public int ApunalarBase;           // % del golpe con skill 0. Default 25
+        public int ApunalarPorSkill;       // % extra que suma la skill al llegar a 100. Default 125
     }
 
     private static CombateCfg _combate;
@@ -214,16 +223,22 @@ public static class BalanceData
             ImpactoBase         = (int)Dp(ini, "ImpactoBase", 80),
             ImpactoMin          = (int)Dp(ini, "ImpactoMin", 40),
             ImpactoMax          = (int)Dp(ini, "ImpactoMax", 98),
+            ImpactoEscala       = Dp(ini, "ImpactoEscala", 40) / 100.0,  // 40 → 0.4 (el .ini no maneja decimales cómodos)
+            MeleeLagMs          = (int)Dp(ini, "MeleeLagMs", 150),
             PesoNivel           = Dp(ini, "PesoNivel", 25) / 10.0,   // 25 → 2.5 (el .ini no maneja decimales cómodos)
             NivelBase           = (int)Dp(ini, "NivelBase", 12),
             EscalaMagiaPvP      = (int)Dp(ini, "EscalaMagiaPvP", 2),
             EscalaMagiaPvE      = (int)Dp(ini, "EscalaMagiaPvE", 3),
             BonusStatsMax       = Dp(ini, "BonusStatsMax", 7) / 100.0,
             EscalaMagiaINT      = Dp(ini, "EscalaMagiaINT", 100) / 100.0,   // 100 → 1.0 (mismo peso que 1*INT%)
+            MagoDanoMagico      = Dp(ini, "MagoDanoMagico", 100) / 100.0,   // 110 → x1.10 (solo Mago)
             DanoMagicoMinPvP    = (int)Dp(ini, "DanoMagicoMinPvP", 0),
             DanoMagicoMaxPvP    = (int)Dp(ini, "DanoMagicoMaxPvP", 0),
             DanoMagicoMinPvE    = (int)Dp(ini, "DanoMagicoMinPvE", 0),
             DanoMagicoMaxPvE    = (int)Dp(ini, "DanoMagicoMaxPvE", 0),
+            ApunalarProb        = (int)Dp(ini, "ApunalarProb", 20),
+            ApunalarBase        = (int)Dp(ini, "ApunalarBase", 25),
+            ApunalarPorSkill    = (int)Dp(ini, "ApunalarPorSkill", 125),
         };
 
         // Respawn de NPCs ([RESPAWN]). Como en [COMBATE], los decimales se escriben como entero

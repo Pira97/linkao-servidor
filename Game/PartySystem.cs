@@ -505,6 +505,10 @@ public static class PartySystem
             case 2:
                 if (tgt == 2) return true;
                 Msg(userIndex, ">> Los Ciudadanos solo pueden hacer grupo con otros Ciudadanos."); return false;
+            case Facciones.EXORDIANO:
+            case Facciones.HERALDO:
+                if (tgt is Facciones.EXORDIANO or Facciones.HERALDO) return true;
+                Msg(userIndex, ">> Los Exordianos solo pueden hacer grupo con Exordianos o Heraldos del Exordio."); return false;
             default:
                 if (tgt == inv) return true;
                 Msg(userIndex, ">> No puedes hacer grupo con jugadores de diferente facción."); return false;

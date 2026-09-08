@@ -1,0 +1,37 @@
+# Trailer "Los Desterrados del Mar" — 14. El corazón de la ciudad y la última orden (mapa 958, Santuario).
+# Voz: 3:09.0 "Y finalmente lo llevaron hasta el corazón de la ciudad" / 3:16.3 "Allí, el explorador contempló..." /
+#      3:25.6 "Antes de dejarlo partir..." / 3:31.6 "Regresa." ... 3:46.0 "Es nuestro hogar." hasta 3:49.5.
+# El segundo 0 de este guion = 3:09.0 del audio.
+#
+# Tharvel (712) y el Guardián del Exordio (724) son los NPC reales del salón: se toman prestados.
+# El explorador sube por el puente (x49-52) hasta quedar frente a Tharvel (50,42).
+
+0     lugar 958 47 47
+0     toma tharvel 712
+0     toma guardian 724
+0     aparece explorador guerrero 51 60 norte bando=2 Explorador
+0     aparece escolta1 paladin 50 61 norte npc=719 Guardia <Exordiano>
+0     aparece escolta2 guerrero 52 61 norte npc=718 Guardia <Exordiano>
+0.5   camina explorador 51 45
+0.8   camina escolta1 49 46
+1     camina escolta2 53 46
+6     mira tharvel sur
+
+# --- Allí, el explorador contempló algo que jamás creyó posible (3:16.3) ---
+7.3   fx guardian 20
+7.8   dice explorador Por los dioses...
+9.5   fx guardian 44
+12    dice explorador Con este poder podrían desafiar a todos los reinos.
+
+# --- Antes de dejarlo partir, los Renegados le dieron una última orden (3:25.6) ---
+16.6  dice tharvel Vas a volver con los tuyos. Pero antes, escuchá.
+
+# --- La orden (3:31.6) ---
+22.6  dice tharvel Regresa.
+24.4  dice tharvel Diles que los que fueron desterrados no murieron.
+28    dice tharvel Diles que construimos nuestro propio reino.
+31.6  dice tharvel Y diles que el mar ya no es nuestro exilio.
+37    dice tharvel Es nuestro hogar.
+38    fx tharvel 57
+
+41    fin

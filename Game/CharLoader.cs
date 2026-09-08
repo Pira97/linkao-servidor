@@ -62,6 +62,8 @@ public static class CharLoader
         u.Faccion.MilicianosMatados   = ini.GetInt("FACCIONES", "MiliMatados");
         u.Faccion.ArmadaMatados       = ini.GetInt("FACCIONES", "ArmiMatados");
         u.Faccion.CaosMatados         = ini.GetInt("FACCIONES", "CaosMatados");
+        u.Faccion.ExordianosMatados   = ini.GetInt("FACCIONES", "ExorMatados");   // NUEVO (Exordio)
+        u.Faccion.HeraldosMatados     = ini.GetInt("FACCIONES", "HeralMatados");
         u.Faccion.Rango               = ini.GetInt("FACCIONES", "RANGO");
 
         u.Char.heading    = (byte)ini.GetInt("INIT", "Heading");
@@ -394,6 +396,20 @@ public static class CharLoader
             }
         }
 
+        // El Gladiador pelea sólo con los puños (Inventory.ArmaProhibidaPorClase). Los personajes
+        // que venían con un arma equipada de antes de la regla la traen puesta en el .chr: se la
+        // sacamos al loguear, porque si no seguirían pegando con ella hasta desequiparla a mano.
+        // El arma queda en el inventario (sin equipar), no se destruye.
+        if (u.Clase == Inventory.CLASE_GLADIADOR && inv.WeaponEqpSlot > 0)
+        {
+            inv.Object[inv.WeaponEqpSlot].Equipped = false;
+            inv.WeaponEqpSlot = 0; inv.WeaponEqpObjIndex = 0;
+            // Apariencia: vuelve al anim de los nudillos si los tiene, o a manos vacías.
+            u.Char.WeaponAnim = inv.NudiEqpObjIndex > 0 ? (short)ObjData.Get(inv.NudiEqpObjIndex).WeaponAnim : (short)0;
+            u.Char.Arma_Aura = vivo && inv.NudiEqpObjIndex > 0 ? (byte)ObjData.Get(inv.NudiEqpObjIndex).Aura : (byte)0;
+            u.OrigChar.WeaponAnim = u.Char.WeaponAnim; // OrigChar ya se copió arriba, con el arma puesta
+        }
+
         // Saneamiento de posición al loguear (TCP.bas:170-242,283): mapa inválido→Intermundia,
         // clamp de bordes y anti-telefrag. Antes del bloque de navegación para usar la pos final.
         Movement.SanearPosicionLogin(u);
@@ -420,7 +436,7 @@ public static class CharLoader
             // Fantasma: navegando → barca fantasma (87) con cabeza 0; a pie → cuerpo 8, cabeza muerto
             // (500). Igual que Combat.UserDie / login con Muerto (TCP.bas:260).
             u.Char.body = u.flags.Navegando ? (short)87 : (short)8;
-            u.Char.Head = u.flags.Navegando ? (short)0 : (short)500;
+            u.Char.Head = u.flags.Navegando ? (short)0 : (short)621;
             u.Char.WeaponAnim = 0;
             u.Char.ShieldAnim = 0;
             u.Char.CascoAnim = 0;
@@ -435,8 +451,14 @@ public static class CharLoader
         else if (u.flags.Montando != 0 && inv.MonturaObjIndex > 0)
         {
             // Montado: body de la montura (Ropaje), sin arma a la vista (DoEquita).
-            u.Char.body = (short)ObjData.Get(inv.MonturaObjIndex).Ropaje;
+            var om = ObjData.Get(inv.MonturaObjIndex);
+            u.Char.body = (short)om.Ropaje;
             u.Char.WeaponAnim = 0;
+            // OcultaEquipo: la montura trae su propio jinete (dragones). Hay que repetirlo acá
+            // y no solo en DoEquita, porque al reloguear montado la apariencia se reconstruye
+            // desde el .chr sin pasar por DoEquita — y volvía la cabeza suelta.
+            if (om.OcultaEquipo == 1)
+            { u.Char.Head = 0; u.Char.ShieldAnim = 0; u.Char.CascoAnim = 0; }
         }
 
         return true;

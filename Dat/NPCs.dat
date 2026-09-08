@@ -281,6 +281,7 @@ Hostile=0
 Desc=¿¡Estais sediento!?
 
 [NPC50]
+Status=1
 Name=Tabernero Mesón Hostigado
 PosOrig=1
 Head=17
@@ -793,7 +794,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=17
+NROITEMS=16
 'Vestimentas de Hombre
 Obj1=35-100
 'Vestimentas de Bajo
@@ -816,18 +817,16 @@ Obj9=951-100
 Obj10=484-100
 'Ropaje de Batida (Mujer)
 Obj11=170-100
-'Túnica de Aprendiz
-Obj12=238-100
 'Túnica de Mago
-Obj13=196-100
+Obj12=196-100
 'Túnica de Monje
-Obj14=381-100
+Obj13=381-100
 'Túnica del Aventurero (Bajos)
-Obj15=1226-100
+Obj14=1226-100
 'Túnica de Druida (Bajos)
-Obj16=1210-100
+Obj15=1210-100
 'Túnica de Druida
-Obj17=357-100
+Obj16=357-100
 LocaleID=48
 MinHP=10000
 MaxHP=10000
@@ -848,7 +847,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=21
+NROITEMS=20
 'Vestimentas de Hombre
 Obj1=31-100
 'Vestimentas de Bajo
@@ -871,26 +870,24 @@ Obj9=508-100
 Obj10=971-100
 'Túnica de Mago
 Obj11=196-100
-'Túnica de Aprendiz
-Obj12=238-100
 'Túnica de Monje
-Obj13=381-100
+Obj12=381-100
 'Túnica Reforzada (Bajos)
-Obj14=525-100
+Obj13=525-100
 'Túnica Reforzada (Bajas)
-Obj15=526-100
+Obj14=526-100
 'Túnica del Aventurero (Bajos)
-Obj16=1226-100
+Obj15=1226-100
 'Túnica de Celestial
-Obj17=491-100
+Obj16=491-100
 'Túnica de Celestial (Bajos)
-Obj18=1363-100
+Obj17=1363-100
 'Gorro de Hechicería
-Obj19=991-100
+Obj18=991-100
 'Gorro de Hechicería
-Obj20=1239-100
+Obj19=1239-100
 'Gorro de Hechicería
-Obj21=1240-100
+Obj20=1240-100
 LocaleID=35
 MinHP=10000
 MaxHP=10000
@@ -910,7 +907,7 @@ Movement=1
 Comercia=1
 HP=10000
 RespawnTime=1
-NROITEMS=25
+NROITEMS=24
 'Vestimentas de Hombre
 Obj1=31-100
 'Vestimentas de Bajo
@@ -937,30 +934,28 @@ Obj11=462-100
 Obj12=56-100
 'Vestido de Doncella (Bajos)
 Obj13=512-100
-'Tünica de Aprendiz
-Obj14=238-100
 'Túnica de Mago
-Obj15=196-100
+Obj14=196-100
 'Túnica de Monje
-Obj16=381-100
+Obj15=381-100
 'Túnica Ceremonial
-Obj17=239-100
+Obj16=239-100
 'Túnica Reforzada (Bajos)
-Obj18=525-100
+Obj17=525-100
 'Túnica de Druida (Bajos)
-Obj19=1210-100
+Obj18=1210-100
 'Túnica Arcana (Bajos)
-Obj20=524-100
+Obj19=524-100
 'Túnica de Nigromante
-Obj21=1089-100
+Obj20=1089-100
 'Gorro de Aprendiz de Mago
-Obj22=1236-100
+Obj21=1236-100
 'Gorro de Aprendiz de Mago
-Obj23=1237-100
+Obj22=1237-100
 'Gorro de Aprendiz de Mago
-Obj24=1238-100
+Obj23=1238-100
 'Gorro de Hechicería
-Obj25=991-100
+Obj24=991-100
 LocaleID=21
 MinHP=10000
 MaxHP=10000
@@ -980,7 +975,7 @@ HP=10000
 Attackable=0
 RespawnTime=1
 TipoItems=3
-NROITEMS=35
+NROITEMS=23
 'Vestimentas de Hombre
 Obj1=32-100
 'Vestimentas de Mujer
@@ -1019,16 +1014,14 @@ Obj17=488-100
 Obj18=945-100
 'Túnica de Mago
 Obj19=196-100
-'Túnica de Aprendiz
-Obj20=238-100
 'Túnica Reforzada (Bajos)
-Obj21=525-100
+Obj20=525-100
 'Túnica Reforzada (Bajas)
-Obj22=526-100
+Obj21=526-100
 'Túnica de Clérigo
-Obj23=1231-100
+Obj22=1231-100
 'Túnica Arcana (Bajos)
-Obj24=524-100
+Obj23=524-100
 LocaleID=28
 MinHP=10000
 MaxHP=10000
@@ -1047,7 +1040,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=25
+NROITEMS=24
 'Vestimentas de Hombre
 Obj1=31-100
 'Vestimentas de Bajo
@@ -1084,20 +1077,18 @@ Obj16=525-100
 Obj17=526-100
 'Túnica de Mago
 Obj18=196-100
-'Túnica de Aprendiz
-Obj19=238-100
 'Túnica Arcana (Bajos)
-Obj20=524-100
+Obj19=524-100
 'Túnica de Nigromante
-Obj21=1089-100
+Obj20=1089-100
 'Gorro de Aprendiz de Mago
-Obj22=1236-100
+Obj21=1236-100
 'Gorro de Aprendiz de Mago
-Obj23=1237-100
+Obj22=1237-100
 'Gorro de Aprendiz de Mago
-Obj24=1238-100
+Obj23=1238-100
 'Gorro de Hechicería
-Obj25=1240-100
+Obj24=1240-100
 LocaleID=17
 MinHP=10000
 MaxHP=10000
@@ -1325,7 +1316,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=22
+NROITEMS=21
 'Vestimentas de Hombre
 Obj1=31-100
 'Vestimentas de Hombre
@@ -1348,28 +1339,26 @@ Obj9=501-100
 Obj10=502-100
 'Sotana (Bajos)
 Obj11=1309-100
-'Túnica de Aprendiz
-Obj12=238-100
 'Túnica de Mago
-Obj13=196-100
+Obj12=196-100
 'Túnica de Monje
-Obj14=381-100
+Obj13=381-100
 'Túnica del Aventurero
-Obj15=1226-100
+Obj14=1226-100
 'Túnica de Druida
-Obj16=357-100
+Obj15=357-100
 'Túnica de Druida (Bajos)
-Obj17=1210-100
+Obj16=1210-100
 'Túnica de Clérigo
-Obj18=1231-100
+Obj17=1231-100
 'Gorro de Aprendiz de Mago
-Obj19=1236-100
+Obj18=1236-100
 'Gorro de Aprendiz de Mago
-Obj20=1237-100
+Obj19=1237-100
 'Gorro de Aprendiz de Mago
-Obj21=1238-100
+Obj20=1238-100
 'Gorro de Hechicería
-Obj22=991-100
+Obj21=991-100
 LocaleID=152
 MinHP=10000
 MaxHP=10000
@@ -1441,41 +1430,39 @@ Comercia=1
 HP=30000
 RespawnTime=1
 TipoItems=3
-NROITEMS=17
-'Túnica de Aprendiz
-Obj1=238-100
+NROITEMS=16
 'Vestimenta de Hombre
-Obj2=35-100
+Obj1=35-100
 'Vestimenta de Hombre (Bajos)
-Obj3=486-100
+Obj2=486-100
 'Vestimenta de Mujer
-Obj4=1273-100
+Obj3=1273-100
 'Vestimenta de Mujer (Bajos)
-Obj5=527-100
+Obj4=527-100
 'Túnica de Mago
-Obj6=196-100
+Obj5=196-100
 'Túnica de Monje
-Obj7=381-100
+Obj6=381-100
 'Túnica Ceremonial
-Obj8=239-100
+Obj7=239-100
 'Túnica Reforzada (Bajos)
-Obj9=525-100
+Obj8=525-100
 'Túnica Celestial
-Obj10=491-100
+Obj9=491-100
 'Túnica Celestial (Bajos)
-Obj11=1363-100
+Obj10=1363-100
 'Túnica de Druida
-Obj12=357-100
+Obj11=357-100
 'Túnica de Druida (Bajos)
-Obj13=1210-100
+Obj12=1210-100
 'Túnica Arcana (Bajos)
-Obj14=524-100
+Obj13=524-100
 'Túnica de Clérigo
-Obj15=1231-100
+Obj14=1231-100
 'Gorro de Aprendiz Rojo
-Obj16=1237-100
+Obj15=1237-100
 'Gorro de Hechicero Gris
-Obj17=991-100
+Obj16=991-100
 LocaleID=328
 MinHP=30000
 MaxHP=30000
@@ -1904,6 +1891,7 @@ Hostile=0
 Desc=Bienvenido a mi Herrería. Tengo todo tipo de armas que pueden ser de tu interés. Te recomiendo que pruebes nuestras poderosas hachas.
 
 [NPC40]
+Status=1
 Name=Herrero Armaduras Ullathorpe
 PosOrig=1
 Head=301
@@ -1975,49 +1963,93 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=2
-NROITEMS=21
+NROITEMS=43
 'Martillo de Herrero
 Obj1=389-100
 'Daga
 Obj2=15-100
+'Daga +1
+Obj3=165-100
+'Daga +2
+Obj4=365-100
 'Daga +3
-Obj3=366-100
-'Horquilla
-Obj4=9-100
-'Hacha
-Obj5=3-100
+Obj5=366-100
+'Daga de Corsario
+Obj6=994-100
+'Espada Corta
+Obj7=164-100
+'Espada Larga
+Obj8=2-100
+'Sable
+Obj9=125-100
+'Cimitarra
+Obj10=399-100
+'Espada Vikinga
+Obj11=123-100
+'Katana
+Obj12=124-100
+'Kodachi
+Obj13=748-100
 'Mandoble
-Obj6=19-100
-'Alabarda
-Obj7=126-100
+Obj14=19-100
 'Spatha
-Obj8=569-100
-'Hacha de Dos Filos
-Obj9=129-100
+Obj15=569-100
+'Espada de Plata
+Obj16=403-100
+'Sica
+Obj17=398-100
+'Hacha
+Obj18=3-100
 'Hacha Bárbara
-Obj10=159-100
+Obj19=159-100
+'Hacha de Dos Filos
+Obj20=129-100
+'Hacha de Dos Filos +1
+Obj21=1080-100
 'Hacha de Piedra
-Obj11=1246-100
+Obj22=1246-100
 'Hacha de Piedra +1
-Obj12=1247-100
+Obj23=1247-100
+'Hacha Orca
+Obj24=1094-100
+'Martillo de Piedra
+Obj25=401-100
+'Martillo de Guerra
+Obj26=1144-100
+'Horquilla
+Obj27=9-100
+'Alabarda
+Obj28=126-100
 'Lanza
-Obj13=656-100
+Obj29=656-100
+'Lanza +1
+Obj30=742-100
 'Daga Arrojadiza
-Obj14=671-100
-'Arpón Común
-Obj15=1594-100
-'Arpón Reforzado
-Obj16=1595-100
+Obj31=671-100
+'Daga Arrojadiza +1
+Obj32=751-100
+'Jabalina
+Obj33=741-100
+'Shuriken
+Obj34=720-100
 'Hacha Arrojadiza
-Obj17=980-100
+Obj35=980-100
 'Hacha Arrojadiza +1
-Obj18=1241-100
+Obj36=1241-100
+'Arpón Común
+Obj37=1594-100
+'Arpón Reforzado
+Obj38=1595-100
 'Nudillos de Hierro
-Obj19=1331-100
+Obj39=1331-100
 'Nudillos de Plata
-Obj20=1332-100
+Obj40=1332-100
+'Báculo Arcano
+Obj41=400-100
 'Báculo Oseo
-Obj21=1251-100
+Obj42=1251-100
+'Báculo de Aqua
+Obj43=1248-100
 LocaleID=109
 MinHP=10000
 MaxHP=10000
@@ -2036,7 +2068,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=15
+NROITEMS=31
 'Almete de Hierro
 Obj1=131-100
 'Celada
@@ -2049,24 +2081,56 @@ Obj4=30-100
 Obj5=529-100
 'Armadura de Cuero (Bajos)
 Obj6=1004-100
-'Armadura de Asesino
-Obj7=237-100
-'Armadura de Asesino (Bajos)
-Obj8=369-100
-'Armadura de Placas Completa
-Obj9=195-100
-'Armadura de Placas Completa (Bajos)
-Obj10=243-100
+'Armadura de Cuero Endurecido
+Obj7=998-100
+'Cota de Mallas
+Obj8=359-100
+'Cota de Mallas (Mujer)
+Obj9=499-100
+'Cota de Mallas (Bajos)
+Obj10=1022-100
+'Armadura de Cazador
+Obj11=360-100
+'Armadura de Cazador (Bajos)
+Obj12=1005-100
+'Cota de Mallas +1
+Obj13=1271-100
 'Coraza Clerical
-Obj11=135-100
+Obj14=135-100
+'Armadura de Asesino
+Obj15=237-100
+'Armadura de Asesino (Bajos)
+Obj16=369-100
+'Armadura de Placas Completa
+Obj17=195-100
+'Armadura de Placas Completa (Bajos)
+Obj18=243-100
+'Armadura de Placas Azul
+Obj19=489-100
+'Armadura de Placas Azul (Mujer)
+Obj20=1328-100
+'Armadura de Placas Roja
+Obj21=497-100
+'Armadura de Placas Roja (Mujer)
+Obj22=493-100
+'Armadura Bruñida (Bajos)
+Obj23=500-100
+'Escudo de Tortuga
+Obj24=404-100
+'Escudo de Madera
+Obj25=997-100
 'Escudo de Hierro
-Obj12=128-100
+Obj26=128-100
 'Escudo de Hierro +1
-Obj13=996-100
+Obj27=996-100
 'Escudo de Hierro +2
-Obj14=1000-100
+Obj28=1000-100
 'Escudo de Plata
-Obj15=133-100
+Obj29=133-100
+'Escudo de Plata +1
+Obj30=995-100
+'Escudo de Plata +2
+Obj31=999-100
 LocaleID=110
 MinHP=10000
 MaxHP=10000
@@ -2515,7 +2579,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=2
-NROITEMS=19
+NROITEMS=22
 'Daga
 Obj1=15-100
 'Daga +3
@@ -2555,7 +2619,7 @@ Obj18=404-100
 'Escudo de Plata +1
 Obj19=995-100
 'Escudo de Plata +2
-Obj19=999-100
+Obj20=999-100
 'Celada
 Obj21=405-100
 'Yelmo
@@ -2971,7 +3035,7 @@ Comercia=1
 HP=10000
 RespawnTime=1
 TipoItems=3
-NROITEMS=15
+NROITEMS=21
 'Almete de Hierro
 Obj1=132-100
 'Celada
@@ -3002,6 +3066,18 @@ Obj13=500-100
 Obj14=497-100
 'Armadura de Placas Roja (Mujer)
 Obj15=493-100
+'Almete de Hierro
+Obj16=131-100
+'Cota de Mallas
+Obj17=359-100
+'Armadura de Placas Completa
+Obj18=195-100
+'Armadura de Cuero
+Obj19=30-100
+'Armadura de Cazador
+Obj20=360-100
+'Armadura de Asesino
+Obj21=237-100
 LocaleID=135
 MinHP=10000
 MaxHP=10000
@@ -3647,7 +3723,7 @@ PoderAtaque=1500
 PoderEvasion=1500
 LanzaSpells=2
 Sp1=24
-Sp2=51
+Sp2=201
 AguaValida=1
 RespawnTime=1
 LocaleID=78
@@ -3683,7 +3759,7 @@ Heading=3
 Movement=1
 LanzaSpells=2
 Sp1=66
-Sp2=97
+Sp2=202
 RangoSpell=9
 IntervaloCasteo=100
 HP=80000
@@ -3704,7 +3780,7 @@ Heading=3
 Movement=1
 LanzaSpells=2
 Sp1=66
-Sp2=97
+Sp2=202
 RangoSpell=9
 IntervaloCasteo=100
 HP=80000
@@ -3805,7 +3881,7 @@ MaxHIT=180
 MinHIT=180
 DEF=15
 LanzaSpells=2
-Sp1=69
+Sp1=203
 Sp2=41
 RangoSpell=5
 Nivel=50
@@ -3835,8 +3911,8 @@ MaxHIT=160
 MinHIT=160
 DEF=10
 LanzaSpells=2
-Sp1=84
-Sp2=94
+Sp1=204
+Sp2=205
 RangoSpell=5
 Nivel=50
 PoderAtaque=280
@@ -3863,8 +3939,8 @@ Heading=3
 HP=10000
 DEF=10
 LanzaSpells=2
-Sp1=37
-Sp2=76
+Sp1=206
+Sp2=207
 RangoSpell=6
 Nivel=50
 PoderEvasion=230
@@ -3891,8 +3967,8 @@ Heading=3
 HP=9000
 DEF=12
 LanzaSpells=2
-Sp1=25
-Sp2=52
+Sp1=208
+Sp2=209
 RangoSpell=6
 Nivel=50
 PoderEvasion=200
@@ -3947,8 +4023,8 @@ Heading=3
 HP=6000
 DEF=5
 LanzaSpells=2
-Sp1=34
-Sp2=52
+Sp1=210
+Sp2=209
 RangoSpell=7
 IntervaloCasteo=2800
 Nivel=50
@@ -3973,8 +4049,8 @@ Heading=3
 HP=6000
 DEF=5
 LanzaSpells=2
-Sp1=34
-Sp2=52
+Sp1=210
+Sp2=209
 RangoSpell=7
 IntervaloCasteo=2800
 Nivel=50
@@ -4173,7 +4249,7 @@ MaxHIT=180
 MinHIT=180
 DEF=15
 LanzaSpells=2
-Sp1=69
+Sp1=203
 Sp2=41
 RangoSpell=5
 Nivel=50
@@ -4203,8 +4279,8 @@ MaxHIT=160
 MinHIT=160
 DEF=10
 LanzaSpells=2
-Sp1=84
-Sp2=94
+Sp1=204
+Sp2=205
 RangoSpell=5
 Nivel=50
 PoderAtaque=280
@@ -4231,8 +4307,8 @@ Heading=3
 HP=10000
 DEF=10
 LanzaSpells=2
-Sp1=37
-Sp2=76
+Sp1=206
+Sp2=207
 RangoSpell=6
 Nivel=50
 PoderEvasion=230
@@ -4259,8 +4335,8 @@ Heading=3
 HP=9000
 DEF=12
 LanzaSpells=2
-Sp1=25
-Sp2=52
+Sp1=208
+Sp2=209
 RangoSpell=6
 Nivel=50
 PoderEvasion=200
@@ -4315,8 +4391,8 @@ Heading=3
 HP=6000
 DEF=5
 LanzaSpells=2
-Sp1=34
-Sp2=52
+Sp1=210
+Sp2=209
 RangoSpell=7
 IntervaloCasteo=2800
 Nivel=50
@@ -4341,8 +4417,8 @@ Heading=3
 HP=6000
 DEF=5
 LanzaSpells=2
-Sp1=34
-Sp2=52
+Sp1=210
+Sp2=209
 RangoSpell=7
 IntervaloCasteo=2800
 Nivel=50
@@ -4533,7 +4609,7 @@ MaxHIT=180
 MinHIT=180
 DEF=15
 LanzaSpells=2
-Sp1=69
+Sp1=203
 Sp2=41
 RangoSpell=5
 Nivel=50
@@ -4563,8 +4639,8 @@ MaxHIT=160
 MinHIT=160
 DEF=10
 LanzaSpells=2
-Sp1=84
-Sp2=94
+Sp1=204
+Sp2=205
 RangoSpell=5
 Nivel=50
 PoderAtaque=280
@@ -4591,8 +4667,8 @@ Heading=3
 HP=10000
 DEF=10
 LanzaSpells=2
-Sp1=37
-Sp2=76
+Sp1=206
+Sp2=207
 RangoSpell=6
 Nivel=50
 PoderEvasion=230
@@ -4619,8 +4695,8 @@ Heading=3
 HP=9000
 DEF=12
 LanzaSpells=2
-Sp1=25
-Sp2=52
+Sp1=208
+Sp2=209
 RangoSpell=6
 Nivel=50
 PoderEvasion=200
@@ -4675,8 +4751,8 @@ Heading=3
 HP=6000
 DEF=5
 LanzaSpells=2
-Sp1=34
-Sp2=52
+Sp1=210
+Sp2=209
 RangoSpell=7
 IntervaloCasteo=2800
 Nivel=50
@@ -5039,11 +5115,12 @@ Heading=4
 Movement=1
 Comercia=1
 TipoItems=36
-NROITEMS=4
+NROITEMS=5
 Obj1=722-100
-Obj2=723-100
-Obj3=725-100
-Obj4=1063-100
+Obj2=725-100
+Obj3=1063-100
+Obj4=723-100
+Obj5=2021-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5064,11 +5141,12 @@ Heading=3
 Movement=1
 Comercia=1
 TipoItems=36
-NROITEMS=4
+NROITEMS=5
 Obj1=597-100
-Obj2=598-100
-Obj3=599-100
-Obj4=1058-100
+Obj2=599-100
+Obj3=1058-100
+Obj4=598-100
+Obj5=2023-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5115,9 +5193,16 @@ Heading=2
 Movement=1
 Comercia=1
 TipoItems=36
-NROITEMS=2
+NROITEMS=9
 Obj1=726-100
 Obj2=1068-100
+Obj3=1634-100
+Obj4=1633-100
+Obj5=1635-100
+Obj6=1636-100
+Obj7=2616-100
+Obj8=2617-100
+Obj9=2030-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5138,9 +5223,16 @@ Heading=2
 Movement=1
 Comercia=1
 TipoItems=36
-NROITEMS=2
+NROITEMS=9
 Obj1=595-100
 Obj2=1053-100
+Obj3=1619-100
+Obj4=1616-100
+Obj5=1618-100
+Obj6=1617-100
+Obj7=2614-100
+Obj8=2615-100
+Obj9=2029-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5161,9 +5253,16 @@ Heading=2
 Movement=1
 Comercia=1
 TipoItems=36
-NROITEMS=2
+NROITEMS=9
 Obj1=1008-100
 Obj2=1011-100
+Obj3=1622-100
+Obj4=1621-100
+Obj5=1623-100
+Obj6=1624-100
+Obj7=2618-100
+Obj8=2619-100
+Obj9=2031-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5186,10 +5285,10 @@ Comercia=1
 TipoItems=36
 NROITEMS=5
 Obj1=1026-100
-Obj4=1029-100
-Obj6=1031-100
-Obj7=1033-100
-Obj8=1034-100
+Obj2=1029-100
+Obj3=1031-100
+Obj4=1033-100
+Obj5=1034-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5212,10 +5311,10 @@ Comercia=1
 TipoItems=36
 NROITEMS=5
 Obj1=1035-100
-Obj4=1038-100
-Obj6=1040-100
-Obj7=1042-100
-Obj8=1043-100
+Obj2=1038-100
+Obj3=1040-100
+Obj4=1042-100
+Obj5=1043-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5226,6 +5325,7 @@ Hostile=0
 Desc=¡Preparen naves! Salimos del puerto de Lindos en cualquier momento. ¡Compra un pase rápido o zarparemos sin ti!
 
 [NPC143]
+Status=2
 Name2=Suramei
 Name=PirataSuramei
 PosOrig=1
@@ -5236,12 +5336,12 @@ Heading=2
 Movement=1
 Comercia=1
 TipoItems=36
-NROITEMS=8
+NROITEMS=5
 Obj1=1044-100
-Obj4=1047-100
-Obj6=1049-100
-Obj7=1051-100
-Obj8=1052-100
+Obj2=1047-100
+Obj3=1049-100
+Obj4=1051-100
+Obj5=1052-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5263,8 +5363,8 @@ Comercia=1
 TipoItems=36
 NROITEMS=3
 Obj1=34-100
-Obj2=1010-100
-Obj3=137-100
+Obj2=137-100
+Obj3=1010-100
 weaponanim=7
 HP=10000
 RespawnTime=1
@@ -5295,6 +5395,7 @@ Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo q
 
 '**************************** APUESTAS ****************************
 [NPC144]
+Status=1
 Name=Timbero
 PosOrig=1
 NpcType=12
@@ -5652,7 +5753,7 @@ Name=Murciélago
 Head=0
 Body=9
 Heading=3
-GiveEXP=20
+GiveEXP=1
 GiveGLD=0
 HP=15s
 MaxHIT=1
@@ -5678,8 +5779,8 @@ Name=Lobo
 Head=0
 Body=10
 Heading=3
-GiveEXP=115
-GiveGLD=50
+GiveEXP=20
+GiveGLD=7
 HP=75
 MaxHIT=18
 MinHIT=12
@@ -5705,8 +5806,8 @@ Name=Zombie
 Head=0
 Body=11
 Heading=3
-GiveEXP=295
-GiveGLD=35
+GiveEXP=80
+GiveGLD=8
 HP=320
 MaxHIT=30
 MinHIT=25
@@ -5730,8 +5831,8 @@ Name=Esqueleto
 Head=0
 Body=12
 Heading=3
-GiveEXP=66
-GiveGLD=8
+GiveEXP=9
+GiveGLD=1
 HP=50
 MaxHIT=9
 MinHIT=3
@@ -5755,7 +5856,7 @@ Head=0
 Body=13
 Heading=3
 Veneno=1
-GiveEXP=25
+GiveEXP=2
 GiveGLD=0
 HP=18
 MaxHIT=3
@@ -5780,8 +5881,8 @@ Name=Goblin
 Head=0
 Body=14
 Heading=3
-GiveEXP=160
-GiveGLD=24
+GiveEXP=30
+GiveGLD=4
 HP=110
 MaxHIT=20
 MinHIT=15
@@ -5805,7 +5906,7 @@ Desc=
 Head=0
 Body=5
 Heading=3
-GiveEXP=16
+GiveEXP=1
 GiveGLD=0
 HP=10
 MaxHIT=2
@@ -5830,8 +5931,8 @@ Name=Lord Zombie
 Head=0
 Body=11
 Heading=3
-GiveEXP=700
-GiveGLD=200
+GiveEXP=215
+GiveGLD=52
 HP=550
 MaxHIT=65
 MinHIT=55
@@ -5855,8 +5956,8 @@ Name=Esqueleto Guerrero
 Head=0
 Body=405 '171
 Heading=3
-GiveEXP=270
-GiveGLD=24
+GiveEXP=72
+GiveGLD=5
 HP=200
 MaxHIT=25
 MinHIT=20
@@ -5879,8 +5980,8 @@ Name=Ogro Líder
 Head=0
 Body=429
 Heading=3
-GiveEXP=20000
-GiveGLD=3000
+GiveEXP=6700
+GiveGLD=955
 HP=15000
 MaxHIT=205
 MinHIT=160
@@ -5905,8 +6006,8 @@ Name=Araña Gigante
 Head=0
 Body=42
 Heading=3
-GiveEXP=1450
-GiveGLD=380
+GiveEXP=610
+GiveGLD=140
 HP=950
 MaxHIT=115
 MinHIT=70
@@ -5932,8 +6033,8 @@ Name=Dragón Legendario
 NpcType=20
 Body=361
 Heading=3
-GiveEXP=1750000
-GiveGLD=250000
+GiveEXP=1250000
+GiveGLD=125000
 HP=650000
 MaxHIT=420
 MinHIT=400
@@ -5963,8 +6064,8 @@ Name=Hechicero de Fuego
 NpcType=22
 Body=433
 Heading=3
-GiveEXP=125000
-GiveGLD=5000
+GiveEXP=35500
+GiveGLD=3600
 HP=30500
 MaxHIT=165
 MinHIT=140
@@ -5972,7 +6073,7 @@ DEF=10
 PoderAtaque=270
 PoderEvasion=145
 LanzaSpells=1
-Sp1=102
+Sp1=211
 RangoSpell=10
 Nivel=51
 RespawnTime=1
@@ -5997,8 +6098,8 @@ Desc=
 Name=Vampiro
 Body=434
 Heading=3
-GiveEXP=27000
-GiveGLD=6000
+GiveEXP=8900
+GiveGLD=1900
 HP=9000
 MaxHIT=110
 MinHIT=80
@@ -6006,7 +6107,7 @@ DEF=20
 PoderAtaque=210
 PoderEvasion=130
 LanzaSpells=1
-Sp1=114
+Sp1=212
 RangoSpell=7
 IntervaloAtaque=2400
 Nivel=41
@@ -6028,8 +6129,8 @@ Desc=
 Name=Vampiresa
 Body=438
 Heading=3
-GiveEXP=22000
-GiveGLD=5000
+GiveEXP=7450
+GiveGLD=1600
 HP=7000
 MaxHIT=105
 MinHIT=75
@@ -6037,7 +6138,7 @@ DEF=15
 PoderAtaque=190
 PoderEvasion=120
 LanzaSpells=1
-Sp1=114
+Sp1=212
 RangoSpell=6
 IntervaloAtaque=2500
 Nivel=39
@@ -6058,8 +6159,8 @@ Desc=
 Name=Corruptor
 Body=439
 Heading=3
-GiveEXP=8500
-GiveGLD=1900
+GiveEXP=3050
+GiveGLD=630
 HP=3800
 MaxHIT=250
 MinHIT=200
@@ -6085,8 +6186,8 @@ Name=Hechicero de Agua
 NpcType=22
 Body=442
 Heading=3
-GiveEXP=112000
-GiveGLD=5000
+GiveEXP=29000
+GiveGLD=2950
 HP=27500
 MaxHIT=135
 MinHIT=120
@@ -6095,7 +6196,7 @@ PoderAtaque=240
 PoderEvasion=150
 LanzaSpells=1
 Sp1=91
-Sp1=103
+Sp1=213
 RangoSpell=10
 Nivel=51
 RespawnTime=1
@@ -6121,8 +6222,8 @@ Name=Hechicero de Aire
 NpcType=22
 Body=443
 Heading=3
-GiveEXP=105000
-GiveGLD=5000
+GiveEXP=26000
+GiveGLD=2600
 HP=25000
 MaxHIT=130
 MinHIT=110
@@ -6130,8 +6231,8 @@ DEF=10
 PoderAtaque=250
 PoderEvasion=160
 LanzaSpells=1
-Sp1=93
-Sp1=105
+Sp1=214
+Sp1=215
 RangoSpell=10
 Nivel=51
 RespawnTime=1
@@ -6157,8 +6258,8 @@ Name=Hechicero de Tierra
 NpcType=22
 Body=444
 Heading=3
-GiveEXP=134000
-GiveGLD=5000
+GiveEXP=41000
+GiveGLD=4150
 HP=33000
 MaxHIT=185
 MinHIT=160
@@ -6166,7 +6267,7 @@ DEF=10
 PoderAtaque=260
 PoderEvasion=130
 LanzaSpells=1
-Sp1=104
+Sp1=216
 RangoSpell=10
 PosOrig=1
 Nivel=51
@@ -6191,8 +6292,8 @@ Desc=
 Name=Desertor de las tinieblas
 Body=445
 Heading=3
-GiveEXP=60000
-GiveGLD=9000
+GiveEXP=19500
+GiveGLD=2800
 HP=20000
 MaxHIT=230
 MinHIT=150
@@ -6217,8 +6318,8 @@ Desc=
 Name=Yeti trucho
 Body=370
 Heading=3
-GiveEXP=500000
-GiveGLD=100000
+GiveEXP=125000
+GiveGLD=12500
 HP=100000
 MaxHIT=200
 MinHIT=150
@@ -6240,13 +6341,13 @@ Desc=
 Name=Espectro
 Body=446
 Heading=3
-GiveEXP=32000
-GiveGLD=4750
+GiveEXP=10500
+GiveGLD=1500
 HP=6750
 DEF=120
 PoderEvasion=400
 LanzaSpells=1
-Sp1=112
+Sp1=217
 RangoSpell=8
 IntervaloCasteo=7000
 Nivel=42
@@ -6269,8 +6370,8 @@ Desc=
 Name=Castigador
 Body=447
 Heading=3
-GiveEXP=80000
-GiveGLD=15000
+GiveEXP=30000
+GiveGLD=3000
 HP=25000
 MaxHIT=170
 MinHIT=150
@@ -6278,7 +6379,7 @@ DEF=20
 PoderAtaque=280
 PoderEvasion=140
 LanzaSpells=1
-Sp1=110
+Sp1=218
 RangoSpell=8
 IntervaloAtaque=4000
 IntervaloCasteo=6000
@@ -6303,8 +6404,8 @@ Name=Orco
 Head=0
 Body=43
 Heading=3
-GiveEXP=505
-GiveGLD=65
+GiveEXP=135
+GiveGLD=15
 HP=320
 MaxHIT=38
 MinHIT=15
@@ -6327,8 +6428,8 @@ Name=Jefe Orco
 Head=0
 Body=43
 Heading=3
-GiveEXP=3200
-GiveGLD=2000
+GiveEXP=1300
+GiveGLD=725
 HP=1500
 MaxHIT=150
 MinHIT=100
@@ -6350,8 +6451,8 @@ Desc=
 Name=Zombie Lóbrego
 Body=448
 Heading=3
-GiveEXP=700
-GiveGLD=250
+GiveEXP=190
+GiveGLD=57
 HP=340
 MaxHIT=80
 MinHIT=55
@@ -6376,8 +6477,8 @@ Desc=
 Name=Sanguijuela Gigante
 Body=449
 Heading=3
-GiveEXP=4050
-GiveGLD=600
+GiveEXP=1550
+GiveGLD=205
 HP=2000
 MaxHIT=180
 MinHIT=160
@@ -6402,8 +6503,8 @@ Desc=
 Name=Hombre Lobo
 Body=450
 Heading=3
-GiveEXP=19000
-GiveGLD=3250
+GiveEXP=6450
+GiveGLD=1050
 HP=7500
 MaxHIT=180
 MinHIT=160
@@ -6428,13 +6529,13 @@ Desc=
 Name=Fantasma
 Body=451
 Heading=3
-GiveEXP=6700
-GiveGLD=2200
+GiveEXP=2600
+GiveGLD=765
 HP=3000
 DEF=100
 PoderEvasion=400
 LanzaSpells=1
-Sp1=111
+Sp1=219
 IntervaloCasteo=6000
 Nivel=30
 Inmunidad=1
@@ -6457,8 +6558,8 @@ Name=Escorpión
 Head=0
 Body=51
 Heading=3
-GiveEXP=40
-GiveGLD=3
+GiveEXP=4
+GiveGLD=1
 HP=32
 MaxHIT=6
 MinHIT=3
@@ -6481,8 +6582,8 @@ Name=Bandido
 Head=2
 Body=424
 Heading=3
-GiveEXP=680
-GiveGLD=220
+GiveEXP=185
+GiveGLD=50
 HP=350
 MaxHIT=60
 MinHIT=36
@@ -6506,8 +6607,8 @@ Name=Asesino
 Head=201
 Body=48
 Heading=3
-GiveEXP=1550
-GiveGLD=450
+GiveEXP=645
+GiveGLD=165
 HP=850
 MaxHIT=130
 MinHIT=40
@@ -6532,8 +6633,8 @@ Name=Águila
 Head=0
 Body=59
 Heading=3
-GiveEXP=18
-GiveGLD=5
+GiveEXP=1
+GiveGLD=1
 HP=20
 MaxHIT=2
 MinHIT=3
@@ -6556,8 +6657,8 @@ Name=Cuervo
 Head=0
 Body=68
 Heading=3
-GiveEXP=53
-GiveGLD=5
+GiveEXP=4
+GiveGLD=1
 HP=30
 MaxHIT=10
 MinHIT=4
@@ -6579,8 +6680,8 @@ Name=Señor de las sombras
 Head=0
 Body=423
 Heading=3
-GiveEXP=550
-GiveGLD=100
+GiveEXP=160
+GiveGLD=24
 HP=400
 MaxHIT=75
 MinHIT=60
@@ -6603,7 +6704,7 @@ Name=Hormiga
 Head=0
 Body=70
 Heading=3
-GiveEXP=6
+GiveEXP=1
 GiveGLD=0
 HP=5
 MaxHIT=1
@@ -6627,8 +6728,8 @@ Name=Rata
 Head=0
 Body=71
 Heading=3
-GiveEXP=21
-GiveGLD=2
+GiveEXP=1
+GiveGLD=1
 HP=15
 MaxHIT=4
 MinHIT=2
@@ -6651,8 +6752,8 @@ Name=Beholder
 Head=0
 Body=72
 Heading=3
-GiveEXP=2020
-GiveGLD=490
+GiveEXP=825
+GiveGLD=180
 HP=1100
 MaxHIT=290
 MinHIT=65
@@ -6674,7 +6775,7 @@ Name=Oso Pardo
 Head=0
 Body=73
 Heading=3
-GiveEXP=1350
+GiveEXP=535
 GiveGLD=0
 HP=920
 MaxHIT=135
@@ -6699,7 +6800,7 @@ Name=Tortuga Gigante
 Head=0
 Body=74
 Heading=3
-GiveEXP=550
+GiveEXP=180
 GiveGLD=0
 HP=480
 MaxHIT=80
@@ -6724,8 +6825,8 @@ Name=Duende
 Head=0
 Body=75
 Heading=3
-GiveEXP=268
-GiveGLD=45
+GiveEXP=72
+GiveGLD=10
 HP=210
 MaxHIT=35
 MinHIT=25
@@ -6748,8 +6849,8 @@ Name=Ogro
 Head=0
 Body=76
 Heading=3
-GiveEXP=2900
-GiveGLD=650
+GiveEXP=1200
+GiveGLD=235
 HP=2200
 MaxHIT=145
 MinHIT=130
@@ -6774,8 +6875,8 @@ Name=Gran Dragón Negro
 NpcType=20
 Body=362
 Heading=3
-GiveEXP=450000
-GiveGLD=85000
+GiveEXP=705000
+GiveGLD=71500
 HP=380000
 MaxHIT=400
 MinHIT=380
@@ -6787,8 +6888,8 @@ SND1=30
 SND2=31
 SND3=32
 LanzaSpells=2
-Sp1=34
-Sp2=25
+Sp1=210
+Sp2=208
 RangoSpell=10
 Nivel=100
 RespawnTime=1
@@ -6810,8 +6911,8 @@ Name=Demonio
 NpcType=21
 Body=365
 Heading=3
-GiveEXP=40000
-GiveGLD=4500
+GiveEXP=13000
+GiveGLD=1400
 HP=15000
 MaxHIT=270
 MinHIT=110
@@ -6834,8 +6935,8 @@ Desc=
 Name=Adosador de la Muerte
 Body=458
 Heading=3
-GiveEXP=90000
-GiveGLD=20000
+GiveEXP=26500
+GiveGLD=5900
 HP=28000
 MaxHIT=265
 MinHIT=210
@@ -6863,7 +6964,7 @@ RespawnTime=0
 Head=0
 Body=10
 Heading=3
-GiveEXP=230
+GiveEXP=58
 GiveGLD=0
 HP=300
 MaxHIT=20
@@ -6887,7 +6988,7 @@ RespawnTime=0
 Head=0
 Body=11
 Heading=3
-GiveEXP=230
+GiveEXP=66
 GiveGLD=0
 HP=350
 MaxHIT=50
@@ -6909,8 +7010,8 @@ Desc=
 Name=Alma Cautiva
 Body=459
 Heading=3
-GiveEXP=36000
-GiveGLD=10000
+GiveEXP=12000
+GiveGLD=1200
 HP=10000
 MaxHIT=190
 MinHIT=130
@@ -6918,7 +7019,7 @@ DEF=15
 PoderAtaque=260
 PoderEvasion=220
 LanzaSpells=1
-Sp1=113
+Sp1=220
 RangoSpell=7
 IntervaloAtaque=4000
 Nivel=50
@@ -6941,8 +7042,8 @@ Desc=
 Name=Leviatán
 Body=99
 Heading=3
-GiveEXP=20000
-GiveGLD=4000
+GiveEXP=6850
+GiveGLD=1300
 HP=7000
 MaxHIT=250
 MinHIT=80
@@ -6969,14 +7070,14 @@ Name=Orco brujo
 Head=0
 Body=43
 Heading=3
-GiveEXP=3000
-GiveGLD=800
+GiveEXP=1150
+GiveGLD=280
 HP=1200
 DEF=25
 PoderAtaque=200
 PoderEvasion=60
 LanzaSpells=1
-Sp1=92
+Sp1=221
 RangoSpell=6
 Nivel=30
 RespawnTime=1
@@ -6994,14 +7095,14 @@ Name=Bruja
 Head=271
 Body=125
 Heading=3
-GiveEXP=10000
-GiveGLD=2800
+GiveEXP=3600
+GiveGLD=930
 HP=4200
 DEF=20
 PoderAtaque=200
 PoderEvasion=200
 LanzaSpells=1
-Sp1=15
+Sp1=222
 RangoSpell=7
 Nivel=35
 RespawnTime=1
@@ -7019,14 +7120,14 @@ Name=Mago protector
 Head=401
 Body=135
 Heading=3
-GiveEXP=6000
-GiveGLD=2400
+GiveEXP=2250
+GiveGLD=820
 HP=2600
 DEF=20
 PoderAtaque=200
 PoderEvasion=150
 LanzaSpells=1
-Sp1=15
+Sp1=222
 RangoSpell=6
 Nivel=32
 RespawnTime=1
@@ -7044,8 +7145,8 @@ Name=Golem de piedra
 Head=0
 Body=371
 Heading=3
-GiveEXP=80000
-GiveGLD=24000
+GiveEXP=25000
+GiveGLD=7300
 HP=46500
 MaxHIT=480
 MinHIT=300
@@ -7067,8 +7168,8 @@ Desc=
 Name=Medusa
 Body=367
 Heading=3
-GiveEXP=20000
-GiveGLD=4800
+GiveEXP=6850
+GiveGLD=1550
 HP=7000
 MaxHIT=140
 MinHIT=95
@@ -7077,7 +7178,7 @@ PoderAtaque=200
 PoderEvasion=130
 LanzaSpells=2
 Sp1=41
-Sp2=94
+Sp2=205
 RangoSpell=6
 Veneno=3
 Nivel=38
@@ -7096,8 +7197,8 @@ Name=Liche
 Head=0
 Body=149
 Heading=3
-GiveEXP=3500
-GiveGLD=1300
+GiveEXP=1350
+GiveGLD=450
 HP=1600
 MaxHIT=250
 MinHIT=120
@@ -7120,8 +7221,8 @@ Name=Lord Orco
 Head=0
 Body=148
 Heading=3
-GiveEXP=3200
-GiveGLD=1280
+GiveEXP=1050
+GiveGLD=360
 HP=1420
 MaxHIT=200
 MinHIT=200
@@ -7143,8 +7244,8 @@ Desc=
 Name=Lacayo del Mal
 Body=460
 Heading=3
-GiveEXP=5000
-GiveGLD=1250
+GiveEXP=1850
+GiveGLD=425
 HP=2400
 MaxHIT=170
 MinHIT=140
@@ -7170,8 +7271,8 @@ Name=Jabalí Salvaje
 Head=0
 Body=406
 Heading=3
-GiveEXP=1600
-GiveGLD=280
+GiveEXP=595
+GiveGLD=90
 HP=1000
 MaxHIT=130
 MinHIT=100
@@ -7196,8 +7297,8 @@ Desc=
 Name=Mano Peluda
 Body=461
 Heading=3
-GiveEXP=142
-GiveGLD=23
+GiveEXP=26
+GiveGLD=4
 HP=90
 MaxHIT=18
 MinHIT=15
@@ -7221,8 +7322,8 @@ Desc=
 Name=Rata Gigante
 Body=462
 Heading=3
-GiveEXP=220
-GiveGLD=45
+GiveEXP=44
+GiveGLD=7
 HP=130
 MaxHIT=22
 MinHIT=18
@@ -7248,7 +7349,7 @@ Name=Gran Hechicero Garveloth
 NpcType=22
 Body=480
 Heading=3
-GiveEXP=1250000
+GiveEXP=310000
 GiveGLD=0
 HP=200000
 MaxHIT=290
@@ -7257,7 +7358,7 @@ DEF=20
 PoderAtaque=450
 PoderEvasion=190
 LanzaSpells=1
-Sp1=94
+Sp1=205
 RangoSpell=10
 IntervaloAtaque=8500
 IntervaloCasteo=7000
@@ -7283,8 +7384,8 @@ Name=Saqueador de minas
 Head=401
 Body=425 '136
 Heading=3
-GiveEXP=12000
-GiveGLD=2400
+GiveEXP=4300
+GiveGLD=795
 HP=8000
 MaxHIT=180
 MinHIT=150
@@ -7306,8 +7407,8 @@ Desc=
 Name=Sierpe
 Body=464
 Heading=3
-GiveEXP=44
-GiveGLD=2
+GiveEXP=3
+GiveGLD=1
 HP=28
 MaxHIT=5
 MinHIT=2
@@ -7334,7 +7435,7 @@ Name=Goblin
 Head=0
 Body=14
 Heading=3
-GiveEXP=130
+GiveEXP=26
 HP=110
 MaxHIT=12
 MinHIT=5
@@ -7356,7 +7457,7 @@ Name=Escorpion
 Head=0
 Body=51
 Heading=3
-GiveEXP=38
+GiveEXP=4
 HP=32
 MaxHIT=3
 MinHIT=1
@@ -7378,7 +7479,7 @@ Name=Serpiente
 Head=0
 Body=13
 Heading=3
-GiveEXP=20
+GiveEXP=2
 HP=20
 MaxHIT=1
 MinHIT=1
@@ -7400,7 +7501,7 @@ Name=Murcielago
 Head=0
 Body=9
 Heading=3
-GiveEXP=15
+GiveEXP=1
 GiveGLD=0
 HP=10
 MaxHIT=1
@@ -7423,15 +7524,15 @@ Name=Arquero Pirata
 Head=301
 Body=110
 Heading=3
-GiveEXP=6000
-GiveGLD=1600
+GiveEXP=2100
+GiveGLD=525
 HP=4000
 DEF=20
 PoderAtaque=300
 PoderEvasion=150
 weaponanim=7
 LanzaSpells=1
-Sp1=37
+Sp1=223
 RangoSpell=6
 Nivel=36
 RespawnTime=1
@@ -7449,8 +7550,8 @@ Name=Guerrero Pirata
 Head=301
 Body=110
 Heading=3
-GiveEXP=10000
-GiveGLD=2800
+GiveEXP=3550
+GiveGLD=920
 HP=6500
 MaxHIT=210
 MinHIT=180
@@ -7473,13 +7574,13 @@ Desc=
 Name=Fuego elemental '(amarillo)
 Body=467
 Heading=3
-GiveEXP=330
+GiveEXP=110
 GiveGLD=0
 HP=350
 DEF=50
 PoderEvasion=120
 LanzaSpells=1
-Sp1=102
+Sp1=211
 RangoSpell=5
 IntervaloCasteo=3500
 Nivel=20
@@ -7498,8 +7599,8 @@ Name=Gran Dragón Verde
 NpcType=20
 Body=360
 Heading=3
-GiveEXP=125000
-GiveGLD=20000
+GiveEXP=135000
+GiveGLD=14000
 HP=80000
 MaxHIT=350
 MinHIT=300
@@ -7511,8 +7612,8 @@ SND2=31
 SND3=32
 LanzaSpells=3
 Sp1=41
-Sp2=25
-Sp3=34
+Sp2=208
+Sp3=210
 RangoSpell=12
 Nivel=100
 RespawnTime=1
@@ -7534,8 +7635,8 @@ Name=Fango
 Head=0
 Body=173
 Heading=3
-GiveEXP=3800
-GiveGLD=480
+GiveEXP=1450
+GiveGLD=165
 HP=1900
 MaxHIT=110
 MinHIT=80
@@ -7557,8 +7658,8 @@ Name=Demonio Abisal
 NpcType=21
 Body=363
 Heading=3
-GiveEXP=78000
-GiveGLD=16000
+GiveEXP=24500
+GiveGLD=4900
 HP=40000
 MaxHIT=250
 MinHIT=200
@@ -7582,8 +7683,8 @@ Name=Basilisco
 Head=0
 Body=167
 Heading=3
-GiveEXP=2600
-GiveGLD=640
+GiveEXP=1000
+GiveGLD=225
 HP=1100
 MaxHIT=150
 MinHIT=20
@@ -7605,8 +7706,8 @@ Name=Ogro Guerrero
 Head=0
 Body=237
 Heading=3
-GiveEXP=6400
-GiveGLD=950
+GiveEXP=2250
+GiveGLD=310
 HP=2800
 MaxHIT=285
 MinHIT=130
@@ -7631,8 +7732,8 @@ Name=Golem de oro
 Head=0
 Body=373
 Heading=3
-GiveEXP=150000
-GiveGLD=50000
+GiveEXP=200000
+GiveGLD=20500
 HP=100000
 MaxHIT=510
 MinHIT=400
@@ -7654,8 +7755,8 @@ Desc=
 Name=Momia
 Body=369
 Heading=3
-GiveEXP=19000
-GiveGLD=4800
+GiveEXP=6600
+GiveGLD=1550
 HP=8000
 MaxHIT=150
 MinHIT=80
@@ -7678,8 +7779,8 @@ Name=Golem de bronce
 Head=0
 Body=373
 Heading=3
-GiveEXP=45000
-GiveGLD=14000
+GiveEXP=36500
+GiveGLD=3700
 HP=30000
 MaxHIT=210
 MinHIT=120
@@ -7701,8 +7802,8 @@ Desc=
 Name=Medusa Matriarch
 Body=368
 Heading=3
-GiveEXP=56000
-GiveGLD=10500
+GiveEXP=17500
+GiveGLD=3250
 HP=21000
 MaxHIT=160
 MinHIT=110
@@ -7711,7 +7812,7 @@ PoderAtaque=200
 PoderEvasion=140
 LanzaSpells=2
 Sp1=9
-Sp2=25
+Sp2=208
 RangoSpell=7
 Nivel=44
 RespawnTime=1
@@ -7730,8 +7831,8 @@ Name=Golem de plata
 Head=0
 Body=375
 Heading=3
-GiveEXP=110000
-GiveGLD=20000
+GiveEXP=145000
+GiveGLD=14500
 HP=72000
 MaxHIT=490
 MinHIT=400
@@ -7754,8 +7855,8 @@ Name=Lobo Invernal
 Head=0
 Body=284
 Heading=3
-GiveEXP=560
-GiveGLD=150
+GiveEXP=140
+GiveGLD=32
 HP=225
 MaxHIT=40
 MinHIT=15
@@ -7781,8 +7882,8 @@ Name=Golem infernal
 Head=0
 Body=374
 Heading=3
-GiveEXP=200000
-GiveGLD=60000
+GiveEXP=310000
+GiveGLD=31500
 HP=150000
 MaxHIT=530
 MinHIT=440
@@ -7790,7 +7891,7 @@ DEF=45
 PoderAtaque=500
 PoderEvasion=230
 lanzaspells=1
-sp1=34
+sp1=210
 RangoSpell=6
 Nivel=60
 RespawnTime=1
@@ -7808,8 +7909,8 @@ Name=Gran Dragón Azul
 NpcType=20
 Body=359
 Heading=3
-GiveEXP=280000
-GiveGLD=60000
+GiveEXP=255000
+GiveGLD=25500
 HP=140000
 MaxHIT=380
 MinHIT=360
@@ -7820,7 +7921,7 @@ SND1=30
 SND2=31
 SND3=32
 LanzaSpells=1
-Sp1=25
+Sp1=208
 RangoSpell=6
 Nivel=100
 RespawnTime=1
@@ -7841,13 +7942,13 @@ Desc=
 Name=Fuego elemental '(gris)
 Body=468
 Heading=3
-GiveEXP=330
+GiveEXP=110
 GiveGLD=0
 HP=350
 DEF=50
 PoderEvasion=120
 LanzaSpells=1
-Sp1=105
+Sp1=215
 RangoSpell=5
 IntervaloCasteo=3500
 Nivel=20
@@ -7866,8 +7967,8 @@ Name=Cíclope
 Head=0
 Body=166
 Heading=3
-GiveEXP=3000
-GiveGLD=1040
+GiveEXP=1150
+GiveGLD=360
 HP=1600
 MaxHIT=130
 MinHIT=50
@@ -7891,8 +7992,8 @@ Desc=
 Name=Yeti
 Body=370
 Heading=3
-GiveEXP=210000
-GiveGLD=30000
+GiveEXP=145000
+GiveGLD=14500
 HP=68000
 MaxHIT=550
 MinHIT=460
@@ -7915,8 +8016,8 @@ Name=Aparición
 Head=0
 Body=245
 Heading=3
-GiveEXP=8000
-GiveGLD=2000
+GiveEXP=3000
+GiveGLD=680
 HP=3500
 MaxHIT=80
 MinHIT=40
@@ -7939,8 +8040,8 @@ Desc=
 Name=Golem de hielo
 Body=377
 Heading=3
-GiveEXP=260000
-GiveGLD=80000
+GiveEXP=365000
+GiveGLD=37000
 HP=175000
 MaxHIT=540
 MinHIT=450
@@ -7963,8 +8064,8 @@ Name=Crako
 Head=0
 Body=219
 Heading=3
-GiveEXP=10500
-GiveGLD=2800
+GiveEXP=3600
+GiveGLD=905
 HP=4000
 MaxHIT=380
 MinHIT=150
@@ -7987,8 +8088,8 @@ Name=Protector
 Head=0
 Body=172
 Heading=3
-GiveEXP=2500
-GiveGLD=400
+GiveEXP=895
+GiveGLD=135
 HP=1000
 MaxHIT=120
 MinHIT=80
@@ -8011,8 +8112,8 @@ Name=Rey Dragón
 NpcType=20
 Body=432
 Heading=3
-GiveEXP=2200000
-GiveGLD=360000
+GiveEXP=1700000
+GiveGLD=175000
 HP=900000
 MaxHIT=430
 MinHIT=400
@@ -8024,8 +8125,8 @@ SND1=30
 SND2=31
 SND3=32
 LanzaSpells=3
-Sp1=63
-Sp2=52
+Sp1=224
+Sp2=209
 Sp3=41
 RangoSpell=9
 Nivel=100
@@ -8048,13 +8149,13 @@ Desc=
 Name=Fuego elemental '(marrón)
 Body=469
 Heading=3
-GiveEXP=330
+GiveEXP=110
 GiveGLD=0
 HP=350
 DEF=50
 PoderEvasion=120
 LanzaSpells=1
-Sp1=104
+Sp1=216
 RangoSpell=5
 IntervaloCasteo=3500
 Nivel=20
@@ -8073,8 +8174,8 @@ Name=Ent
 Head=0
 Body=273
 Heading=3
-GiveEXP=1200
-GiveGLD=200
+GiveEXP=505
+GiveGLD=74
 HP=650
 MaxHIT=90
 MinHIT=40
@@ -8099,8 +8200,8 @@ Name=Gladiador
 Head=0
 Body=364
 Heading=3
-GiveEXP=7000
-GiveGLD=1200
+GiveEXP=2450
+GiveGLD=390
 HP=3000
 MaxHIT=282
 MinHIT=120
@@ -8124,7 +8225,7 @@ Name=Gallina Salvaje
 Head=0
 Body=278
 Heading=3
-GiveEXP=28
+GiveEXP=2
 GiveGLD=0
 HP=27
 MaxHIT=2
@@ -8149,8 +8250,8 @@ Desc=
 Name=Sirena
 Body=277
 Heading=3
-GiveEXP=23500
-GiveGLD=4000
+GiveEXP=7850
+GiveGLD=1250
 HP=8000
 MaxHIT=250
 MinHIT=80
@@ -8174,13 +8275,13 @@ Desc=
 Name=Fuego elemental '(azul)
 Body=470
 Heading=3
-GiveEXP=330
+GiveEXP=110
 GiveGLD=0
 HP=350
 DEF=50
 PoderEvasion=120
 LanzaSpells=1
-Sp1=103
+Sp1=213
 RangoSpell=5
 IntervaloCasteo=3500
 Nivel=20
@@ -8198,13 +8299,13 @@ Desc=
 Name=Fuego elemental '(verde)
 Body=471
 Heading=3
-GiveEXP=1075
-GiveGLD=250
+GiveEXP=400
+GiveGLD=81
 HP=550
 DEF=50
 PoderEvasion=220
 LanzaSpells=1
-Sp1=107
+Sp1=225
 RangoSpell=7
 IntervaloCasteo=4400
 Nivel=22
@@ -8224,13 +8325,13 @@ Name=Fuego fatuo
 Head=0
 Body=144
 Heading=3
-GiveEXP=1500
-GiveGLD=240
+GiveEXP=560
+GiveGLD=82
 HP=2500
 PoderAtaque=700
 PoderEvasion=250
 LanzaSpells=1
-Sp1=51
+Sp1=201
 RangoSpell=6
 Nivel=32
 RespawnTime=1
@@ -8249,8 +8350,8 @@ Name=Tigre
 Head=0
 Body=147
 Heading=3
-GiveEXP=1000
-GiveGLD=250
+GiveEXP=410
+GiveGLD=91
 HP=700
 MaxHIT=90
 MinHIT=70
@@ -8273,13 +8374,13 @@ Desc=
 Name=Fuego elemental '(fucsia)
 Body=472
 Heading=3
-GiveEXP=700
-GiveGLD=150
+GiveEXP=230
+GiveGLD=42
 HP=400
 DEF=50
 PoderEvasion=200
 LanzaSpells=1
-Sp1=106
+Sp1=226
 RangoSpell=6
 IntervaloCasteo=4200
 Nivel=20
@@ -8298,13 +8399,13 @@ Desc=
 Name=Fuego elemental '(verde oscuro)
 Body=473
 Heading=3
-GiveEXP=1450
-GiveGLD=400
+GiveEXP=610
+GiveGLD=150
 HP=700
 DEF=50
 PoderEvasion=250
 LanzaSpells=1
-Sp1=108
+Sp1=227
 RangoSpell=8
 IntervaloCasteo=4600
 Nivel=24
@@ -8354,8 +8455,8 @@ Name=Chamán Ártico
 Head=0
 Body=418
 Heading=3
-GiveEXP=6000
-GiveGLD=1200
+GiveEXP=2100
+GiveGLD=395
 HP=3500
 MaxHIT=150
 MinHIT=110
@@ -8382,8 +8483,8 @@ Name=Yuan Ti
 Head=0
 Body=417
 Heading=3
-GiveEXP=4600
-GiveGLD=1100
+GiveEXP=1600
+GiveGLD=355
 HP=2500
 MaxHIT=160
 MinHIT=130
@@ -8407,8 +8508,8 @@ Name=Huargo de Nieve
 Head=0
 Body=414
 Heading=3
-GiveEXP=1070
-GiveGLD=350
+GiveEXP=425
+GiveGLD=125
 HP=800
 MaxHIT=120
 MinHIT=110
@@ -8432,8 +8533,8 @@ Name=Hombre Lagarto
 Head=0
 Body=223
 Heading=3
-GiveEXP=8600
-GiveGLD=1900
+GiveEXP=2900
+GiveGLD=610
 HP=4000
 MaxHIT=250
 MinHIT=140
@@ -8456,8 +8557,8 @@ Desc=
 Name=El Abominable Grinch
 Body=370
 Heading=3
-GiveEXP=3900000
-GiveGLD=500000
+GiveEXP=2050000
+GiveGLD=210000
 HP=900000
 MaxHIT=670
 MinHIT=500
@@ -8487,8 +8588,8 @@ Desc=
 Name=Vampiro Transformado
 Body=463
 Heading=3
-GiveEXP=275000
-GiveGLD=50000
+GiveEXP=125000
+GiveGLD=12500
 HP=80000
 MaxHIT=280
 MinHIT=260
@@ -8518,8 +8619,8 @@ Desc=
 Name=Cría Arácnida
 Body=465
 Heading=3
-GiveEXP=70
-GiveGLD=12
+GiveEXP=12
+GiveGLD=2
 HP=55
 MaxHIT=10
 MinHIT=5
@@ -8545,7 +8646,7 @@ Desc=
 Name=Murciélago
 Body=466
 Heading=3
-GiveEXP=30
+GiveEXP=2
 GiveGLD=0
 HP=18
 MaxHIT=2
@@ -8571,8 +8672,8 @@ Desc=
 Name=Turbador Sombrío
 Body=441
 Heading=3
-GiveEXP=13500
-GiveGLD=1800
+GiveEXP=4500
+GiveGLD=570
 HP=5500
 MaxHIT=230
 MinHIT=120
@@ -8598,8 +8699,8 @@ Desc=
 Name=Esqueleto Guardián
 Body=440
 Heading=3
-GiveEXP=3600
-GiveGLD=650
+GiveEXP=1450
+GiveGLD=230
 HP=1700
 MaxHIT=120
 MinHIT=70
@@ -8625,8 +8726,8 @@ Desc=
 Name=Sertlac
 Body=478
 Heading=3
-GiveEXP=56
-GiveGLD=7
+GiveEXP=8
+GiveGLD=1
 HP=35
 MaxHIT=6
 MinHIT=3
@@ -8652,8 +8753,8 @@ Desc=
 Name=Guardián
 Body=477
 Heading=3
-GiveEXP=550000
-GiveGLD=15000
+GiveEXP=135000
+GiveGLD=14000
 HP=90000
 MaxHIT=320
 MinHIT=200
@@ -8683,7 +8784,7 @@ Desc=
 Name=Murciélago
 Body=476
 Heading=3
-GiveEXP=18
+GiveEXP=1
 GiveGLD=0
 HP=12
 MaxHIT=1
@@ -8709,8 +8810,8 @@ Desc=
 Name=Esqueleto
 Body=475
 Heading=3
-GiveEXP=255
-GiveGLD=50
+GiveEXP=50
+GiveGLD=8
 HP=150
 MaxHIT=22
 MinHIT=20
@@ -8737,7 +8838,7 @@ Name=Profeta Arcano
 NpcType=22
 Body=474
 Heading=3
-GiveEXP=350000
+GiveEXP=110000
 GiveGLD=0
 HP=80000
 MaxHIT=220
@@ -8746,8 +8847,8 @@ DEF=20
 PoderAtaque=380
 PoderEvasion=190
 LanzaSpells=2
-Sp1=25
-Sp2=52
+Sp1=208
+Sp2=209
 RangoSpell=10
 IntervaloAtaque=8500
 IntervaloCasteo=7000
@@ -8773,8 +8874,8 @@ Desc=
 Name=Archne
 Body=465
 Heading=3
-GiveEXP=70
-GiveGLD=12
+GiveEXP=12
+GiveGLD=2
 HP=55
 MaxHIT=10
 MinHIT=5
@@ -9079,3 +9180,5605 @@ Obj3=481-1000-45
 Obj4=1093-1000-50
 Obj5=1148-1000-35
 Obj6=1265-1000-30
+
+; --- dragones y angel del pack ImperiumAO ---
+
+[NPC700]
+Name=Angel Caido
+Body=911
+NpcType=20
+Heading=3
+GiveEXP=760000
+GiveGLD=77500
+MaxHIT=420
+MinHIT=400
+DEF=400
+PosOrig=1
+PoderAtaque=350
+PoderEvasion=300
+Nivel=100
+RespawnTime=1
+IntervaloAtaque=4000
+Attackable=1
+Movement=0
+Hostile=1
+HP=400000
+MinHP=400000
+MaxHP=400000
+Desc=
+
+[NPC701]
+Name=Dragon Dorado Anciano
+Body=912
+NpcType=20
+Heading=3
+GiveEXP=1700000
+GiveGLD=175000
+MaxHIT=420
+MinHIT=400
+DEF=400
+PosOrig=1
+PoderAtaque=350
+PoderEvasion=300
+Nivel=100
+RespawnTime=1
+IntervaloAtaque=4000
+Attackable=1
+Movement=0
+Hostile=1
+HP=900000
+MinHP=900000
+MaxHP=900000
+Desc=
+
+[NPC702]
+Name=Dragon Infernal
+Body=913
+NpcType=20
+Heading=3
+GiveEXP=1700000
+GiveGLD=175000
+MaxHIT=420
+MinHIT=400
+DEF=400
+PosOrig=1
+PoderAtaque=350
+PoderEvasion=300
+Nivel=100
+RespawnTime=1
+IntervaloAtaque=4000
+Attackable=1
+Movement=0
+Hostile=1
+HP=900000
+MinHP=900000
+MaxHP=900000
+Desc=
+
+[NPC703]'Boss de la Catedral Sumergida (mapa 954)
+Name=Vhorlaq, el Custodio Ahogado
+Desc=Lo que quedo del que custodiaba el abside cuando el mar entro.
+Body=950
+Heading=3
+GiveEXP=180000
+GiveGLD=18000
+HP=110000
+MinHIT=240
+MaxHIT=360
+DEF=25
+PoderAtaque=420
+PoderEvasion=200
+LanzaSpells=1
+Sp1=217
+RangoSpell=8
+IntervaloAtaque=8000
+IntervaloCasteo=7000
+Nivel=100
+PosOrig=1
+Inmunidad=1
+Veinvis=1
+RandomDrop=0
+RespawnTime=1
+RespawnSegundos=1800
+Attackable=1
+MinHP=110000
+MaxHP=110000
+Movement=0
+Hostile=1
+[NPC704]'Mar abierto alrededor de la isla (mapa 622)
+Name=Nyrath, Kraken de la Fosa
+Desc=Sube de la fosa cuando huele sangre en la superficie.
+Body=951
+Heading=3
+GiveEXP=7800
+GiveGLD=1600
+HP=9000
+MinHIT=180
+MaxHIT=260
+DEF=20
+PoderAtaque=250
+PoderEvasion=170
+IntervaloAtaque=1500
+Nivel=42
+RandomDrop=0
+RespawnTime=1
+AguaValida=1
+TierraInValida=1
+Attackable=1
+MinHP=9000
+MaxHP=9000
+Movement=0
+Hostile=1
+
+[NPC705]'Boss del Alcazar Carmesi (mapa 955), sala del trono
+Name=Malskar, el Señor Carmesí
+Desc=El que mandó levantar el alcázar y nunca aceptó que la guerra había terminado.
+Body=952
+Heading=3
+Snd1=350
+Snd2=351
+Snd3=352	' voz del Castigador
+GiveEXP=255000
+GiveGLD=26000
+HP=145000
+MinHIT=280
+MaxHIT=430
+DEF=30
+PoderAtaque=480
+PoderEvasion=230
+LanzaSpells=1
+Sp1=217
+RangoSpell=9
+IntervaloAtaque=8000
+IntervaloCasteo=7000
+Nivel=100
+PosOrig=1
+Inmunidad=1
+Veinvis=1
+RandomDrop=0
+RespawnTime=1
+RespawnSegundos=1800
+Attackable=1
+MinHP=145000
+MaxHP=145000
+Movement=0
+Hostile=1
+[NPC706]'Alcazar Carmesi: tesoreria y patio de armas
+Name=Grimald, Coloso de Sillar
+Desc=Lo tallaron del mismo sillar que las paredes. Pesa como ellas.
+Body=953
+Heading=3
+Snd1=287
+Snd2=288
+Snd3=289	' voz del Guardian, que es la estatua de piedra del juego
+GiveEXP=11500
+GiveGLD=2000
+HP=16000
+MinHIT=200
+MaxHIT=290
+DEF=34
+PoderAtaque=290
+PoderEvasion=110
+IntervaloAtaque=2200
+Nivel=48
+Inmunidad=1
+RandomDrop=0
+RespawnTime=1
+Attackable=1
+MinHP=16000
+MaxHP=16000
+Movement=0
+Hostile=1
+[NPC707]'Alcazar Carmesi: gran salon
+Name=Ysbel, Heraldo de Sangre
+Desc=Lleva la voz del Señor Carmesí y la sentencia que la acompaña.
+Body=954
+Heading=3
+Snd1=314
+Snd2=315
+Snd3=316	' voz del Lacayo del Mal
+GiveEXP=9200
+GiveGLD=1700
+HP=11000
+MinHIT=190
+MaxHIT=260
+DEF=22
+PoderAtaque=300
+PoderEvasion=200
+IntervaloAtaque=1600
+Nivel=44
+RandomDrop=0
+RespawnTime=1
+Attackable=1
+MinHP=11000
+MaxHP=11000
+Movement=0
+Hostile=1
+[NPC708]'Alcazar Carmesi: capilla y biblioteca
+Name=Ordovar, el Arconte Marchito
+Desc=Sigue leyendo el mismo tomo desde antes de que le fallara la carne.
+Body=955
+Heading=3
+Snd1=335
+Snd2=336
+Snd3=337	' voz del Espectro
+GiveEXP=9850
+GiveGLD=1900
+HP=9500
+MinHIT=150
+MaxHIT=210
+DEF=14
+PoderAtaque=230
+PoderEvasion=180
+LanzaSpells=1
+Sp1=217
+RangoSpell=7
+IntervaloAtaque=2000
+IntervaloCasteo=6000
+Nivel=46
+RandomDrop=0
+RespawnTime=1
+Attackable=1
+MinHP=9500
+MaxHP=9500
+Movement=0
+Hostile=1
+[NPC709]'Alcazar Carmesi: mazmorras
+Name=Karnak, el Verdugo Astado
+Desc=El que bajaba a las mazmorras cuando el alcázar todavía tenía presos.
+Body=956
+Heading=3
+Snd1=114
+Snd2=113
+Snd3=102	' voz del Ciclope
+GiveEXP=8350
+GiveGLD=1500
+HP=10500
+MinHIT=200
+MaxHIT=275
+DEF=18
+PoderAtaque=310
+PoderEvasion=190
+IntervaloAtaque=1400
+Nivel=43
+RandomDrop=0
+RespawnTime=1
+Attackable=1
+MinHP=10500
+MaxHP=10500
+Movement=0
+Hostile=1
+[NPC710]'Alcazar Carmesi: torreon del homenaje
+Name=Vessgal, la Gárgola Carmesí
+Desc=Estuvo quieta en la cornisa tanto tiempo que le creció musgo. No está muerta.
+Body=957
+Heading=3
+Snd1=317
+Snd2=318
+Snd3=319	' voz del Alma Cautiva
+GiveEXP=6350
+GiveGLD=1100
+HP=7200
+MinHIT=160
+MaxHIT=225
+DEF=16
+PoderAtaque=270
+PoderEvasion=240
+IntervaloAtaque=1200
+Nivel=40
+RandomDrop=0
+RespawnTime=1
+Attackable=1
+MinHP=7200
+MaxHP=7200
+Movement=0
+Hostile=1
+
+[NPC720]'Mercader de los vestibles del pack (cascos, escudos)
+Name=Yorven, el Armero Errante
+Desc=Trae de otras tierras lo que aca nadie forjo todavia.
+Body=1
+Head=1
+Heading=3
+PosOrig=1
+Comercia=1
+Compra=1
+TipoItems=1000
+Movement=1
+Hostile=0
+Attackable=0
+GiveEXP=0
+GiveGLD=0
+HP=5000
+MinHP=5000
+MaxHP=5000
+NroItems=236
+Obj1=2102-100
+Obj2=2103-100
+Obj3=2104-100
+Obj4=2105-100
+Obj5=2106-100
+Obj6=2107-100
+Obj7=2108-100
+Obj8=2109-100
+Obj9=2110-100
+Obj10=2111-100
+Obj11=2112-100
+Obj12=2113-100
+Obj13=2114-100
+Obj14=2115-100
+Obj15=2116-100
+Obj16=2117-100
+Obj17=2118-100
+Obj18=2119-100
+Obj19=2120-100
+Obj20=2121-100
+Obj21=2122-100
+Obj22=2123-100
+Obj23=2124-100
+Obj24=2125-100
+Obj25=2126-100
+Obj26=2127-100
+Obj27=2128-100
+Obj28=2129-100
+Obj29=2130-100
+Obj30=2131-100
+Obj31=2132-100
+Obj32=2133-100
+Obj33=2134-100
+Obj34=2135-100
+Obj35=2136-100
+Obj36=2137-100
+Obj37=2138-100
+Obj38=2139-100
+Obj39=2140-100
+Obj40=2141-100
+Obj41=2142-100
+Obj42=2143-100
+Obj43=2144-100
+Obj44=2145-100
+Obj45=2146-100
+Obj46=2147-100
+Obj47=2148-100
+Obj48=2149-100
+Obj49=2150-100
+Obj50=2151-100
+Obj51=2152-100
+Obj52=2153-100
+Obj53=2154-100
+Obj54=2155-100
+Obj55=2156-100
+Obj56=2157-100
+Obj57=2158-100
+Obj58=2159-100
+Obj59=2160-100
+Obj60=2161-100
+Obj61=2162-100
+Obj62=2163-100
+Obj63=2164-100
+Obj64=2165-100
+Obj65=2166-100
+Obj66=2167-100
+Obj67=2168-100
+Obj68=2169-100
+Obj69=2170-100
+Obj70=2171-100
+Obj71=2172-100
+Obj72=2173-100
+Obj73=2174-100
+Obj74=2175-100
+Obj75=2176-100
+Obj76=2177-100
+Obj77=2178-100
+Obj78=2179-100
+Obj79=2180-100
+Obj80=2181-100
+Obj81=2182-100
+Obj82=2183-100
+Obj83=2184-100
+Obj84=2185-100
+Obj85=2186-100
+Obj86=2187-100
+Obj87=2188-100
+Obj88=2189-100
+Obj89=2190-100
+Obj90=2191-100
+Obj91=2192-100
+Obj92=2193-100
+Obj93=2194-100
+Obj94=2195-100
+Obj95=2196-100
+Obj96=2197-100
+Obj97=2198-100
+Obj98=2199-100
+Obj99=2200-100
+Obj100=2201-100
+Obj101=2202-100
+Obj102=2203-100
+Obj103=2204-100
+Obj104=2205-100
+Obj105=2206-100
+Obj106=2207-100
+Obj107=2208-100
+Obj108=2209-100
+Obj109=2210-100
+Obj110=2211-100
+Obj111=2212-100
+Obj112=2213-100
+Obj113=2214-100
+Obj114=2215-100
+Obj115=2216-100
+Obj116=2217-100
+Obj117=2218-100
+Obj118=2219-100
+Obj119=2220-100
+Obj120=2221-100
+Obj121=2222-100
+Obj122=2223-100
+Obj123=2224-100
+Obj124=2225-100
+Obj125=2226-100
+Obj126=2227-100
+Obj127=2228-100
+Obj128=2229-100
+Obj129=2230-100
+Obj130=2231-100
+Obj131=2232-100
+Obj132=2233-100
+Obj133=2234-100
+Obj134=2235-100
+Obj135=2236-100
+Obj136=2237-100
+Obj137=2238-100
+Obj138=2239-100
+Obj139=2240-100
+Obj140=2241-100
+Obj141=2242-100
+Obj142=2243-100
+Obj143=2244-100
+Obj144=2245-100
+Obj145=2246-100
+Obj146=2247-100
+Obj147=2248-100
+Obj148=2249-100
+Obj149=2250-100
+Obj150=2251-100
+Obj151=2252-100
+Obj152=2253-100
+Obj153=2254-100
+Obj154=2255-100
+Obj155=2256-100
+Obj156=2257-100
+Obj157=2258-100
+Obj158=2259-100
+Obj159=2260-100
+Obj160=2261-100
+Obj161=2262-100
+Obj162=2263-100
+Obj163=2264-100
+Obj164=2265-100
+Obj165=2266-100
+Obj166=2267-100
+Obj167=2268-100
+Obj168=2269-100
+Obj169=2270-100
+Obj170=2271-100
+Obj171=2272-100
+Obj172=2273-100
+Obj173=2274-100
+Obj174=2275-100
+Obj175=2276-100
+Obj176=2277-100
+Obj177=2278-100
+Obj178=2279-100
+Obj179=2280-100
+Obj180=2281-100
+Obj181=2282-100
+Obj182=2283-100
+Obj183=2284-100
+Obj184=2285-100
+Obj185=2286-100
+Obj186=2287-100
+Obj187=2288-100
+Obj188=2289-100
+Obj189=2290-100
+Obj190=2291-100
+Obj191=2292-100
+Obj192=2293-100
+Obj193=2294-100
+Obj194=2295-100
+Obj195=2296-100
+Obj196=2297-100
+Obj197=2298-100
+Obj198=2299-100
+Obj199=2300-100
+Obj200=2301-100
+Obj201=2302-100
+Obj202=2303-100
+Obj203=2304-100
+Obj204=2305-100
+Obj205=2306-100
+Obj206=2307-100
+Obj207=2308-100
+Obj208=2309-100
+Obj209=2310-100
+Obj210=2311-100
+Obj211=2312-100
+Obj212=2313-100
+Obj213=2314-100
+Obj214=2315-100
+Obj215=2316-100
+Obj216=2317-100
+Obj217=2318-100
+Obj218=2319-100
+Obj219=2320-100
+Obj220=2321-100
+Obj221=2322-100
+Obj222=2323-100
+Obj223=2324-100
+Obj224=2325-100
+Obj225=2326-100
+Obj226=2327-100
+Obj227=2328-100
+Obj228=2329-100
+Obj229=2330-100
+Obj230=2331-100
+Obj231=2332-100
+Obj232=2333-100
+Obj233=2334-100
+Obj234=2335-100
+Obj235=2336-100
+Obj236=2337-100
+[NPC721]'Mercader de los vestibles del pack (armas, cuerpos, escudos)
+Name=Malca la Trapera
+Desc=Le compro el cargamento a una caravana que no llego a destino.
+Body=2
+Head=2
+Heading=3
+PosOrig=1
+Comercia=1
+Compra=1
+TipoItems=1000
+Movement=1
+Hostile=0
+Attackable=0
+GiveEXP=0
+GiveGLD=0
+HP=5000
+MinHP=5000
+MaxHP=5000
+NroItems=204
+Obj1=2338-100
+Obj2=2339-100
+Obj3=2340-100
+Obj4=2341-100
+Obj5=2342-100
+Obj6=2343-100
+Obj7=2344-100
+Obj8=2345-100
+Obj9=2346-100
+Obj10=2347-100
+Obj11=2348-100
+Obj12=2349-100
+Obj13=2350-100
+Obj14=2351-100
+Obj15=2352-100
+Obj16=2353-100
+Obj17=2354-100
+Obj18=2355-100
+Obj19=2356-100
+Obj20=2357-100
+Obj21=2358-100
+Obj22=2359-100
+Obj23=2360-100
+Obj24=2361-100
+Obj25=2362-100
+Obj26=2363-100
+Obj27=2364-100
+Obj28=2365-100
+Obj29=2366-100
+Obj30=2367-100
+Obj31=2368-100
+Obj32=2369-100
+Obj33=2370-100
+Obj34=2371-100
+Obj35=2372-100
+Obj36=2373-100
+Obj37=2374-100
+Obj38=2375-100
+Obj39=2376-100
+Obj40=2377-100
+Obj41=2378-100
+Obj42=2379-100
+Obj43=2380-100
+Obj44=2381-100
+Obj45=2382-100
+Obj46=2383-100
+Obj47=2384-100
+Obj48=2385-100
+Obj49=2386-100
+Obj50=2387-100
+Obj51=2388-100
+Obj52=2389-100
+Obj53=2390-100
+Obj54=2391-100
+Obj55=2392-100
+Obj56=2393-100
+Obj57=2394-100
+Obj58=2395-100
+Obj59=2396-100
+Obj60=2397-100
+Obj61=2398-100
+Obj62=2399-100
+Obj63=2400-100
+Obj64=2401-100
+Obj65=2402-100
+Obj66=2403-100
+Obj67=2404-100
+Obj68=2405-100
+Obj69=2406-100
+Obj70=2407-100
+Obj71=2408-100
+Obj72=2409-100
+Obj73=2410-100
+Obj74=2411-100
+Obj75=2412-100
+Obj76=2413-100
+Obj77=2414-100
+Obj78=2415-100
+Obj79=2416-100
+Obj80=2417-100
+Obj81=2418-100
+Obj82=2419-100
+Obj83=2420-100
+Obj84=2421-100
+Obj85=2422-100
+Obj86=2423-100
+Obj87=2424-100
+Obj88=2425-100
+Obj89=2426-100
+Obj90=2427-100
+Obj91=2428-100
+Obj92=2429-100
+Obj93=2430-100
+Obj94=2431-100
+Obj95=2432-100
+Obj96=2433-100
+Obj97=2434-100
+Obj98=2435-100
+Obj99=2436-100
+Obj100=2437-100
+Obj101=2438-100
+Obj102=2439-100
+Obj103=2440-100
+Obj104=2441-100
+Obj105=2442-100
+Obj106=2443-100
+Obj107=2444-100
+Obj108=2445-100
+Obj109=2446-100
+Obj110=2447-100
+Obj111=2448-100
+Obj112=2449-100
+Obj113=2450-100
+Obj114=2451-100
+Obj115=2452-100
+Obj116=2453-100
+Obj117=2454-100
+Obj118=2455-100
+Obj119=2456-100
+Obj120=2457-100
+Obj121=2458-100
+Obj122=2459-100
+Obj123=2460-100
+Obj124=2461-100
+Obj125=2462-100
+Obj126=2463-100
+Obj127=2464-100
+Obj128=2465-100
+Obj129=2466-100
+Obj130=2467-100
+Obj131=2468-100
+Obj132=2469-100
+Obj133=2470-100
+Obj134=2471-100
+Obj135=2472-100
+Obj136=2473-100
+Obj137=2474-100
+Obj138=2475-100
+Obj139=2476-100
+Obj140=2477-100
+Obj141=2478-100
+Obj142=2479-100
+Obj143=2480-100
+Obj144=2481-100
+Obj145=2482-100
+Obj146=2483-100
+Obj147=2484-100
+Obj148=2485-100
+Obj149=2486-100
+Obj150=2487-100
+Obj151=2488-100
+Obj152=2489-100
+Obj153=2490-100
+Obj154=2491-100
+Obj155=2492-100
+Obj156=2493-100
+Obj157=2494-100
+Obj158=2495-100
+Obj159=2496-100
+Obj160=2497-100
+Obj161=2498-100
+Obj162=2499-100
+Obj163=2500-100
+Obj164=2501-100
+Obj165=2502-100
+Obj166=2503-100
+Obj167=2504-100
+Obj168=2505-100
+Obj169=2506-100
+Obj170=2507-100
+Obj171=2508-100
+Obj172=2509-100
+Obj173=2510-100
+Obj174=2511-100
+Obj175=2512-100
+Obj176=2513-100
+Obj177=2514-100
+Obj178=2515-100
+Obj179=2516-100
+Obj180=2517-100
+Obj181=2518-100
+Obj182=2519-100
+Obj183=2520-100
+Obj184=2521-100
+Obj185=2522-100
+Obj186=2523-100
+Obj187=2524-100
+Obj188=2525-100
+Obj189=2526-100
+Obj190=2527-100
+Obj191=2528-100
+Obj192=2529-100
+Obj193=2530-100
+Obj194=2531-100
+Obj195=2532-100
+Obj196=2533-100
+Obj197=2534-100
+Obj198=2535-100
+Obj199=2536-100
+Obj200=2537-100
+Obj201=2538-100
+Obj202=2539-100
+Obj203=2540-100
+Obj204=2541-100
+
+[NPC722]'Jefe suelto, todavia sin mapa asignado
+Name=Heraldo Esmeralda
+Desc=Lo que queda de un campeon al que el fuego verde no dejo morir.
+Body=1028
+Heading=3
+GiveEXP=180000
+GiveGLD=18000
+HP=110000
+MinHIT=240
+MaxHIT=360
+DEF=25
+PoderAtaque=420
+PoderEvasion=200
+LanzaSpells=1
+Sp1=217
+RangoSpell=8
+IntervaloAtaque=8000
+IntervaloCasteo=7000
+Nivel=100
+PosOrig=1
+Inmunidad=1
+Veinvis=1
+RandomDrop=0
+RespawnTime=1
+RespawnSegundos=1800
+Attackable=1
+MinHP=110000
+MaxHP=110000
+Movement=0
+Hostile=1
+
+'--------------> Umbramar (mapa 957) <--------------
+
+[NPC711] ' Umbramar: Centinela del Exordio (clon del NPC13)
+Name=Centinela del Exordio
+Movement=1
+NpcType=2
+Status=5
+PosOrig=1
+Head=829
+Body=117
+WeaponAnim=5
+ShieldAnim=22
+CascoAnim=22
+Heading=3
+HP=40000
+MaxHIT=280
+MinHIT=250
+DEF=40
+PoderAtaque=320
+PoderEvasion=260
+Nivel=50
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Nadie cruza este porton sin que el Exordio lo sepa.
+
+[NPC712] ' Umbramar: Tharvel (clon del NPC72)
+Name=Tharvel
+Name2=Señor de los Desterrados
+NpcType=5
+PosOrig=1
+Head=1390
+Body=1049
+Heading=3
+WeaponAnim=5
+ShieldAnim=174
+HP=1000000
+MaxHIT=300
+MinHIT=250
+DEF=0
+PoderAtaque=380
+PoderEvasion=250
+Nivel=100
+RespawnTime=1
+'RandomDrop=
+IntervaloAtaque=1000
+Inmunidad=1
+Veinvis=1
+MinHP=1000000
+MaxHP=1000000
+Hostile=0
+Status=5
+Desc=Si hubiéramos querido matarte, jamás habrías visto nuestra ciudad. Los que fueron desterrados no murieron: el mar ya no es nuestro exilio, es nuestro hogar. Si llevas el Exordio en la sangre, jura como Heraldo.
+
+[NPC713] ' Umbramar: Herrero de Armas de Umbramar (clon del NPC20)
+Name=Herrero de Armas de Umbramar
+Name2=Armas
+PosOrig=1
+Head=304
+Body=254
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=24
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga +1
+Obj3=165-100
+'Daga +2
+Obj4=365-100
+'Daga +3
+Obj5=366-100
+'Daga de Corsario
+Obj6=994-100
+'Espada Corta
+Obj7=164-100
+'Horquilla
+Obj8=9-100
+'Espada Larga
+Obj9=2-100
+'Mandoble
+Obj10=19-100
+'Sable
+Obj11=125-100
+'Cimitarra
+Obj12=399-100
+'Kodachi
+Obj13=748-100
+'Spatha
+Obj14=569-100
+'Sica
+Obj15=398-100
+'Daga Arrojadiza
+Obj16=671-100
+'Daga Arrojadiza +1
+Obj17=751-100
+'Jabalina
+Obj18=741-100
+'Lanza
+Obj19=656-100
+'Lanza+1
+Obj20=742-100
+'Nudillos de Hierro
+Obj21=1331-100
+'Nudillos de Plata
+Obj22=1332-100
+'Báculo Arcano
+Obj23=400-100
+'Báculo Oseo
+Obj24=1251-100
+MinHP=10000
+MaxHP=10000
+Status=5
+Hostile=0
+Desc=Es increíble... cada día que transcurre veo más y más violencia. ¡Qué bueno! ¡El negocio no podría ir mejor!
+
+[NPC714] ' Umbramar: Herrero de Armaduras de Umbramar (clon del NPC19)
+Name=Herrero de Armaduras de Umbramar
+Name2=Armaduras
+PosOrig=1
+Head=305
+Body=479
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=22
+'Almete de Hierro
+Obj1=131-100
+'Casco de Campeón
+Obj2=132-100
+'Celada
+Obj3=405-100
+'Escudo de Madera
+Obj4=997-100
+'Escudo de Tortuga
+Obj5=404-100
+'Escudo de Hierro
+Obj6=128-100
+'Escudo de Hierro +1
+Obj7=996-100
+'Escudo de Hierro +2
+Obj8=1000-100
+'Armadura de Cuero
+Obj9=30
+'Armadura de Cuero (Bajos)
+Obj10=1004
+'Armadura de Cuero (Mujer)
+Obj11=529
+'Armadura de Cuero Endurecido
+Obj12=998
+'Cota de Mallas
+Obj13=359-100
+'Cota de Mallas (Mujer)
+Obj14=499-100
+'Cota de Mallas (Bajos)
+Obj15=1022-100
+'Armadura de Cazador
+Obj16=360
+'Armadura de Cazador (Bajos)
+Obj17=1005
+'Cota de Mallas +1
+Obj18=1271
+'Armadura de Placas Completa
+Obj19=195-100
+'Armadura de Placas Completa (Bajos)
+Obj20=243-100
+'Armadura de Asesino
+Obj21=237-100
+'Armadura de Asesino (Bajos)
+OBj22=369-100
+MinHP=10000
+Status=5
+MaxHP=10000
+Hostile=0
+Desc=Mis armaduras están elaboradas con la precisión de un maestro artesano.
+
+[NPC715] ' Umbramar: Sastre de Umbramar (clon del NPC17)
+Status=5
+Name=Sastre de Umbramar
+Name2=Vestimentas
+PosOrig=1
+Head=13
+Body=260
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=24
+'Vestimentas de Hombre
+Obj1=31-100
+'Vestimentas de Bajo
+Obj2=486-100
+'Vestimentas de Mujer
+Obj3=1272-100
+'Vestimentas de Mujer
+Obj4=1273-100
+'Vestimentas de Baja
+Obj5=527-100
+'Vestimenta de Campesino
+Obj6=501-100
+'Vestimenta de Campesino (Bajos)
+Obj7=502-100
+'Sotana (Bajos)
+Obj8=1309-100
+'Vestido Insinuante
+Obj9=510-100
+'Vestimenta Legionaria (Mujer)
+Obj10=508-100
+'Ropaje Rinkeliano
+Obj11=80-100
+'Ropaje Reforzado
+Obj12=484-100
+'Vestimentas de Gala
+Obj13=712-100
+'Vestimentas de Gala (Bajos)
+Obj14=713-100
+'Vestido de Gala
+Obj15=648-100
+'Túnica Reforzada (Bajos)
+Obj16=525-100
+'Túnica Reforzada (Bajos)
+Obj17=526-100
+'Túnica de Mago
+Obj18=196-100
+'Túnica Arcana (Bajos)
+Obj19=524-100
+'Túnica de Nigromante
+Obj20=1089-100
+'Gorro de Aprendiz de Mago
+Obj21=1236-100
+'Gorro de Aprendiz de Mago
+Obj22=1237-100
+'Gorro de Aprendiz de Mago
+Obj23=1238-100
+'Gorro de Hechicería
+Obj24=1240-100
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Desde el más simple de los atuendos hasta la más exquisita prenda. Puedes confiar en nuestra experiencia.
+
+[NPC716] ' Umbramar: Mago <Exordiano> (clon del NPC86)
+Name=Mago <Exordiano>
+NpcType=2
+Status=5
+PosOrig=1
+Head=820
+Body=1029
+Heading=3
+HP=6000
+DEF=5
+LanzaSpells=2
+Sp1=210
+Sp2=209
+RangoSpell=7
+IntervaloCasteo=2800
+Nivel=50
+PoderEvasion=150
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=6000
+MaxHP=6000
+Hostile=0
+Desc=El Exordio no necesita murallas: nosotros somos la muralla.
+
+[NPC717] ' Umbramar: Mago <Exordiano> (clon del NPC68)
+Name=Mago <Exordiano>
+NpcType=2
+Status=5
+PosOrig=1
+Head=822
+Body=1030
+Heading=3
+HP=6000
+DEF=5
+LanzaSpells=2
+Sp1=210
+Sp2=209
+RangoSpell=7
+IntervaloCasteo=2800
+Nivel=50
+PoderEvasion=150
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=6000
+MaxHP=6000
+Hostile=0
+Desc=Bajo la capucha arde el mismo fuego que en el Corazon.
+
+[NPC718] ' Umbramar: Guerrero <Exordiano> (clon del NPC6)
+Name=Guerrero <Exordiano>
+NpcType=2
+Status=5
+PosOrig=1
+Head=825
+Body=1045
+WeaponAnim=5
+ShieldAnim=173
+CascoAnim=329
+Heading=3
+HP=40000
+MaxHIT=280
+MinHIT=250
+DEF=40
+PoderAtaque=320
+PoderEvasion=260
+Nivel=50
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Mi espada juro por el Exordio antes de saber sostenerla.
+
+[NPC719] ' Umbramar: Paladin <Exordiano> (clon del NPC85)
+Name=Paladin <Exordiano>
+NpcType=2
+Status=5
+PosOrig=1
+Head=826
+Body=1047
+WeaponAnim=4
+ShieldAnim=173
+CascoAnim=330
+Heading=3
+HP=18000
+MaxHIT=240
+MinHIT=220
+DEF=30
+LanzaSpells=1
+Sp1=65
+Nivel=50
+RangoSpell=4
+PoderAtaque=290
+PoderEvasion=240
+Intervalocasteo=4500
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=18000
+MaxHP=18000
+Hostile=0
+Desc=La gloria del Exordio no se hereda: se defiende.
+
+[NPC723] ' Umbramar: Nigromante <Exordiano> (clon del NPC84)
+Name=Nigromante <Exordiano>
+NpcType=2
+Status=5
+PosOrig=1
+Head=827
+Body=1041
+WeaponAnim=6
+ShieldAnim=0
+CascoAnim=331
+Heading=3
+HP=9000
+DEF=12
+LanzaSpells=2
+Sp1=208
+Sp2=209
+RangoSpell=6
+Nivel=50
+PoderEvasion=200
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=9000
+MaxHP=9000
+Hostile=0
+Desc=Los muertos del mar tambien juraron. Yo les recuerdo el juramento.
+
+[NPC724] ' Umbramar: Guardian del Exordio (clon del NPC711, armadura de cristal BODY1050, 15-sep-2026)
+Name=Guardián del Exordio
+Movement=1
+NpcType=2
+Status=5
+PosOrig=1
+Head=0
+Body=1050
+Heading=3
+HP=40000
+MaxHIT=280
+MinHIT=250
+DEF=40
+PoderAtaque=320
+PoderEvasion=260
+Nivel=50
+RespawnTime=1
+Inmunidad=1
+Veinvis=1
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Su armadura de cristal verde nunca se apaga.
+
+[NPC725]'Jefe del Dungeon Newbie (mapa 37)
+Name=Golem de Cristal
+Desc=Una roca que el eco del dungeon desperto. Escupe esquirlas arcanas.
+Body=1055
+Heading=3
+GiveEXP=400
+GiveGLD=150
+HP=1000
+MinHIT=60
+MaxHIT=89
+DEF=12
+PoderAtaque=120
+PoderEvasion=60
+LanzaSpells=1
+Sp1=228
+RangoSpell=6
+IntervaloCasteo=4000
+Nivel=14
+PosOrig=1
+RandomDrop=0
+RespawnTime=1
+RespawnSegundos=600
+Attackable=1
+MinHP=1000
+MaxHP=1000
+Movement=0
+Hostile=1
+
+'**************************** CLONES TERRITORIALES POR CIUDAD (22-sep-2026) ****************************
+' Mismo NPC que el original (stats/inventario/desc intactos), pero con Status propio para que el
+' comercio/banco/revividor de ESTA ciudad se cierre a la facción dueña (Accion.cs::FaccionPermiteNpc),
+' sin afectar al NPC original que sigue neutral en Fuerte Arandae / el resto del mundo.
+
+[NPC726] ' clon de NPC5 'Sacerdote' para Ullathorpe (bando 1)
+Status=1
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC727] ' clon de NPC8 'Comidas' para Ullathorpe (bando 1)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=1
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC728] ' clon de NPC14 'Alquimista' para Ullathorpe (bando 1)
+Status=1
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC729] ' clon de NPC15 'Tabernero' para Ullathorpe (bando 1)
+Status=1
+Name=Tabernero
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=13
+NROITEMS=4
+'Vino
+Obj1=42-100
+'Botella de Agua
+Obj2=43-100
+'Cerveza
+Obj3=160-100
+'Jugo de Frutas
+Obj4=161-100
+LocaleID=15
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido a mi taberna, viajero!
+
+
+[NPC730] ' clon de NPC16 'Herrero Armas Ullathorpe' para Ullathorpe (bando 1)
+Status=1
+Name=Herrero Armas Ullathorpe
+Name2=Armas
+PosOrig=1
+Head=5
+Body=281
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=21
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga +3
+Obj3=366-100
+'Espada Larga
+Obj4=2-100
+'Mandoble
+Obj5=19-100
+'Kodachi
+Obj6=748-100
+'Spatha
+Obj7=569-100
+'Hacha Arrojadiza
+Obj8=980-100
+'Hacha Arrojadiza +1
+Obj9=1241-100
+'Hacha Orca
+Obj10=1094-100
+'Hacha de Piedra
+Obj11=1246-100
+'Hacha de Piedra +1
+Obj12=1247-100
+'Hacha de Dos Filos
+Obj13=129-100
+'Hacha de Dos Filos +1
+Obj14=1080-100
+'Daga Arrojadiza
+Obj15=671-100
+'Jabalina
+Obj16=741-100
+'Lanza
+Obj17=656-100
+'Lanza +1
+Obj18=742-100
+'Nudillos de Hierro
+Obj19=1331-100
+'Nudillos de Plata
+Obj20=1332-100
+'Báculo Oseo
+Obj21=1251-100
+LocaleID=16
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Bienvenido a mi Herrería. Tengo todo tipo de armas que pueden ser de tu interés. Te recomiendo que pruebes nuestras poderosas hachas.
+
+
+[NPC731] ' clon de NPC24 'Banquero' para Ullathorpe (bando 1)
+Status=1
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC732] ' clon de NPC44 'Carpintero' para Ullathorpe (bando 1)
+Status=1
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC733] ' clon de NPC54 'SastreUllathorpe' para Ullathorpe (bando 1)
+Status=1
+Name=SastreUllathorpe
+PosOrig=1
+Head=472
+Body=356
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=16
+'Vestimentas de Hombre
+Obj1=35-100
+'Vestimentas de Bajo
+Obj2=486-100
+'Vestimentas Tribales
+Obj3=1097-100
+'Vestimentas Tribales
+Obj4=1098-100
+'Vestimentas Tribales
+Obj5=1099-100
+'Vestimentas de Mujer
+Obj6=1274-100
+'Vestimenta de Campesino
+Obj7=501-100
+'Vestimenta de Campesino (Bajos)
+Obj8=502-100
+'Indumentaria de Tabernero
+Obj9=951-100
+'Ropaje Reforzado
+Obj10=484-100
+'Ropaje de Batida (Mujer)
+Obj11=170-100
+'Túnica de Mago
+Obj12=196-100
+'Túnica de Monje
+Obj13=381-100
+'Túnica del Aventurero (Bajos)
+Obj14=1226-100
+'Túnica de Druida (Bajos)
+Obj15=1210-100
+'Túnica de Druida
+Obj16=357-100
+LocaleID=48
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Attackable=0
+Desc=Nuestras vestimentas van de lo más simple a lo más intrincado que hay estos días. Ullathorpe siempre ha confiado su apariencia a nuestras manos.
+
+'--------------> Nix <--------------
+
+[NPC734] ' clon de NPC121 'Veterinaria' para Ullathorpe (bando 1)
+Status=1
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC735] ' clon de NPC164 'Subastador' para Ullathorpe (bando 1) ' Subastador
+Status=1
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC736] ' clon de NPC5 'Sacerdote' para Arghal (bando 1)
+Status=1
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC737] ' clon de NPC14 'Alquimista' para Arghal (bando 1)
+Status=1
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC738] ' clon de NPC24 'Banquero' para Arghal (bando 1)
+Status=1
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC739] ' clon de NPC28 'SastreArghal' para Arghal (bando 1)
+Status=1
+Name=SastreArghal
+PosOrig=1
+Head=172
+Body=97
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+Attackable=0
+RespawnTime=1
+TipoItems=3
+NROITEMS=23
+'Vestimentas de Hombre
+Obj1=32-100
+'Vestimentas de Mujer
+Obj2=1272-100
+'Ropaje Reforzado
+Obj3=484-100
+'Ropaje de Batida (Mujer)
+Obj4=170-100
+'Vestido de Bruja
+Obj5=513-100
+'Vestido de Bruja (Drow)
+Obj6=514-100
+'Vestido de Novia
+Obj7=511-100
+'Vestido de Novia (Drow)
+Obj8=550-100
+'Traje de Novio
+Obj9=477-100
+'Traje de Novio (Bajos)
+Obj10=236-100
+'Vestimenta de Gala
+Obj11=712-100
+'Vestimenta de Gala (Bajos)
+Obj12=713-100
+'Vestido de Gala (Mujer)
+Obj13=648-100
+'Vestido Yamilet
+Obj14=503-100
+'Vestimenta de Ostentación
+Obj15=515-100
+'Estivalis
+Obj16=467-100
+'Vestido Élfico
+Obj17=488-100
+'Traje Estival
+Obj18=945-100
+'Túnica de Mago
+Obj19=196-100
+'Túnica Reforzada (Bajos)
+Obj20=525-100
+'Túnica Reforzada (Bajas)
+Obj21=526-100
+'Túnica de Clérigo
+Obj22=1231-100
+'Túnica Arcana (Bajos)
+Obj23=524-100
+LocaleID=28
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola, forastero! Confeccionamos las mejores ropas de la zona de Arghal.
+
+'--------------> Rinkel <--------------
+
+[NPC740] ' clon de NPC46 'Mago de Ullathorpe' para Arghal (bando 1)
+Status=1
+Name=Mago de Ullathorpe
+Desc=Ullathorpe es bien conocida por sus excelentes Magos. ¿Acaso eres uno? ¡Compra aquí para demostrarlo!
+Head=3
+Body=50
+Heading=3
+Movement=1
+Attackable=0
+Comercia=1
+TipoItems=24
+Hostile=0
+Alineacion=0
+ReSpawn=120000
+NROITEMS=7
+Obj1=199-100
+Obj2=197-100
+Obj3=200-100
+Obj4=201-100
+Obj5=1169-100
+Obj6=1170-100
+Obj7=1178-100
+Domable=0
+LocaleID=41
+MinHP=10000
+MaxHP=10000
+
+
+[NPC741] ' clon de NPC121 'Veterinaria' para Arghal (bando 1)
+Status=1
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC742] ' clon de NPC124 'Herrero Armaduras Arghal' para Arghal (bando 1)
+Status=1
+Name=Herrero Armaduras Arghal
+PosOrig=1
+Name2=Armaduras
+Head=14
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=14
+'Almete de Hierro
+Obj1=131-100
+'Casco de Campeón
+Obj2=132-100
+'Celada Barbara
+Obj3=1277-100
+'Yelmo
+Obj4=601-100
+'Escudo de Tortuga
+Obj5=404-100
+'Escudo de Plata
+Obj6=133-100
+'Escudo de Plata +1
+Obj7=995-100
+'Escudo de Plata +2
+Obj8=999-100
+'Armadura de Cazador
+Obj9=360-100
+'Armadura de Cazador (Bajos)
+Obj10=1005-100
+'Cota de Mallas +1
+Obj11=1271-100
+'Armadura de Placas Roja
+Obj12=497-100
+'Armadura de Placas Roja (Mujer)
+Obj13=493-100
+'Armadura Bruñida (Bajos)
+Obj14=500-100
+LocaleID=111
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=He perdido mi refinado martillo de herrero. Sin él, no podré continuar trabajando. ¡Necesito dinero para comprar otro! ¿Estás interesado en mis armaduras?
+
+'--------------> Rinkel <--------------
+
+
+[NPC743] ' clon de NPC125 'Herrero Armas Arghal' para Arghal (bando 1)
+Status=1
+Name=Herrero Armas Arghal
+PosOrig=1
+Name2=Armas
+Head=7
+Body=93
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=20
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga de Corsario
+Obj3=994-100
+'Daga +3
+Obj4=366-100
+'Espada Corta
+Obj5=164-100
+'Espada Larga
+Obj6=2-100
+'Espada Vikinga
+Obj7=123-100
+'Mandoble
+Obj8=19-100
+'Katana
+Obj9=124-100
+'Spatha
+Obj10=569-100
+'Espada de Plata
+Obj11=403-100
+'Sica
+Obj12=398-100
+'Martillo de Guerra
+Obj13=1144-100
+'Daga Arrojadiza
+Obj14=671-100
+'Daga Arrojadiza +1
+Obj15=751-100
+'Lanza +1
+Obj16=742-100
+'Shuriken
+Obj17=720-100
+'Nudillos de Plata
+Obj18=1332-100
+'Báculo Oseo
+Obj19=1251-100
+'Báculo Aqualin
+Obj20=1248-100
+LocaleID=112
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Podrás dar una honorable muerte a tu enemigo, utilizando estas poderosas armas.
+
+
+[NPC744] ' clon de NPC164 'Subastador' para Arghal (bando 1) ' Subastador
+Status=1
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC745] ' clon de NPC5 'Sacerdote' para Banderbill (bando 1)
+Status=1
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC746] ' clon de NPC8 'Comidas' para Banderbill (bando 1)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=1
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC747] ' clon de NPC14 'Alquimista' para Banderbill (bando 1)
+Status=1
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC748] ' clon de NPC21 'SastreBanderbill' para Banderbill (bando 1)
+Status=1
+Name=SastreBanderbill
+PosOrig=1
+Head=171
+Body=395
+Heading=3
+Attackable=0
+
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=24
+'Vestimentas de Hombre
+Obj1=31-100
+'Vestimentas de Bajo
+Obj2=486-100
+'Vestimenta de Noble Rojiza
+Obj3=1179-100
+'Vestimenta de Noble Dorada
+Obj4=1228-100
+'Traje de Marqués
+Obj5=950-100
+'Vestimenta Burguesa
+Obj6=964-100
+'Traje de Conde
+Obj7=966-100
+'Traje de Duque
+Obj8=55-100
+'Vestido de Condesa
+Obj9=468-100
+'Vestido de Marquesa
+Obj10=571-100
+'Vestido de Princesa
+Obj11=462-100
+'Vestido de Duquesa
+Obj12=56-100
+'Vestido de Doncella (Bajos)
+Obj13=512-100
+'Túnica de Mago
+Obj14=196-100
+'Túnica de Monje
+Obj15=381-100
+'Túnica Ceremonial
+Obj16=239-100
+'Túnica Reforzada (Bajos)
+Obj17=525-100
+'Túnica de Druida (Bajos)
+Obj18=1210-100
+'Túnica Arcana (Bajos)
+Obj19=524-100
+'Túnica de Nigromante
+Obj20=1089-100
+'Gorro de Aprendiz de Mago
+Obj21=1236-100
+'Gorro de Aprendiz de Mago
+Obj22=1237-100
+'Gorro de Aprendiz de Mago
+Obj23=1238-100
+'Gorro de Hechicería
+Obj24=991-100
+LocaleID=21
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=La realeza de Banderbill confía su apariencia en nuestros hilos y agujas. ¿No lo harás tú?
+
+'--------------> Arghâl <--------------
+
+[NPC749] ' clon de NPC44 'Carpintero' para Banderbill (bando 1)
+Status=1
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC750] ' clon de NPC46 'Mago de Ullathorpe' para Banderbill (bando 1)
+Status=1
+Name=Mago de Ullathorpe
+Desc=Ullathorpe es bien conocida por sus excelentes Magos. ¿Acaso eres uno? ¡Compra aquí para demostrarlo!
+Head=3
+Body=50
+Heading=3
+Movement=1
+Attackable=0
+Comercia=1
+TipoItems=24
+Hostile=0
+Alineacion=0
+ReSpawn=120000
+NROITEMS=7
+Obj1=199-100
+Obj2=197-100
+Obj3=200-100
+Obj4=201-100
+Obj5=1169-100
+Obj6=1170-100
+Obj7=1178-100
+Domable=0
+LocaleID=41
+MinHP=10000
+MaxHP=10000
+
+
+[NPC751] ' clon de NPC47 'Hechicero' para Banderbill (bando 1)'Hechizos de Magos y Nigromantes
+Status=1
+Name=Hechicero
+PosOrig=1
+Head=6
+Body=268
+WeaponAnim=6
+CascoAnim=15
+Heading=1
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=6
+'Adivinación (Magos)
+Obj1=1282-100
+'Lamento de la Banshee (Magos)
+Obj2=1151-100
+'Incinerar (Magos)
+Obj3=759-100
+'Portal Planar (Magos y Nigromantes)
+Obj4=665-100
+'Apocalipsis (Magos y Nigromantes)
+Obj5=532-100
+'Juicio Final (Magos y Nigromantes)
+Obj6=647-100
+LocaleID=42
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Solo los más poderosos hechiceros pueden manipular los conocimientos que estos pergaminos esconden. Soberbio eres al acercarte a mi comercio.
+
+
+[NPC752] ' clon de NPC48 'Minero' para Banderbill (bando 1)
+Status=1
+Name=Minero
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=23
+NROITEMS=2
+'Piquete de Minero
+Obj1=187-100
+'Carro de Minería
+Obj2=880-100
+LocaleID=43
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Poseo los mejores metales y herramientas de todas estas tierras.
+
+'--------------> Alquimia <--------------
+
+[NPC753] ' clon de NPC51 'Hechicero' para Banderbill (bando 1)'Hechizos Ofensivos
+Status=1
+Name=Hechicero
+PosOrig=1
+Head=116
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=15
+'Proyectil Mágico
+Obj1=199-100
+'Saeta Ígnea
+Obj2=196-100
+'Proyectil Eléctrico
+Obj3=204-100
+'Bomba Mágica
+Obj4=205-100
+'Misil Mágico
+Obj5=1169-100
+'Tormenta de Fuego
+Obj6=361-100
+'Descarga Eléctrica
+Obj7=1170-100
+'Corriente Eléctrica
+Obj8=531-100
+'Tormenta Ácida
+Obj9=760-100
+'Ráfaga Ígnea
+Obj10=1178-100
+'Implosión
+Obj11=568-100
+'Paralizar
+Obj12=206-100
+'Inmovilizar
+Obj13=530-100
+'Dardo Arcano (leveo)
+Obj14=2033-100
+'Centella Menor (leveo)
+Obj15=2034-100
+LocaleID=46
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido, gran viajero! Aquí tienes todo lo que puedas necesitar para acabar con los más poderosos enemigos.
+
+
+[NPC754] ' clon de NPC55 'Herrero Armas Banderbill' para Banderbill (bando 1)
+Status=1
+Name=Herrero Armas Banderbill
+Name2=Armas
+PosOrig=1
+Head=6
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=18
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga +1
+Obj3=165-100
+'Daga +2
+Obj4=365-100
+'Daga +3
+Obj5=366-100
+'Espada Corta
+Obj6=164-100
+'Espada Larga
+Obj7=2-100
+'Mandoble
+Obj8=19-100
+'Sable
+Obj9=125-100
+'Cimitarra
+Obj10=399-100
+'Espada de Plata
+Obj11=403-100
+'Martillo de Piedra
+Obj12=401-100
+'Lanza
+Obj13=656-100
+'Lanza +1
+Obj14=742-100
+'Nudillos de Hierro
+Obj15=1331-100
+'Nudillos de Plata
+Obj16=1332-100
+'Báculo Arcano
+Obj17=400-100
+'Báculo de Aqualin
+Obj18=1248-100
+LocaleID=49
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo imperio necesita de héroes. ¡Pero todo héroe necesita de armamento! Recoge aquí tu equipo y parte en una nueva aventura.
+
+
+[NPC755] ' clon de NPC56 'Herrero Armaduras Banderbill' para Banderbill (bando 1)
+Status=1
+Name=Herrero Armaduras Banderbill
+Name2=Armaduras
+PosOrig=1
+Head=12
+Body=94
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=25
+'Almete de Hierro
+Obj1=131-100
+'Casco de Campeón
+Obj2=132-100
+'Yelmo
+Obj3=601-100
+'Celada
+Obj4=405-100
+'Escudo de Madera
+Obj5=997-100
+'Escudo de Hierro
+Obj6=128-100
+'Escudo Imperial
+Obj7=133-100
+'Escudo Imperial +1
+Obj8=995-100
+'Escudo Imperial +2
+Obj9=999-100
+'Escudo de Hierro +1
+Obj10=996-100
+'Escudo de Hierro +2
+Obj11=1000-100
+'Armadura de Cuero
+Obj12=30-100
+'Armadura de Cuero (Mujer)
+Obj13=529-100
+'Armadura de Cuero (Bajos)
+Obj14=1004-100
+'Armadura de Cuero Endurecido
+Obj15=998-100
+'Cota de Mallas
+Obj16=359-100
+'Cota de Mallas (Mujer)
+Obj17=499-100
+'Cota de Mallas (Bajos)
+Obj18=1022-100
+'Armadura de Placas Completa
+Obj19=195-100
+'Armadura de Placas Completa (Bajos)
+Obj20=243-100
+'Armadura de Placas Azul
+Obj21=489-100
+'Armadura de Placas Azul (Mujer)
+Obj22=1328-100
+'Armadura de Placas Roja
+Obj23=497-100
+'Armadura de Placas Roja (Mujer)
+Obj24=493-100
+'Armadura Bruñida (Bajos)
+Obj25=500-100
+LocaleID=50
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Protégete con las más elaboradas escamas de acero que existen!
+
+'--------------> Arghâl <--------------
+
+
+[NPC756] ' clon de NPC61 'Guerrero' para Banderbill (bando 1)'Gritos de Guerra (Guerreros y Mercenarios)
+Status=1
+Name=Guerrero
+PosOrig=1
+Head=307
+Body=339
+CascoAnim=30
+ShieldAnim=9
+WeaponAnim=5
+Heading=2
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=4
+'Espíritu de Leviathan
+Obj1=879-100
+'Temple
+Obj2=1102-100
+'Plegaria
+Obj3=1106-100
+'Furor Ígneo
+Obj4=1024-100
+LocaleID=53
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Aprende a focalizar tu ira y controlar tu espíritu. Estos pergaminos te ayudarán a convertirte en el temor de tus adversarios.
+
+'--------------> Herrería <--------------
+
+'--------------> Herreros Generales <--------------
+
+[NPC757] ' clon de NPC63 'Hechicero' para Banderbill (bando 1)'Hechizos defensivos
+Status=1
+Name=Hechicero
+PosOrig=1
+Head=117
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=13
+'Curar Heridas Leves
+Obj1=201-100
+'Curar Heridas Graves
+Obj2=203-100
+'Curar Veneno
+Obj3=200-100
+'Remover Paralisis
+Obj4=207-100
+'Resucitar
+Obj5=319-100
+'Invisibilidad
+Obj6=318-100
+'Detectar Invisibilidad
+Obj7=1153-100
+'Grito de Igor
+Obj8=363-100
+'Furia de Uhkrul
+Obj9=364-100
+'Celeridad
+Obj10=396-100
+'Fuerza
+Obj11=470-100
+'Llamado Musical
+Obj12=394-100
+'Llamado a la Naturaleza
+Obj13=395-100
+LocaleID=285
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=
+
+
+[NPC758] ' clon de NPC80 'Vendedor General' para Banderbill (bando 1)
+Status=1
+Compra=1
+Name=Vendedor General
+PosOrig=1
+Head=9
+Body=350
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1000
+NROITEMS=25
+'Martillo de Herrero
+Obj1=389-100
+'Botella Vacía
+Obj2=534-100
+'Costurero
+Obj3=886-100
+'Anillo Espectral
+Obj4=1329-100
+'Anillo de las Penumbras
+Obj5=1330-100
+'Manual de Liderazgo
+Obj6=208-100
+'WorldMap
+Obj7=1396-100
+LocaleID=68
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Intercambio cualquier tipo de exóticas mercaderías, aventurero!
+
+
+[NPC759] ' clon de NPC104 'Druida' para Banderbill (bando 1)'Hechizos de Druida
+Status=1
+Name=Druida
+PosOrig=1
+Head=101
+Body=56
+CascoAnim=15
+ShieldAnim=15
+WeaponAnim=7
+Heading=1
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=12
+Obj1=589-100
+Obj2=587-100
+Obj3=580-100
+Obj4=588-100
+Obj5=591-100
+Obj6=581-100
+Obj7=582-100
+Obj8=590-100
+Obj9=1109-100
+Obj10=1110-100
+Obj11=1111-100
+Obj12=1112-100
+LocaleID=92
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Bienvenido, joven aprendiz. Aquí encontrarás los mejores conjuros para relacionarte con la naturaleza.
+
+
+[NPC760] ' clon de NPC121 'Veterinaria' para Banderbill (bando 1)
+Status=1
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC761] ' clon de NPC154 'Clérigo' para Banderbill (bando 1)'Hechizos de Clérigo
+Status=1
+Name=Clérigo
+PosOrig=1
+Head=3
+Body=307
+CascoAnim=35
+ShieldAnim=9
+WeaponAnim=4
+Heading=4
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=8
+Obj1=566-100
+Obj2=757-100
+Obj3=1117-100
+Obj4=1113-100
+Obj5=1114-100
+Obj6=1115-100
+Obj7=1116-100
+Obj8=1118-100
+LocaleID=140
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Ilumina tu camino y el de tus aliados hacia la victoria. Explota al máximo tu poder celestial aprendiendo estos poderosos conjuros.
+
+
+[NPC762] ' clon de NPC156 'Paladín' para Banderbill (bando 1)'Hechizos de Paladín
+Status=1
+Name=Paladín
+PosOrig=1
+Head=5
+Body=94
+CascoAnim=7
+ShieldAnim=11
+WeaponAnim=41
+Heading=4
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=3
+Obj1=1103-100
+Obj2=1104-100
+Obj3=1105-100
+LocaleID=142
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Acércate si eres un paladín deseoso de conocer los secretos de la sagrada magia. Tengo varias cosas que mostrarte.
+
+
+[NPC763] ' clon de NPC157 'Bardo' para Banderbill (bando 1)'Hechizos de Bardos
+Status=1
+Name=Bardo
+PosOrig=1
+Head=1
+Body=269
+CascoAnim=15
+ShieldAnim=31
+Heading=2
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=3
+Obj1=1122-100
+Obj2=1123-100
+Obj3=1124-100
+LocaleID=143
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Soltad ese laúd y aprended de estos antiguos pergaminos!
+
+
+[NPC764] ' clon de NPC164 'Subastador' para Banderbill (bando 1) ' Subastador
+Status=1
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC765] ' clon de NPC5 'Sacerdote' para Illiandor (bando 2)
+Status=2
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC766] ' clon de NPC8 'Comidas' para Illiandor (bando 2)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=2
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC767] ' clon de NPC14 'Alquimista' para Illiandor (bando 2)
+Status=2
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC768] ' clon de NPC15 'Tabernero' para Illiandor (bando 2)
+Status=2
+Name=Tabernero
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=13
+NROITEMS=4
+'Vino
+Obj1=42-100
+'Botella de Agua
+Obj2=43-100
+'Cerveza
+Obj3=160-100
+'Jugo de Frutas
+Obj4=161-100
+LocaleID=15
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido a mi taberna, viajero!
+
+
+[NPC769] ' clon de NPC24 'Banquero' para Illiandor (bando 2)
+Status=2
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC770] ' clon de NPC44 'Carpintero' para Illiandor (bando 2)
+Status=2
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC771] ' clon de NPC48 'Minero' para Illiandor (bando 2)
+Status=2
+Name=Minero
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=23
+NROITEMS=2
+'Piquete de Minero
+Obj1=187-100
+'Carro de Minería
+Obj2=880-100
+LocaleID=43
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Poseo los mejores metales y herramientas de todas estas tierras.
+
+'--------------> Alquimia <--------------
+
+[NPC772] ' clon de NPC70 'Herrero armaduras Illiandor' para Illiandor (bando 2)
+Status=2
+Name=Herrero armaduras Illiandor
+Name2=Armaduras
+PosOrig=1
+Head=11
+Body=93
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=17
+'Almete de Hierro
+Obj1=131-100
+'Celada
+Obj2=405-100
+'Yelmo
+Obj3=601-100
+'Escudo de Tortuga
+Obj4=404-100
+'Escudo de Hierro +2
+Obj5=1000-100
+'Escudo de Plata
+Obj6=133-100
+'Escudo de Plata +1
+Obj7=995-100
+'Escudo de Plata +2
+Obj8=999-100
+'Armadura de Cazador
+Obj9=360-100
+'Armadura de Cazador (Bajos)
+Obj10=1005-100
+'Armadura de Asesino
+Obj11=237-100
+'Armadura de Asesino (Bajos)
+Obj12=369-100
+'Armadura de Placas Completa
+Obj13=195-100
+'Armadura de Placas Completa (Bajos)
+Obj14=243-100
+'Armadura de Placas Roja
+Obj15=497-100
+'Armadura de Placas Roja (Mujer)
+Obj16=493-100
+'Armadura Bruñida
+Obj17=500-100
+LocaleID=58
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Sólo aquellos equipados con lo mejor podrán alcanzar la gloria. Dentro... y fuera. ¡Deja que nosotros nos preocupemos por tu exterior!
+
+'--------------> Nueva Esperanza <--------------
+
+
+[NPC773] ' clon de NPC71 'Herrero Armas Illiandor' para Illiandor (bando 2)
+Status=2
+Name=Herrero Armas Illiandor
+Name2=Armas
+PosOrig=1
+Head=306
+Body=254
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=23
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga +3
+Obj3=366-100
+'Hacha
+Obj4=3-100
+'Cimitarra
+Obj5=399-100
+'Alabarda
+Obj6=126-100
+'Hacha Barbara
+Obj7=159-100
+'Hacha Dos Filos
+Obj8=129-100
+'Hacha Dos Filos +1
+Obj9=1080-100
+'Spatha
+Obj10=569-100
+'Sica
+Obj11=398-100
+'Hacha de Piedra
+Obj12=1246-100
+'Hacha de Piedra +1
+Obj13=1247-100
+'Hacha Orca
+Obj14=1094-100
+'Báculo Óseo
+Obj15=1251-100
+'Báculo de Aquâlin
+Obj16=1248-100
+'Nudillos de Plata
+Obj17=1332-100
+'Hacha Arrojadiza
+Obj18=980-100
+'Hacha Arrojadiza +1
+Obj19=1241-100
+'Lanza
+Obj20=656-100
+'Lanza +1
+Obj21=742-100
+'Arpón Común
+Obj22=1594-100
+'Arpón Reforzado
+Obj23=1595-100
+LocaleID=59
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Illiandor te ofrece las mejores armas de estas tierras. No podrás conseguir nada mejor al mismo precio.
+
+
+[NPC774] ' clon de NPC102 'SastreIlliandor' para Illiandor (bando 2)
+Status=2
+Name=SastreIlliandor
+PosOrig=1
+Head=471
+Body=331
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=19
+'Vestimentas de Hombre
+Obj1=32-100
+'Vestimentas de Mujer
+Obj2=1274-100
+'Vestimenta de Campesino
+Obj3=501-100
+'Vestimenta de Campesino (Bajos)
+Obj4=502-100
+'Sotana (Bajos)
+Obj5=1309-100
+'Indumentaria de Tabernero
+Obj6=951-100
+'Indumentaria de Minero
+Obj7=490-100
+'Traje de Arlequín
+Obj8=962-100
+'Vestido Élfico
+Obj9=488-100
+'Vestido de Bruja
+Obj10=513-100
+'Vestido de Bruja (Drow)
+Obj11=514-100
+'Túnica Reforzada (Bajos)
+Obj12=525-100
+'Túnica Reforzada (Bajas)
+Obj13=526-100
+'Túnica Arcana (Bajos)
+Obj14=524-100
+'Túnica Celestial
+Obj15=491-100
+'Túnica de Nigromante
+Obj16=1089-100
+'Gorro de Hechicería
+Obj17=991-100
+'Gorro de Hechicería
+Obj18=1239-100
+'Gorro de Hechicería
+Obj19=1240-100
+LocaleID=90
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=La más finas sedas hacen de nuestras vestimentas las mejores. Sólo trabajamos en Illiandor.
+
+'--------------> Nueva Esperanza <--------------
+
+[NPC775] ' clon de NPC121 'Veterinaria' para Illiandor (bando 2)
+Status=2
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC776] ' clon de NPC164 'Subastador' para Illiandor (bando 2) ' Subastador
+Status=2
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC777] ' clon de NPC8 'Comidas' para Lindos (bando 2)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=2
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC778] ' clon de NPC14 'Alquimista' para Lindos (bando 2)
+Status=2
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC779] ' clon de NPC15 'Tabernero' para Lindos (bando 2)
+Status=2
+Name=Tabernero
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=13
+NROITEMS=4
+'Vino
+Obj1=42-100
+'Botella de Agua
+Obj2=43-100
+'Cerveza
+Obj3=160-100
+'Jugo de Frutas
+Obj4=161-100
+LocaleID=15
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido a mi taberna, viajero!
+
+
+[NPC780] ' clon de NPC29 'SastreLindos' para Lindos (bando 2)
+Status=2
+Name=SastreLindos
+PosOrig=1
+Head=107
+Body=401
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=34
+'Vestimentas de Hombre
+Obj1=35-100
+'Vestimentas de Mujer
+Obj2=1273-100
+'Vestimenta de Ostentación
+Obj3=515-100
+'Sotana (Bajos)
+Obj4=1309-100
+'Ropaje de Batida (Mujer)
+Obj5=170-100
+'Vestimenta Legionaria (Mujer)
+Obj6=508-100
+'Vestido Azul
+Obj7=382-100
+'Vestido de Gala
+Obj8=648-100
+'Estivalis
+Obj9=467-100
+'Vestido Insinuante
+Obj10=510-100
+'Vestimentas de Gala
+Obj11=712-100
+'Vestimenta de gala (Bajos)
+Obj12=713-100
+'Traje de Novio
+Obj13=477-100
+'Traje de Novio (Bajos)
+Obj14=236-100
+'Vestido de Novia
+Obj15=511-100
+'Vestido de Novia (Bajos)
+Obj16=971-100
+'Vestido de Novia (Drow)
+Obj17=550-100
+'Traje Estival
+Obj18=945-100
+'Vestido Yamilet
+Obj19=503-100
+'Túnica Ceremonial
+Obj20=239-100
+'Túnica Celestial
+Obj21=491-100
+'Túnica Celestial (Bajos)
+Obj22=1363-100
+LocaleID=29
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Quita ese sucio calzado inmediatamente de mi propiedad! A menos... claro... que traigas algo de dinero contigo...
+
+'--------------> Orac <--------------
+
+[NPC781] ' clon de NPC37 'Herrero General Lindos' para Lindos (bando 2)
+Status=2
+Name=Herrero General Lindos
+PosOrig=1
+Head=10
+Body=93
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=22
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga de Corsario
+Obj3=994-100
+'Daga +3
+Obj4=366-100
+'Espada Corta
+Obj5=164-100
+'Horquilla
+Obj6=9-100
+'Espada Larga
+Obj7=2-100
+'Mandoble
+Obj8=19-100
+'Katana
+Obj9=124-100
+'Spatha
+Obj10=569-100
+'Espada de Plata
+Obj11=403-100
+'Celada
+Obj12=405-100
+'Celada Barbara
+Obj13=1277-100
+'Escudo de Madera
+Obj14=997-100
+'Escudo de Tortuga
+Obj15=404-100
+'Escudo de Hierro +1
+Obj16=996-100
+'Escudo de Plata
+Obj17=133-100
+'Armadura de Cazador (Bajos)
+Obj18=1005-100
+'Cota de Mallas (Bajos)
+Obj19=1022-100
+'Armadura de Cuero Endurecido
+Obj20=998-100
+'Cota de Mallas +1
+Obj21=1271-100
+'Coraza Clerical
+Obj22=135-100
+LocaleID=33
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Entras con la mirada baja... como si hubieses sido víctima del peor maleficio. Compra uno de mis artículos y vete con la frente en alto.
+
+'--------------> Orac <--------------
+
+[NPC782] ' clon de NPC41 'Pescador' para Lindos (bando 2)
+Status=2
+Name=Pescador
+PosOrig=1
+Head=2
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=3
+'Caña de Pesca
+Obj1=881-100
+'Red de Pesca
+Obj2=138-100
+'Pargo
+Obj3=139-100
+LocaleID=36
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Aquí conseguirás lo mejor que el mar puede ofrecer!
+
+
+[NPC783] ' clon de NPC58 'Pescador' para Lindos (bando 2)
+Status=2
+Name=Pescador
+PosOrig=1
+Head=101
+Body=3
+Heading=3
+PatrolType=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=3
+'Caña de Pesca
+Obj1=881-100
+'Red de Pesca
+Obj2=138-100
+'Pargo
+Obj3=139-100
+LocaleID=51
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Poseo los pescados más frescos que puedas conseguir!
+
+'--------------> Propiedades <--------------
+
+[NPC784] ' clon de NPC164 'Subastador' para Lindos (bando 2) ' Subastador
+Status=2
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC785] ' clon de NPC8 'Comidas' para Orac (bando 4)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=4
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC786] ' clon de NPC14 'Alquimista' para Orac (bando 4)
+Status=4
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC787] ' clon de NPC15 'Tabernero' para Orac (bando 4)
+Status=4
+Name=Tabernero
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=13
+NROITEMS=4
+'Vino
+Obj1=42-100
+'Botella de Agua
+Obj2=43-100
+'Cerveza
+Obj3=160-100
+'Jugo de Frutas
+Obj4=161-100
+LocaleID=15
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido a mi taberna, viajero!
+
+
+[NPC788] ' clon de NPC18 'Herrero General Orac' para Orac (bando 4)
+Status=4
+Name=Herrero General Orac
+PosOrig=1
+Head=303
+Body=110
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=19
+'Daga
+Obj1=15-100
+'Daga +3
+Obj2=366-100
+'Spatha
+Obj3=569-100
+'Espada de Plata
+Obj4=403-100
+'Hacha Orca
+Obj5=1094-100
+'Hacha Arroj +1
+Obj6=1241-100
+'Shuriken
+Obj7=720-100
+'Arpón Reforzado
+Obj8=1595-100
+'Báculo Aqualin
+Obj9=1248-100
+'Nudillos de Plata
+Obj10=1332-100
+'Armadura de Asesino
+Obj11=237-100
+'Coraza Clerical
+Obj12=135-100
+'Armadura de Placas (Altos)
+Obj13=195-100
+'Armadura de Placas (Bajos)
+Obj14=243-100
+'Armadura Bruñida
+Obj15=500-100
+'Armadura de Placas Roja (Mujer)
+Obj16=493-100
+'Armadura de Placas Roja
+Obj17=497-100
+'Escudo de Tortuga
+Obj18=404-100
+'Escudo de Plata +1
+Obj19=995-100
+'Escudo de Plata +2
+Obj19=999-100
+'Celada
+Obj21=405-100
+'Yelmo
+Obj22=601-100
+LocaleID=18
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Lleva el destino a tu enemigo utilizando estas armas malditas.
+
+'--------------> Illiandor <--------------
+
+
+[NPC789] ' clon de NPC24 'Banquero' para Orac (bando 4)
+Status=4
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC790] ' clon de NPC30 'SastreOrac' para Orac (bando 4)
+Status=4
+Name=SastreOrac
+PosOrig=1
+Head=72
+Body=400
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=8
+'Túnica Reforzada (Bajos)
+Obj1=525-100
+'Túnica Reforzada (Bajas)
+Obj2=526-100
+'Túnica de las Penumbras
+Obj3=528-100
+'Túnica Infernal
+Obj4=45-100
+'Túnica Arcana
+Obj5=524-100
+'Túnica de Nigromante
+Obj6=1274-100
+'Gorro de Hechicero (Negro)
+Obj7=1239-100
+'Gorro de Hechicero (Gris)
+Obj8=991-100
+LocaleID=30
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=La maldad también sabe vestirse bien.
+
+'--------------> Illiandor <--------------
+
+[NPC791] ' clon de NPC44 'Carpintero' para Orac (bando 4)
+Status=4
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC792] ' clon de NPC80 'Vendedor General' para Orac (bando 4)
+Status=4
+Compra=1
+Name=Vendedor General
+PosOrig=1
+Head=9
+Body=350
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1000
+NROITEMS=25
+'Martillo de Herrero
+Obj1=389-100
+'Botella Vacía
+Obj2=534-100
+'Costurero
+Obj3=886-100
+'Anillo Espectral
+Obj4=1329-100
+'Anillo de las Penumbras
+Obj5=1330-100
+'Manual de Liderazgo
+Obj6=208-100
+'WorldMap
+Obj7=1396-100
+LocaleID=68
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Intercambio cualquier tipo de exóticas mercaderías, aventurero!
+
+
+[NPC793] ' clon de NPC101 'Sacerdote Malvado' para Orac (bando 4)
+Status=4
+Name=Sacerdote Malvado
+PosOrig=1
+NpcType=1
+Head=401
+Body=135
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=89
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=¡Bienvenido al infierno! Si quieres que levante de aquí tu apestoso cadáver, pídemelo.
+
+'**************************** GUARDIAS ****************************
+
+'''''Guardias del Imperio'''''
+
+
+[NPC794] ' clon de NPC121 'Veterinaria' para Orac (bando 4)
+Status=4
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC795] ' clon de NPC164 'Subastador' para Orac (bando 4) ' Subastador
+Status=4
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC796] ' clon de NPC5 'Sacerdote' para Umbramar (bando 5)
+Status=5
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC797] ' clon de NPC14 'Alquimista' para Umbramar (bando 5)
+Status=5
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC798] ' clon de NPC24 'Banquero' para Umbramar (bando 5)
+Status=5
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC799] ' clon de NPC44 'Carpintero' para Umbramar (bando 5)
+Status=5
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC800] ' clon de NPC51 'Hechicero' para Umbramar (bando 5)'Hechizos Ofensivos
+Status=5
+Name=Hechicero
+PosOrig=1
+Head=116
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=15
+'Proyectil Mágico
+Obj1=199-100
+'Saeta Ígnea
+Obj2=196-100
+'Proyectil Eléctrico
+Obj3=204-100
+'Bomba Mágica
+Obj4=205-100
+'Misil Mágico
+Obj5=1169-100
+'Tormenta de Fuego
+Obj6=361-100
+'Descarga Eléctrica
+Obj7=1170-100
+'Corriente Eléctrica
+Obj8=531-100
+'Tormenta Ácida
+Obj9=760-100
+'Ráfaga Ígnea
+Obj10=1178-100
+'Implosión
+Obj11=568-100
+'Paralizar
+Obj12=206-100
+'Inmovilizar
+Obj13=530-100
+'Dardo Arcano (leveo)
+Obj14=2033-100
+'Centella Menor (leveo)
+Obj15=2034-100
+LocaleID=46
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido, gran viajero! Aquí tienes todo lo que puedas necesitar para acabar con los más poderosos enemigos.
+
+
+[NPC801] ' clon de NPC63 'Hechicero' para Umbramar (bando 5)'Hechizos defensivos
+Status=5
+Name=Hechicero
+PosOrig=1
+Head=117
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=13
+'Curar Heridas Leves
+Obj1=201-100
+'Curar Heridas Graves
+Obj2=203-100
+'Curar Veneno
+Obj3=200-100
+'Remover Paralisis
+Obj4=207-100
+'Resucitar
+Obj5=319-100
+'Invisibilidad
+Obj6=318-100
+'Detectar Invisibilidad
+Obj7=1153-100
+'Grito de Igor
+Obj8=363-100
+'Furia de Uhkrul
+Obj9=364-100
+'Celeridad
+Obj10=396-100
+'Fuerza
+Obj11=470-100
+'Llamado Musical
+Obj12=394-100
+'Llamado a la Naturaleza
+Obj13=395-100
+LocaleID=285
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=
+
+
+[NPC802] ' clon de NPC121 'Veterinaria' para Umbramar (bando 5)
+Status=5
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC803] ' clon de NPC147 'Vendedor de Caballos' para Umbramar (bando 5)
+Status=5
+Name=Vendedor de Caballos
+PosOrig=1
+Head=301
+Body=133
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=44
+NROITEMS=11
+'Montura (Altos)
+Obj1=1342-100
+'Montura (Bajos)
+Obj2=1343-100
+'Huargo (Orcos)
+Obj3=1344-100
+'Montura Reforzada (Altos - Mágicos)
+Obj4=1345-100
+'Montura Reforzada (Altos - Guerreros)
+Obj5=1346-100
+'Montura Reforzada (Bajos - Mágicos)
+Obj6=1347-100
+'Montura Reforzada (Bajos - Guerreros)
+Obj7=1348-100
+'Huargo Reforzado (Orcos)
+Obj8=1349-100
+'Montura de Nigromante
+Obj9=1350-100
+'Montura de Nigromante (Bajos)
+Obj10=1359-100
+'Jinete del Dragón Rojo
+Obj11=2087-100
+LocaleID=133
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Aquí podrás encontrar las mejores monturas que te ayudarán a explorar estas hermosas tierras!
+
+'--------------> Carpintería <--------------
+
+
+[NPC804] ' clon de NPC164 'Subastador' para Umbramar (bando 5) ' Subastador
+Status=5
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+'**************************** CLONES TERRITORIALES - NIX (22-sep-2026, se habia quedado afuera) ****************************
+
+[NPC805] ' clon de NPC5 'Sacerdote' para Nix (bando 1)
+Status=1
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC806] ' clon de NPC8 'Comidas' para Nix (bando 1)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=1
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC807] ' clon de NPC14 'Alquimista' para Nix (bando 1)
+Status=1
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC808] ' clon de NPC15 'Tabernero' para Nix (bando 1)
+Status=1
+Name=Tabernero
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=13
+NROITEMS=4
+'Vino
+Obj1=42-100
+'Botella de Agua
+Obj2=43-100
+'Cerveza
+Obj3=160-100
+'Jugo de Frutas
+Obj4=161-100
+LocaleID=15
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido a mi taberna, viajero!
+
+
+[NPC809] ' clon de NPC24 'Banquero' para Nix (bando 1)
+Status=1
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC810] ' clon de NPC39 'SastreNix' para Nix (bando 1)
+Status=1
+Name=SastreNix
+PosOrig=1
+Head=473
+Body=123
+Heading=3
+Movement=1
+Attackable=0
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=20
+'Vestimentas de Hombre
+Obj1=31-100
+'Vestimentas de Bajo
+Obj2=486-100
+'Vestimentas de Mujer
+Obj3=1274-100
+'Vestimentas de Baja
+Obj4=527-100
+'Indumentaria de Minero
+Obj5=490-100
+'Sotana (Bajos)
+Obj6=1309-100
+'Vestido Azul
+Obj7=382-100
+'Vestido Insinuante
+Obj8=510-100
+'Vestimenta Legionaria (Mujer)
+Obj9=508-100
+'Vestido de Novia (Bajas)
+Obj10=971-100
+'Túnica de Mago
+Obj11=196-100
+'Túnica de Monje
+Obj12=381-100
+'Túnica Reforzada (Bajos)
+Obj13=525-100
+'Túnica Reforzada (Bajas)
+Obj14=526-100
+'Túnica del Aventurero (Bajos)
+Obj15=1226-100
+'Túnica de Celestial
+Obj16=491-100
+'Túnica de Celestial (Bajos)
+Obj17=1363-100
+'Gorro de Hechicería
+Obj18=991-100
+'Gorro de Hechicería
+Obj19=1239-100
+'Gorro de Hechicería
+Obj20=1240-100
+LocaleID=35
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Nix no sería la misma sin nuestros atuendos. ¡Tenemos 135 años de experiencia!
+
+'--------------> Banderbill <--------------
+
+[NPC811] ' clon de NPC41 'Pescador' para Nix (bando 1)
+Status=1
+Name=Pescador
+PosOrig=1
+Head=2
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=3
+'Caña de Pesca
+Obj1=881-100
+'Red de Pesca
+Obj2=138-100
+'Pargo
+Obj3=139-100
+LocaleID=36
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Aquí conseguirás lo mejor que el mar puede ofrecer!
+
+
+[NPC812] ' clon de NPC44 'Carpintero' para Nix (bando 1)
+Status=1
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC813] ' clon de NPC46 'Mago de Ullathorpe' para Nix (bando 1)
+Status=1
+Name=Mago de Ullathorpe
+Desc=Ullathorpe es bien conocida por sus excelentes Magos. ¿Acaso eres uno? ¡Compra aquí para demostrarlo!
+Head=3
+Body=50
+Heading=3
+Movement=1
+Attackable=0
+Comercia=1
+TipoItems=24
+Hostile=0
+Alineacion=0
+ReSpawn=120000
+NROITEMS=7
+Obj1=199-100
+Obj2=197-100
+Obj3=200-100
+Obj4=201-100
+Obj5=1169-100
+Obj6=1170-100
+Obj7=1178-100
+Domable=0
+LocaleID=41
+MinHP=10000
+MaxHP=10000
+
+
+[NPC814] ' clon de NPC48 'Minero' para Nix (bando 1)
+Status=1
+Name=Minero
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=23
+NROITEMS=2
+'Piquete de Minero
+Obj1=187-100
+'Carro de Minería
+Obj2=880-100
+LocaleID=43
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Poseo los mejores metales y herramientas de todas estas tierras.
+
+'--------------> Alquimia <--------------
+
+[NPC815] ' clon de NPC51 'Hechicero' para Nix (bando 1)'Hechizos Ofensivos
+Status=1
+Name=Hechicero
+PosOrig=1
+Head=116
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=15
+'Proyectil Mágico
+Obj1=199-100
+'Saeta Ígnea
+Obj2=196-100
+'Proyectil Eléctrico
+Obj3=204-100
+'Bomba Mágica
+Obj4=205-100
+'Misil Mágico
+Obj5=1169-100
+'Tormenta de Fuego
+Obj6=361-100
+'Descarga Eléctrica
+Obj7=1170-100
+'Corriente Eléctrica
+Obj8=531-100
+'Tormenta Ácida
+Obj9=760-100
+'Ráfaga Ígnea
+Obj10=1178-100
+'Implosión
+Obj11=568-100
+'Paralizar
+Obj12=206-100
+'Inmovilizar
+Obj13=530-100
+'Dardo Arcano (leveo)
+Obj14=2033-100
+'Centella Menor (leveo)
+Obj15=2034-100
+LocaleID=46
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido, gran viajero! Aquí tienes todo lo que puedas necesitar para acabar con los más poderosos enemigos.
+
+
+[NPC816] ' clon de NPC107 'PirataNix' para Nix (bando 1)
+Status=1
+Name=PirataNix
+Name2=Nix
+PosOrig=1
+NpcType=7
+Head=301
+Body=133
+Heading=3
+Movement=1
+Comercia=1
+TipoItems=36
+NROITEMS=5
+Obj1=597-100
+Obj2=599-100
+Obj3=1058-100
+Obj4=598-100
+Obj5=2023-100
+weaponanim=7
+HP=10000
+RespawnTime=1
+LocaleID=94
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Preparen naves! Salimos del puerto de Nix en cualquier momento. ¡Compra un pase rápido o zarparemos sin ti!
+
+
+[NPC817] ' clon de NPC121 'Veterinaria' para Nix (bando 1)
+Status=1
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC818] ' clon de NPC122 'Herrero Armas Nix' para Nix (bando 1)
+Status=1
+Name=Herrero Armas Nix
+PosOrig=1
+Name2=Armas
+Head=306
+Body=254
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=43
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga +1
+Obj3=165-100
+'Daga +2
+Obj4=365-100
+'Daga +3
+Obj5=366-100
+'Daga de Corsario
+Obj6=994-100
+'Espada Corta
+Obj7=164-100
+'Espada Larga
+Obj8=2-100
+'Sable
+Obj9=125-100
+'Cimitarra
+Obj10=399-100
+'Espada Vikinga
+Obj11=123-100
+'Katana
+Obj12=124-100
+'Kodachi
+Obj13=748-100
+'Mandoble
+Obj14=19-100
+'Spatha
+Obj15=569-100
+'Espada de Plata
+Obj16=403-100
+'Sica
+Obj17=398-100
+'Hacha
+Obj18=3-100
+'Hacha Bárbara
+Obj19=159-100
+'Hacha de Dos Filos
+Obj20=129-100
+'Hacha de Dos Filos +1
+Obj21=1080-100
+'Hacha de Piedra
+Obj22=1246-100
+'Hacha de Piedra +1
+Obj23=1247-100
+'Hacha Orca
+Obj24=1094-100
+'Martillo de Piedra
+Obj25=401-100
+'Martillo de Guerra
+Obj26=1144-100
+'Horquilla
+Obj27=9-100
+'Alabarda
+Obj28=126-100
+'Lanza
+Obj29=656-100
+'Lanza +1
+Obj30=742-100
+'Daga Arrojadiza
+Obj31=671-100
+'Daga Arrojadiza +1
+Obj32=751-100
+'Jabalina
+Obj33=741-100
+'Shuriken
+Obj34=720-100
+'Hacha Arrojadiza
+Obj35=980-100
+'Hacha Arrojadiza +1
+Obj36=1241-100
+'Arpón Común
+Obj37=1594-100
+'Arpón Reforzado
+Obj38=1595-100
+'Nudillos de Hierro
+Obj39=1331-100
+'Nudillos de Plata
+Obj40=1332-100
+'Báculo Arcano
+Obj41=400-100
+'Báculo Oseo
+Obj42=1251-100
+'Báculo de Aqua
+Obj43=1248-100
+LocaleID=109
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Bienvenido a Nix, pequeña rata... Sé lo que buscas... ¡problemas! En caso de que también busques armamento, déjame ofrecerte algunas cosas.
+
+
+[NPC819] ' clon de NPC123 'Herrero Armaduras Nix' para Nix (bando 1)
+Status=1
+Name=Herrero Armaduras Nix
+PosOrig=1
+Name2=Armaduras
+Head=304
+Body=253
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=31
+'Almete de Hierro
+Obj1=131-100
+'Celada
+Obj2=405-100
+'Celada Barbara
+Obj3=1277-100
+'Armadura de Cuero
+Obj4=30-100
+'Armadura de Cuero (Mujer)
+Obj5=529-100
+'Armadura de Cuero (Bajos)
+Obj6=1004-100
+'Armadura de Cuero Endurecido
+Obj7=998-100
+'Cota de Mallas
+Obj8=359-100
+'Cota de Mallas (Mujer)
+Obj9=499-100
+'Cota de Mallas (Bajos)
+Obj10=1022-100
+'Armadura de Cazador
+Obj11=360-100
+'Armadura de Cazador (Bajos)
+Obj12=1005-100
+'Cota de Mallas +1
+Obj13=1271-100
+'Coraza Clerical
+Obj14=135-100
+'Armadura de Asesino
+Obj15=237-100
+'Armadura de Asesino (Bajos)
+Obj16=369-100
+'Armadura de Placas Completa
+Obj17=195-100
+'Armadura de Placas Completa (Bajos)
+Obj18=243-100
+'Armadura de Placas Azul
+Obj19=489-100
+'Armadura de Placas Azul (Mujer)
+Obj20=1328-100
+'Armadura de Placas Roja
+Obj21=497-100
+'Armadura de Placas Roja (Mujer)
+Obj22=493-100
+'Armadura Bruñida (Bajos)
+Obj23=500-100
+'Escudo de Tortuga
+Obj24=404-100
+'Escudo de Madera
+Obj25=997-100
+'Escudo de Hierro
+Obj26=128-100
+'Escudo de Hierro +1
+Obj27=996-100
+'Escudo de Hierro +2
+Obj28=1000-100
+'Escudo de Plata
+Obj29=133-100
+'Escudo de Plata +1
+Obj30=995-100
+'Escudo de Plata +2
+Obj31=999-100
+LocaleID=110
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Armaduras de la más alta calidad aquí en Nix, ¿dónde más?
+
+'--------------> Banderbill <--------------
+
+
+[NPC820] ' clon de NPC164 'Subastador' para Nix (bando 1) ' Subastador
+Status=1
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+'**************************** CLONES TERRITORIALES - SURAMEI mapa184/183 (22-sep-2026, se habia quedado afuera) ****************************
+
+[NPC821] ' clon de NPC5 'Sacerdote' para Suramei (184) (bando 2)
+Status=2
+Name=Sacerdote
+PosOrig=1
+NpcType=1
+Head=3
+Body=49
+Heading=3
+Movement=1
+LanzaSpells=2
+Sp1=66
+Sp2=202
+RangoSpell=9
+IntervaloCasteo=100
+HP=80000
+RespawnTime=1
+LocaleID=5
+MinHP=80000
+MaxHP=80000
+Hostile=0
+Desc=Hola hijo mío. Soy el sacerdote de este pueblo. Si quieres ser resucitado, sólo pídelo.
+
+
+[NPC822] ' clon de NPC8 'Comidas' para Suramei (184) (bando 2)'Ulla, Tiama, Orac, Rinkel, N. Esp
+Status=2
+Name=Comidas
+PosOrig=1
+Head=4
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=11
+'Manzana Roja
+Obj1=1-100
+'Porción de Tarta
+Obj2=21-100
+'Frutas del Bosque
+Obj3=22-100
+'Pan de Trigo
+Obj4=23-100
+'Pan de Maíz
+Obj5=24-100
+'Pastel
+Obj6=25-100
+'Pollo
+Obj7=26-100
+'Chuleta
+Obj8=27-100
+'Queso de Cabra
+Obj9=28-100
+'Sandía
+Obj10=29-100
+'Banana
+Obj11=158-100
+LocaleID=8
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola! Sólo aquí conseguirás las mejores provisiones de todas estas tierras.
+
+
+[NPC823] ' clon de NPC14 'Alquimista' para Suramei (184) (bando 2)
+Status=2
+Name=Alquimista
+PosOrig=1
+Head=607
+Body=120
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=7
+TipoItems=11
+'Poción Roja
+Obj1=38-10000
+'Poción Azul
+Obj2=37-10000
+'Poción Amarilla
+Obj3=36-10000
+'Poción Verde
+Obj4=39-10000
+'Poción Violeta
+Obj5=166-10000
+'Tijeras
+Obj6=885-10000
+'Olla
+Obj7=887-10000
+LocaleID=14
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Todo aventurero necesita una buena dotación de pociones para un largo viaje. Aquí podrás encontrar las mejores.
+
+'--------------> Bebidas <--------------
+
+[NPC824] ' clon de NPC15 'Tabernero' para Suramei (184) (bando 2)
+Status=2
+Name=Tabernero
+PosOrig=1
+Head=17
+Body=388
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=13
+NROITEMS=4
+'Vino
+Obj1=42-100
+'Botella de Agua
+Obj2=43-100
+'Cerveza
+Obj3=160-100
+'Jugo de Frutas
+Obj4=161-100
+LocaleID=15
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido a mi taberna, viajero!
+
+
+[NPC825] ' clon de NPC22 'Herrero Armas Suramei' para Suramei (184) (bando 2)
+Status=2
+Name=Herrero Armas Suramei
+Name2=Armas
+PosOrig=1
+Head=8
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=2
+NROITEMS=24
+'Martillo de Herrero
+Obj1=389-100
+'Daga
+Obj2=15-100
+'Daga +1
+Obj3=165-100
+'Daga +2
+Obj4=365-100
+'Daga +3
+Obj5=366-100
+'Espada Larga
+Obj6=2-100
+'Sable
+Obj7=125-100
+'Espada Vikinga
+Obj8=123-100
+'Katana
+Obj9=124-100
+'Kodachi
+Obj10=748-100
+'Cimitarra
+Obj11=399-100
+'Martillo de Piedra
+Obj12=401-100
+'Martillo de Guerra
+Obj13=1144-100
+'Shuriken
+Obj14=720-100
+'Spatha
+Obj15=569-100
+'Espada de Plata
+Obj16=403-100
+'Daga Arrojadiza
+Obj17=671-100
+'Daga Arrojadiza +1
+Obj18=751-100
+'Jabalina
+Obj19=741-100
+'Arpón Común
+Obj20=1594-100
+'Nudillos de Hierro
+Obj21=1331-100
+'Nudillos de Plata
+Obj22=1332-100
+'Báculo Arcano
+Obj23=400-100
+'Báculo de Aquâlin
+Obj24=1248-100
+LocaleID=22
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Armamento. Eso te ofrezco yo. Ni más, ni menos. ¡Visítame seguido y puede que te haga una rebaja! *ríe entre dientes*
+
+
+[NPC826] ' clon de NPC23 'Herrero Armaduras Suramei' para Suramei (184) (bando 2)
+Status=2
+Name=Herrero Armaduras Suramei
+Name2=Armaduras
+PosOrig=1
+Head=14
+Body=58
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=19
+'Casco de Campeon
+Obj1=132-100
+'Almete de Hierro
+Obj2=131-100
+'Celada
+Obj3=405-100
+'Escudo de Hierro
+Obj4=128-100
+'Escudo de Hierro +1
+Obj5=996-100
+'Escudo de Hierro +2
+Obj6=1000-100
+'Escudo de Madera
+Obj7=997-100
+'Escudo de Plata +1
+Obj8=995-100
+'Armadura de Cuero
+Obj9=30-100
+'Armadura de Cuero (Mujer)
+Obj10=529-100
+'Armadura de Cuero (Bajos)
+Obj11=1004-100
+'Cota de Mallas
+Obj12=359-100
+'Cota de Mallas (Bajos)
+Obj13=1022-100
+'Cota de Mallas (Mujer)
+Obj14=499-100
+'Cota de Mallas +1
+Obj15=1271-100
+'Armadura de Asesino
+Obj16=237-100
+'Armadura de Asesino (Bajos)
+Obj17=369-100
+'Armadura de Placas Azul
+Obj18=489-100
+'Armadura de Placas Azul (Mujer)
+Obj19=1328-100
+LocaleID=23
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Nada... ¡Nada! ¡Nada podrá penetrar estas armaduras!
+
+'--------------> Tiama <--------------
+
+
+[NPC827] ' clon de NPC24 'Banquero' para Suramei (184) (bando 2)
+Status=2
+Name=Banquero
+PosOrig=1
+Head=22
+Body=385
+Heading=3
+Movement=1
+NpcType=4
+HP=40000
+RespawnTime=1
+LocaleID=24
+MinHP=40000
+MaxHP=40000
+Hostile=0
+Desc=Bienvenido a la cadena de finanzas Goliath. Somos la más grande cadena de finanzas en estas tierras. Contamos con bancos en las ciudades más importantes. En nosotros puede confiar.
+
+'**************************** FACCIONES ****************************
+
+[NPC828] ' clon de NPC44 'Carpintero' para Suramei (184) (bando 2)
+Status=2
+Name=Carpintero
+PosOrig=1
+Head=2
+Body=22
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+NROITEMS=15
+'Jabalina
+Obj1=741-100
+'Escudo de Madera
+Obj2=997-100
+'Escudo de Tortuga
+Obj3=404-100
+'Ballesta
+Obj4=749-100
+'Arco Simple
+Obj5=989-100
+'Arco Simple Reforzado
+Obj6=1001-100
+'Arco Compuesto
+Obj7=479-100
+'Cuchara de Madera
+Obj8=163-100
+'Cama Simple
+Obj9=155-100
+'Cama Simple
+Obj10=156-100
+'Silla
+Obj11=162-100
+'Silla
+Obj12=168-100
+'Serrucho
+Obj13=198-100
+'Hacha de Leñador
+Obj14=127-100
+'Flecha Simple
+Obj15=169-1000
+LocaleID=39
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Hola muchacho! Bienvenido a mi humilde carpintería.
+
+'--------------> Minería <--------------
+
+[NPC829] ' clon de NPC47 'Hechicero' para Suramei (184) (bando 2)'Hechizos de Magos y Nigromantes
+Status=2
+Name=Hechicero
+PosOrig=1
+Head=6
+Body=268
+WeaponAnim=6
+CascoAnim=15
+Heading=1
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=6
+'Adivinación (Magos)
+Obj1=1282-100
+'Lamento de la Banshee (Magos)
+Obj2=1151-100
+'Incinerar (Magos)
+Obj3=759-100
+'Portal Planar (Magos y Nigromantes)
+Obj4=665-100
+'Apocalipsis (Magos y Nigromantes)
+Obj5=532-100
+'Juicio Final (Magos y Nigromantes)
+Obj6=647-100
+LocaleID=42
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Solo los más poderosos hechiceros pueden manipular los conocimientos que estos pergaminos esconden. Soberbio eres al acercarte a mi comercio.
+
+
+[NPC830] ' clon de NPC48 'Minero' para Suramei (184) (bando 2)
+Status=2
+Name=Minero
+PosOrig=1
+Head=2
+Body=100
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=23
+NROITEMS=2
+'Piquete de Minero
+Obj1=187-100
+'Carro de Minería
+Obj2=880-100
+LocaleID=43
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Poseo los mejores metales y herramientas de todas estas tierras.
+
+'--------------> Alquimia <--------------
+
+[NPC831] ' clon de NPC51 'Hechicero' para Suramei (184) (bando 2)'Hechizos Ofensivos
+Status=2
+Name=Hechicero
+PosOrig=1
+Head=116
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=15
+'Proyectil Mágico
+Obj1=199-100
+'Saeta Ígnea
+Obj2=196-100
+'Proyectil Eléctrico
+Obj3=204-100
+'Bomba Mágica
+Obj4=205-100
+'Misil Mágico
+Obj5=1169-100
+'Tormenta de Fuego
+Obj6=361-100
+'Descarga Eléctrica
+Obj7=1170-100
+'Corriente Eléctrica
+Obj8=531-100
+'Tormenta Ácida
+Obj9=760-100
+'Ráfaga Ígnea
+Obj10=1178-100
+'Implosión
+Obj11=568-100
+'Paralizar
+Obj12=206-100
+'Inmovilizar
+Obj13=530-100
+'Dardo Arcano (leveo)
+Obj14=2033-100
+'Centella Menor (leveo)
+Obj15=2034-100
+LocaleID=46
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido, gran viajero! Aquí tienes todo lo que puedas necesitar para acabar con los más poderosos enemigos.
+
+
+[NPC832] ' clon de NPC61 'Guerrero' para Suramei (184) (bando 2)'Gritos de Guerra (Guerreros y Mercenarios)
+Status=2
+Name=Guerrero
+PosOrig=1
+Head=307
+Body=339
+CascoAnim=30
+ShieldAnim=9
+WeaponAnim=5
+Heading=2
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=4
+'Espíritu de Leviathan
+Obj1=879-100
+'Temple
+Obj2=1102-100
+'Plegaria
+Obj3=1106-100
+'Furor Ígneo
+Obj4=1024-100
+LocaleID=53
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Aprende a focalizar tu ira y controlar tu espíritu. Estos pergaminos te ayudarán a convertirte en el temor de tus adversarios.
+
+'--------------> Herrería <--------------
+
+'--------------> Herreros Generales <--------------
+
+[NPC833] ' clon de NPC63 'Hechicero' para Suramei (184) (bando 2)'Hechizos defensivos
+Status=2
+Name=Hechicero
+PosOrig=1
+Head=117
+Body=270
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+WeaponAnim=6
+TipoItems=24
+NROITEMS=13
+'Curar Heridas Leves
+Obj1=201-100
+'Curar Heridas Graves
+Obj2=203-100
+'Curar Veneno
+Obj3=200-100
+'Remover Paralisis
+Obj4=207-100
+'Resucitar
+Obj5=319-100
+'Invisibilidad
+Obj6=318-100
+'Detectar Invisibilidad
+Obj7=1153-100
+'Grito de Igor
+Obj8=363-100
+'Furia de Uhkrul
+Obj9=364-100
+'Celeridad
+Obj10=396-100
+'Fuerza
+Obj11=470-100
+'Llamado Musical
+Obj12=394-100
+'Llamado a la Naturaleza
+Obj13=395-100
+LocaleID=285
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=
+
+
+[NPC834] ' clon de NPC80 'Vendedor General' para Suramei (184) (bando 2)
+Status=2
+Compra=1
+Name=Vendedor General
+PosOrig=1
+Head=9
+Body=350
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1000
+NROITEMS=25
+'Martillo de Herrero
+Obj1=389-100
+'Botella Vacía
+Obj2=534-100
+'Costurero
+Obj3=886-100
+'Anillo Espectral
+Obj4=1329-100
+'Anillo de las Penumbras
+Obj5=1330-100
+'Manual de Liderazgo
+Obj6=208-100
+'WorldMap
+Obj7=1396-100
+LocaleID=68
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Intercambio cualquier tipo de exóticas mercaderías, aventurero!
+
+
+[NPC835] ' clon de NPC104 'Druida' para Suramei (184) (bando 2)'Hechizos de Druida
+Status=2
+Name=Druida
+PosOrig=1
+Head=101
+Body=56
+CascoAnim=15
+ShieldAnim=15
+WeaponAnim=7
+Heading=1
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=12
+Obj1=589-100
+Obj2=587-100
+Obj3=580-100
+Obj4=588-100
+Obj5=591-100
+Obj6=581-100
+Obj7=582-100
+Obj8=590-100
+Obj9=1109-100
+Obj10=1110-100
+Obj11=1111-100
+Obj12=1112-100
+LocaleID=92
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Bienvenido, joven aprendiz. Aquí encontrarás los mejores conjuros para relacionarte con la naturaleza.
+
+
+[NPC836] ' clon de NPC121 'Veterinaria' para Suramei (184) (bando 2)
+Status=2
+Name=Veterinaria
+PosOrig=1
+NpcType=11
+Head=72
+Body=101
+Heading=3
+Movement=1
+LanzaSpells=1
+Sp1=79
+HP=10000
+RespawnTime=1
+LocaleID=108
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Si tu familiar o mascota se encuentra en mal estado, acércamelo y veré lo que puedo hacer por él.
+
+'**************************** APUESTAS ****************************
+
+[NPC837] ' clon de NPC154 'Clérigo' para Suramei (184) (bando 2)'Hechizos de Clérigo
+Status=2
+Name=Clérigo
+PosOrig=1
+Head=3
+Body=307
+CascoAnim=35
+ShieldAnim=9
+WeaponAnim=4
+Heading=4
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=8
+Obj1=566-100
+Obj2=757-100
+Obj3=1117-100
+Obj4=1113-100
+Obj5=1114-100
+Obj6=1115-100
+Obj7=1116-100
+Obj8=1118-100
+LocaleID=140
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Ilumina tu camino y el de tus aliados hacia la victoria. Explota al máximo tu poder celestial aprendiendo estos poderosos conjuros.
+
+
+[NPC838] ' clon de NPC156 'Paladín' para Suramei (184) (bando 2)'Hechizos de Paladín
+Status=2
+Name=Paladín
+PosOrig=1
+Head=5
+Body=94
+CascoAnim=7
+ShieldAnim=11
+WeaponAnim=41
+Heading=4
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=3
+Obj1=1103-100
+Obj2=1104-100
+Obj3=1105-100
+LocaleID=142
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Acércate si eres un paladín deseoso de conocer los secretos de la sagrada magia. Tengo varias cosas que mostrarte.
+
+
+[NPC839] ' clon de NPC157 'Bardo' para Suramei (184) (bando 2)'Hechizos de Bardos
+Status=2
+Name=Bardo
+PosOrig=1
+Head=1
+Body=269
+CascoAnim=15
+ShieldAnim=31
+Heading=2
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=24
+NROITEMS=3
+Obj1=1122-100
+Obj2=1123-100
+Obj3=1124-100
+LocaleID=143
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Soltad ese laúd y aprended de estos antiguos pergaminos!
+
+
+[NPC840] ' clon de NPC164 'Subastador' para Suramei (184) (bando 2) ' Subastador
+Status=2
+Name=Subastador
+PosOrig=1
+NpcType=16
+Head=9
+Body=270
+Heading=3
+Movement=1
+HP=10000
+RespawnTime=1
+LocaleID=150
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Bienvenido al Centro de Subastas!
+
+'**************************** Battle Servers ****************************
+
+[NPC841] ' clon de NPC167 'SastreSuramei' para Suramei (184) (bando 2)
+Status=2
+Name=SastreSuramei
+PosOrig=1
+Head=402
+Body=356
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=3
+NROITEMS=21
+'Vestimentas de Hombre
+Obj1=31-100
+'Vestimentas de Hombre
+Obj2=32-100
+'Vestimentas de Hombre
+Obj3=35-100
+'Vestimentas de Mujer
+Obj4=1272-100
+'Vestimentas de Mujer
+Obj5=1273-100
+'Vestimentas de Mujer
+Obj6=1274-100
+'Ropaje Reforzado
+Obj7=484-100
+'Túnica del Aventurero (Bajos)
+Obj8=1226-100
+'Vestimenta de Campesino
+Obj9=501-100
+'Vestimenta de Campesino (Bajos)
+Obj10=502-100
+'Sotana (Bajos)
+Obj11=1309-100
+'Túnica de Mago
+Obj12=196-100
+'Túnica de Monje
+Obj13=381-100
+'Túnica del Aventurero
+Obj14=1226-100
+'Túnica de Druida
+Obj15=357-100
+'Túnica de Druida (Bajos)
+Obj16=1210-100
+'Túnica de Clérigo
+Obj17=1231-100
+'Gorro de Aprendiz de Mago
+Obj18=1236-100
+'Gorro de Aprendiz de Mago
+Obj19=1237-100
+'Gorro de Aprendiz de Mago
+Obj20=1238-100
+'Gorro de Hechicería
+Obj21=991-100
+LocaleID=152
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Aún no logro comprender cómo estamos vendiendo estas vestimentas a estos precios... ¡Aprovecha y compra antes de que lo comprenda!
+
+'--------------> Tiama <--------------
+
+[NPC842] ' clon de NPC41 'Pescador' para Puerto de Suramei (183) (bando 2)
+Status=2
+Name=Pescador
+PosOrig=1
+Head=2
+Body=3
+Heading=3
+Movement=1
+Comercia=1
+HP=10000
+RespawnTime=1
+TipoItems=1
+NROITEMS=3
+'Caña de Pesca
+Obj1=881-100
+'Red de Pesca
+Obj2=138-100
+'Pargo
+Obj3=139-100
+LocaleID=36
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=¡Aquí conseguirás lo mejor que el mar puede ofrecer!
+
+
+[NPC843] ' Umbramar: Pirata de Umbramar (clon del NPC116)
+Status=5
+Name=Pirata de Umbramar
+PosOrig=1
+Name2=Umbramar
+NpcType=7
+Head=301
+Body=133
+Heading=2
+Movement=1
+Comercia=1
+TipoItems=36
+NROITEMS=2
+Obj1=2620-100
+Obj2=2621-100
+weaponanim=7
+HP=10000
+RespawnTime=1
+MinHP=10000
+MaxHP=10000
+Hostile=0
+Desc=Los barcos del Exordio no le temen a ninguna tormenta. Si llevas nuestra marca, te llevo a Rinkel o a Nueva Esperanza; si no, busca otro capitan.

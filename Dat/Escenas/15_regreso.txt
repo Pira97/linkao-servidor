@@ -1,0 +1,21 @@
+# Trailer "Los Desterrados del Mar" — 15. El explorador vuelve y nadie le cree (mapa 99, Puerto de Rinkel).
+# Voz: 3:49.5 "El explorador regresó a Exordium" / 3:55.3 "...nadie quiso creerle" hasta 3:57.7.
+# El segundo 0 de este guion = 3:49.5 del audio.
+
+0     lugar 99 82 37
+0     aparece pescador guerrero 82 31 sur npc=41 bando=2 Pescador
+0     aparece aldeano guerrero 84 31 sur npc=1 bando=2 Aldeano
+0     aparece aldeana guerrero 86 32 oeste npc=11 bando=2 Aldeana
+0     aparece explorador guerrero 83 50 norte bando=2 barca Explorador
+0.3   camina explorador 83 33
+
+# --- El explorador regresó a Exordium (3:49.5) ---
+6.5   dice explorador ¡Escuchen! ¡Hay una ciudad más allá del mar!
+9     dice explorador ¡Los Renegados están vivos!
+
+# --- Y cuando contó lo que había visto, nadie quiso creerle (3:55.3) ---
+11    dice pescador Otra vez con los cuentos de marinero...
+13    dice aldeano ¡Jajaja! El mar le secó los sesos.
+14.5  camina aldeana 90 28
+
+17    fin

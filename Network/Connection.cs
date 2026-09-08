@@ -72,6 +72,37 @@ public sealed class Connection
     public bool SoportaObjInfoUpdate => (Caps & 8) != 0;
 
     /// <summary>
+    /// ¿Este cliente entiende PortalInfo (218)? (bit4 de Caps). Es la decoración de los
+    /// teleports creados con /ct. Bit propio, y comprobado a la mala: sin el candado, un
+    /// cliente con el JS viejo cacheado recibe el 218, no sabe saltear el id y lee basura
+    /// desde ahí — al jugador le aparecen teleports en tiles al azar por todo el mapa.
+    /// </summary>
+    public bool SoportaPortales => (Caps & 16) != 0;
+
+    /// <summary>
+    /// ¿Este cliente entiende EventVoice (219)? (bit5 de Caps). Es el anuncio hablado que un GM
+    /// difunde desde el panel (ver Game/EventVoice.cs). Bit propio y no colgado de ninguno de
+    /// los anteriores por la misma razón que SoportaPortales, con el agravante de que esto es un
+    /// BROADCAST A TODOS: sin el candado, un solo anuncio le rompería el stream a cualquiera que
+    /// todavía tenga el JS viejo cacheado.
+    /// </summary>
+    public bool SoportaVozEvento => (Caps & 32) != 0;
+
+    /// <summary>
+    /// ¿Este cliente entiende EstadoTimer (220)? (bit6 de Caps). Es la cuenta regresiva de oculto
+    /// e invisibilidad que se dibuja sobre la cabeza. Bit propio por el motivo de siempre: un JS
+    /// viejo cacheado no sabría saltear el id y se le desincronizaría el stream.
+    /// </summary>
+    public bool SoportaEstadoTimer => (Caps & 64) != 0;
+
+    /// <summary>
+    /// ¿Este cliente entiende NpcHp (221)? (bit7 de Caps). Es la barra de vida que aparece
+    /// debajo del NPC al pegarle. Bit propio por el motivo de siempre. Es el ÚLTIMO bit libre
+    /// del byte de Caps: la próxima extensión va a necesitar ampliar el paquete ClientCaps.
+    /// </summary>
+    public bool SoportaVidaNpc => (Caps & 128) != 0;
+
+    /// <summary>
     /// Modo espía: true mientras el server le pidió a ESTE cliente que reporte lo que no
     /// viaja en el protocolo normal —su mouse y qué tiene abierto en la interfaz— porque un
     /// Dios lo está espiando. Sirve para no volver a pedírselo y para descartar reportes de
@@ -95,10 +126,30 @@ public sealed class Connection
     /// </summary>
     public bool EspectadorEntro;
 
+    /// <summary>UTC del último byte recibido (o de la creación). Un corte silencioso (wifi caída
+    /// sin FIN/RST) no dispara ninguna excepción, y en un área vacía del mapa tampoco activa el
+    /// tope de backlog saliente de Fix C3 (no hay nada para encolarle) — así que sin esto una
+    /// conexión zombie puede quedar "logueada" indefinidamente, y CuentaConectada bloquea el
+    /// reconecto legítimo con "Ya hay un usuario conectado" para siempre. El cliente manda un
+    /// Ping cada 5s mientras esté logueado (outgoing.js PING_INTERVAL_MS), así que 20s sin nada
+    /// es zombie, no lag.</summary>
+    public DateTime LastActivityUtc { get; private set; } = DateTime.UtcNow;
+
     public Connection(Socket socket, int userIndex)
     {
         _socket = socket;
         _socket.NoDelay = true; // deshabilita Nagle, como espera el cliente AO
+        try
+        {
+            // Backstop a nivel SO: si el peer no ackea nada en 15s, sondea cada 5s y da la
+            // conexión por muerta a los 3 sondeos sin respuesta. Complementa el idle-timeout de
+            // la app haciendo que SendAsync/ReceiveAsync fallen antes en vez de quedar colgados.
+            _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 15);
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 5);
+            _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
+        }
+        catch { /* plataforma sin soporte: no crítico, el idle-timeout de la app cubre igual */ }
         UserIndex = userIndex;
         RemoteEndPoint = socket.RemoteEndPoint?.ToString() ?? "?";
         RemoteIp = (socket.RemoteEndPoint as IPEndPoint)?.Address.ToString() ?? RemoteEndPoint;
@@ -114,6 +165,7 @@ public sealed class Connection
             {
                 int read = await _socket.ReceiveAsync(_recvBuffer, SocketFlags.None);
                 if (read <= 0) break; // cliente cerró
+                LastActivityUtc = DateTime.UtcNow;
                 GlobalStats.BytesEntrantes(read);
                 // Desencriptar XOR (cliente→server). Clave fija salvo que el login la cambie.
                 for (int i = 0; i < read; i++)
@@ -174,6 +226,14 @@ public sealed class Connection
         }
     }
 
+    /// <summary>Timeout del SendAsync individual. Fix C3 acota cuánto puede crecer OutgoingData
+    /// antes de forzar el cierre, pero no evita que un SendAsync individual quede colgado
+    /// esperando a un peer que dejó de ackear (wifi cortada sin FIN/RST) mientras el backlog
+    /// todavía no cruzó el tope. GameServer corre los FlushAsync de todas las conexiones en
+    /// paralelo, pero igual espera a que TODOS terminen antes del próximo tick, así que sin este
+    /// límite una sola conexión zombie retrasaría el Pong de todo el mundo mientras dure.</summary>
+    private const int SendTimeoutMs = 5000;
+
     /// <summary>Envía y vacía la cola de salida (equivale a FlushBuffer del VB6).</summary>
     public async Task FlushAsync()
     {
@@ -188,8 +248,16 @@ public sealed class Connection
         {
             int sent = 0;
             while (sent < toSend.Length)
-                sent += await _socket.SendAsync(
+            {
+                Task<int> sendTask = _socket.SendAsync(
                     new ArraySegment<byte>(toSend, sent, toSend.Length - sent), SocketFlags.None);
+                if (await Task.WhenAny(sendTask, Task.Delay(SendTimeoutMs)) != sendTask)
+                {
+                    Close(); // no respondió a tiempo: tratarla como muerta en vez de seguir esperando
+                    return;
+                }
+                sent += await sendTask;
+            }
         }
         catch (Exception)
         {

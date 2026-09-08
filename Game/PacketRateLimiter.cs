@@ -20,7 +20,14 @@ public static class PacketRateLimiter
     {
         public readonly bool Permitido;
         public readonly bool Excesivo; // abuso sostenido: el caller puede optar por desconectar
-        public Resultado(bool permitido, bool excesivo) { Permitido = permitido; Excesivo = excesivo; }
+        /// <summary>
+        /// Primer paquete RECHAZADO de esta ventana. Sirve para avisarle al usuario UNA vez que
+        /// se le descartó algo, en vez de repetir el mismo cartel por cada paquete que cae —
+        /// que sería llenarle la consola con la misma línea decenas de veces seguidas.
+        /// </summary>
+        public readonly bool PrimeraViolacion;
+        public Resultado(bool permitido, bool excesivo, bool primeraViolacion = false)
+        { Permitido = permitido; Excesivo = excesivo; PrimeraViolacion = primeraViolacion; }
     }
 
     private sealed class Bucket
@@ -42,6 +49,7 @@ public static class PacketRateLimiter
         long ahora = Environment.TickCount64;
         bool permitido;
         bool excesivo = false;
+        bool primeraViolacion = false;
         lock (bucket)
         {
             if (ahora - bucket.VentanaInicio > ventanaMs) { bucket.VentanaInicio = ahora; bucket.Contador = 0; }
@@ -49,6 +57,7 @@ public static class PacketRateLimiter
             permitido = bucket.Contador <= maxPorVentana;
             if (!permitido)
             {
+                primeraViolacion = bucket.Contador == maxPorVentana + 1;
                 bucket.ViolacionesSeguidas++;
                 if (bucket.ViolacionesSeguidas >= VIOLACIONES_PARA_EXCESIVO) excesivo = true;
             }
@@ -64,7 +73,7 @@ public static class PacketRateLimiter
             GlobalStats.PaqueteLimitado();
             if (excesivo) GlobalStats.ClienteDesconectadoPorAbuso();
         }
-        return new Resultado(permitido, excesivo);
+        return new Resultado(permitido, excesivo, primeraViolacion);
     }
 
     /// <summary>Limpiar el estado de un usuario al desconectarse (evita que el diccionario crezca sin límite).</summary>

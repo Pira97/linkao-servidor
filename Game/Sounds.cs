@@ -58,4 +58,85 @@ public static class Sounds
     public const short FLAUTA           = 393;   // tocar la flauta (instrumento)
     public const short DESCONEXION      = 434;   // el usuario se desconecta del juego
     public const short COLLAR_PENDIENTE = 458;   // equipar collar/pendiente
+    // Artes marciales del Bardo (12-sep-2026, pedido del usuario): reemplazan al IMPACTO(86) y
+    // al PARALIZAR(203) genéricos, SOLO para la clase Bardo(6) peleando con nudillos.
+    public const short BARDO_GOLPE      = 600;   // golpe cuerpo a cuerpo del Bardo con nudillos
+    public const short BARDO_PARALIZA   = 601;   // el golpe del Bardo con nudillos paraliza
+
+    // --- Golpes propios por clase (16-sep-2026) -------------------------------------------
+    // Los trajo el usuario con nombre ("Clerigo golpe.mp3", "pala.mp3", ...) y los importa
+    // web-poc-pixi/importar_sonidos_golpes.py a assets/sfx/<n>.ogg. Arrancan en 700 para que
+    // se vea de un vistazo qué vino del AO original (<= 601) y qué se agregó a mano.
+    public const short GOLPE_GENERICO   = 700;   // impacto cuerpo a cuerpo sin clase propia
+    public const short GOLPE_GUERRERO   = 701;
+    public const short GOLPE_PALADIN    = 702;
+    public const short GOLPE_CLERIGO    = 703;
+    public const short GOLPE_NIGROMANTE = 704;
+    public const short GOLPE_GLADIADOR  = 705;
+    public const short GOLPE_ASESINO    = 706;   // el golpe normal, sin apuñalar
+    public const short APUNALA_ASESINO  = 707;   // la apuñalada (reemplaza al golpe de arriba)
+    public const short ARPON_MERCENARIO = 708;   // arpón al salir (proyectil 2)
+    public const short FLECHA_ARCO      = 709;   // flecha al salir, antes de llegar
+    public const short GOLPE_MAGO       = 710;
+    public const short ESCUDO_BLOQUEO   = 711;   // bloqueo con escudo, todas las clases
+    public const short GOLPE_PARALIZA   = 712;   // el golpe de artes marciales que paraliza
+
+    // --- Voces de racha de kills (24-sep-2026) --------------------------------------------
+    // Estilo DotA, de `Escritorio\Sons`; los importa web-poc-pixi/importar_sonidos_kills.py.
+    public const short RACHA_4          = 720;   // Killing Spree
+    public const short RACHA_5          = 721;   // Dominating
+    public const short RACHA_6          = 722;   // Mega Kill
+    public const short RACHA_7          = 723;   // Unstoppable
+    public const short RACHA_8          = 724;   // Wicked Sick
+    public const short RACHA_9          = 725;   // Monster Kill
+    public const short RACHA_10         = 726;   // Godlike
+    public const short RACHA_11         = 727;   // Rampage
+    public const short RACHA_12         = 728;   // Ownage
+    public const short RACHA_13_O_MAS   = 729;   // Monster Kill (Ludacris), suena en cada kill desde la 13
+
+    // --- Poder de los Dioses (25-sep-2026) ------------------------------------------------
+    // Lo trajo el usuario (Downloads\sonido.mp3); lo importa web-poc-pixi/importar_sonido_poder_dioses.py.
+    public const short PODER_DIOSES     = 730;   // alguien recibe el poder: suena para todo el server
+
+    /// <summary>
+    /// Sonido de la N-ésima kill seguida (racha de jugador o de bot; se corta al morir).
+    /// 1-3 son los del AO; de la 4 en adelante, las voces nuevas.
+    /// </summary>
+    public static short DeRacha(int n) => n switch
+    {
+        <= 0 => 0,
+        1  => FIRST_BLOOD,
+        2  => DOUBLE_KILL,
+        3  => TRIPLE_KILL,
+        4  => RACHA_4,
+        5  => RACHA_5,
+        6  => RACHA_6,
+        7  => RACHA_7,
+        8  => RACHA_8,
+        9  => RACHA_9,
+        10 => RACHA_10,
+        11 => RACHA_11,
+        12 => RACHA_12,
+        _  => RACHA_13_O_MAS,
+    };
+
+    /// <summary>
+    /// Sonido de impacto cuerpo a cuerpo según la clase del que pega (eClass, el mismo
+    /// numerito que documenta Dat/BotClases.dat). Las clases sin sonido propio —Ladrón(5),
+    /// Druida(7) y las de trabajo— caen en GOLPE_GENERICO. El Bardo(6) NO está acá: tiene su
+    /// propia rama en Combat.SonidoImpactoMelee porque su sonido depende del arma (nudillos),
+    /// no sólo de la clase.
+    /// </summary>
+    public static short GolpeDeClase(int clase) => clase switch
+    {
+        1  => GOLPE_CLERIGO,
+        2  => GOLPE_MAGO,
+        3  => GOLPE_GUERRERO,
+        4  => GOLPE_ASESINO,
+        8  => GOLPE_GLADIADOR,
+        9  => GOLPE_PALADIN,
+        17 => ARPON_MERCENARIO,
+        18 => GOLPE_NIGROMANTE,
+        _  => GOLPE_GENERICO,
+    };
 }

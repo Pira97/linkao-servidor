@@ -20,8 +20,9 @@ namespace ServidorCS.Game;
 /// </summary>
 public static class MapasPorNivel
 {
-    /// <summary>Franja de niveles permitida en un mapa. Max = SIN_TOPE cuando solo hay piso.</summary>
-    public readonly record struct Rango(int Min, int Max);
+    /// <summary>Franja de niveles permitida en un mapa. Max = SIN_TOPE cuando solo hay piso.
+    /// SoloDonador = además hay que tener la marca de donador (Char.Donador, [FLAGS] Donador).</summary>
+    public readonly record struct Rango(int Min, int Max, bool SoloDonador = false);
 
     public const int SIN_TOPE = int.MaxValue;
 
@@ -33,9 +34,16 @@ public static class MapasPorNivel
     {
         [205] = new Rango(25, 39),        // expulsa al llegar a 40
         [207] = new Rango(20, 37),        // expulsa al llegar a 38
+        [753] = new Rango(19, 25),        // Cueva Orca: expulsa al llegar a 26
         [755] = new Rango(35, SIN_TOPE),
         [756] = new Rango(40, SIN_TOPE),
         [760] = new Rango(45, SIN_TOPE),
+        // 23-sep-2026: "atrio arcano es solo para donadores nivel 40, senda ilusoria nivel 42". Al Atrio se
+        // entra desde el Umbral Arcano (457); la Senda solo se alcanza pasando por el Atrio.
+        [830] = new Rango(40, SIN_TOPE, SoloDonador: true),   // Atrio Arcano
+        [831] = new Rango(42, SIN_TOPE),                      // Senda Ilusoria
+        [832] = new Rango(45, SIN_TOPE),                      // Salón Elemental
+        [833] = new Rango(47, SIN_TOPE),                      // Santuario de Éter
     };
 
     private const byte FONT_INFO = 1;
@@ -51,13 +59,16 @@ public static class MapasPorNivel
         if (u == null) return true;
         if (u.FaccionStatus >= AdminLoader.STATUS_CONSEJERO) return true;
         if (!Mapas.TryGetValue(mapa, out var r)) return true;
+        if (r.SoloDonador && u.Char.Donador != 1) return false;
         return u.Stats.ELV >= r.Min && u.Stats.ELV <= r.Max;
     }
 
     /// <summary>Texto para la consola explicando por qué no puede pasar.</summary>
-    public static string MotivoRechazo(int mapa)
+    public static string MotivoRechazo(int mapa, User u = null)
     {
         if (!Mapas.TryGetValue(mapa, out var r)) return "No puedes entrar a esa zona.";
+        if (r.SoloDonador && (u == null || u.Char.Donador != 1))
+            return $"Esta zona es solo para donadores de nivel {r.Min} o superior.";
         return r.Max == SIN_TOPE
             ? $"Necesitas ser nivel {r.Min} o superior para entrar a esta zona."
             : $"Esta zona es solo para personajes de nivel {r.Min} a {r.Max}.";
@@ -82,7 +93,9 @@ public static class MapasPorNivel
 
         int mapaViejo = u.Pos.Map;
         var r = Mapas[mapaViejo];
-        string aviso = u.Stats.ELV < r.Min
+        string aviso = r.SoloDonador && u.Char.Donador != 1
+            ? "Esta zona es solo para donadores. Se te devuelve a tu ciudad."
+            : u.Stats.ELV < r.Min
             ? $"No tienes nivel suficiente para estar aquí. Vuelve cuando seas nivel {r.Min}."
             : $"Ya superaste el nivel de esta zona (hasta {r.Max}). Se te devuelve a tu ciudad.";
 

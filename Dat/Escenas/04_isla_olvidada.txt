@@ -1,0 +1,22 @@
+# Trailer "Los Desterrados del Mar" — 04. Náufragos en una isla olvidada (mapa 622, costa sureste).
+# Voz: 0:51.0 "Otros aseguraban que habían muerto de hambre..." hasta 0:60.3 "...Los Renegados habían sobrevivido".
+# El segundo 0 de este guion = 0:51.0 del audio.
+#
+# Rincón elegido lejos de las criaturas de la isla (616 en 40,57 y 63,45; 612 en 55,48).
+
+0     lugar 622 62 56
+0     aparece renegado1 guerrero 60 60 este npc=530 bando=1 Renegado
+0     aparece renegado2 nigromante 64 59 este npc=530 bando=1 Renegado
+0     aparece renegado3 guerrero 62 61 este npc=530 bando=1 Renegado
+
+# --- Otros aseguraban que habían muerto de hambre en alguna isla olvidada (0:51.0) ---
+1     dice renegado1 Ya no queda nada que comer...
+3.5   dice renegado2 Nadie va a venir a buscarnos.
+
+# --- Pero todos estaban equivocados (0:57.6) ---
+6.6   dice renegado3 Entonces vamos a sobrevivir solos.
+8     camina renegado3 65 53
+9     camina renegado1 64 54
+9.3   camina renegado2 66 55
+
+13    fin
